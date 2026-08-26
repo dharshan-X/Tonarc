@@ -1,6 +1,9 @@
-PixelPlayerOSS 0.1.0:
+Tonarc 0.1.0-alpha:
 
-* First public FOSS release of PixelPlayerOSS.
-* Local playback, playlists, favorites, lyrics, listening stats, dynamic Material 3 theming, widgets, and backup/restore.
-* Self-hosted Navidrome/Subsonic and Jellyfin library support, plus optional LRCLIB lyrics and Deezer artist artwork lookup.
-* No Firebase, no Google Play Services, no proprietary integrations.
+* Initial release of Tonarc music player.
+* Full YouTube Music library & Liked Songs two-way sync.
+* Instant Radio & continuous infinite queue extension.
+* Multi-source synchronized lyrics (LRCLIB + YouTube Timed Text transcripts).
+* Time-of-day contextual mixes & Discovery Radar.
+* Library Taste Profile card with listening analytics.
+* Modern Material 3 Expressive UI and adaptive vinyl turntable icon.
