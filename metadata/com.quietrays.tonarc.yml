@@ -1,0 +1,34 @@
+Categories:
+  - Multimedia
+License: GPL-3.0-or-later
+AuthorName: QuietRays
+SourceCode: https://github.com/dharshan-X/Tonarc
+IssueTracker: https://github.com/dharshan-X/Tonarc/issues
+Changelog: https://github.com/dharshan-X/Tonarc/blob/main/CHANGELOG.md
+
+AutoName: Tonarc
+
+RepoType: git
+Repo: https://github.com/dharshan-X/Tonarc.git
+
+Builds:
+  - versionName: 0.1.0-alpha.5
+    versionCode: 100005
+    commit: a870ba925695079a4a754ae37b5a864d4b1a45bf
+    subdir: app
+    gradle:
+      - yes
+    prebuild:
+      - sed -i "s/ -XX:+ParallelRefParsingEnabled//" ../gradle.properties
+    gradleprops:
+      - tonarc.enableAbiSplits=false
+      - tonarc.disableReleaseSigning=true
+
+AntiFeatures:
+  - NonFreeNet
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9.]+-alpha\.[0-9]+$
+UpdateCheckData: gradle.properties|APP_VERSION_CODE=(\d+)|.|APP_VERSION_NAME=(.+)
+CurrentVersion: 0.1.0-alpha.5
+CurrentVersionCode: 100005

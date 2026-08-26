@@ -1,0 +1,17 @@
+Tonarc is a modern, privacy-focused open-source Android music player crafted for seamless offline listening, self-hosted streaming, and hybrid music discovery.
+
+The app is offline-first by default. Network lookups and streaming services are completely optional and user-controlled.
+
+Key Features:
+
+* Local Library & Audio Engine: Fast media scanning for FLAC, MP3, AAC, OPUS, OGG, WAV, ALAC; high-precision DSP audio engine with gapless playback, crossfade, and equalizer.
+* Material 3 Expressive UI: Modern fluid design with dynamic theming, smooth corner shapes, responsive carousels, and Glance home screen widgets.
+* Instant Radio & Infinite Smart Queue: 70/30 hybrid cloud & local smart queue generation with zero-latency instant start.
+* Multi-Source Auto-Lyrics & Karaoke: Pre-buffered synced lyrics powered by embedded tags, LRCLIB, and synchronized transcripts with offline database caching.
+* Time-of-Day Daily Mixes & Discovery Radar: Contextual mood mixes (Morning Rise, Afternoon Energy, Evening Chill, Midnight Mood) and Discovery Radar for unheard library gems.
+* Taste Profile & Musical Archetypes: Privacy-preserving local analytics calculating listening habits, top genres, and musical archetype breakdown.
+* Self-Hosted Streaming: Native Navidrome (Subsonic) and Jellyfin library sync and remote playback.
+* Optional Cloud Sync: Two-way YouTube Music library sync, Liked Music pinning, and bidirectional favorite syncing.
+* Backup & Restore: Comprehensive export and import for preferences, playlists, favorites, custom lyrics, and listening stats.
+
+Tonarc contains zero trackers, zero ads, no Firebase, and no proprietary Google Play Services dependencies.

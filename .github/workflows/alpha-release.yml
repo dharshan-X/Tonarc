@@ -1,0 +1,123 @@
+name: Alpha Release
+
+on:
+  push:
+    branches:
+      - main
+    # Docs-only and CI-only merges shouldn't ship a new alpha. Use the manual
+    # trigger below to build one from a workflow change when needed.
+    paths-ignore:
+      - "docs/**"
+      - "assets/**"
+      - "LICENSE"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: alpha-release
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Compute alpha version
+        id: version
+        run: |
+          BASE_VERSION="$(grep '^APP_VERSION_NAME=' gradle.properties | cut -d= -f2)"
+          BASE_CODE="$(grep '^APP_VERSION_CODE=' gradle.properties | cut -d= -f2)"
+          ALPHA_VERSION="${BASE_VERSION}-alpha.${{ github.run_number }}"
+          # Keeps version codes ordered across stable bumps: 0.2.0 alphas sit in the
+          # 2xxxxx range, 0.3.0 alphas in 3xxxxx, so alpha updates always install.
+          ALPHA_CODE="$(( BASE_CODE * 100000 + ${{ github.run_number }} ))"
+          echo "name=$ALPHA_VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$ALPHA_CODE" >> "$GITHUB_OUTPUT"
+          echo "tag=v$ALPHA_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.2.0
+
+      # The shared CI keystore lives in the CI_KEYSTORE_B64 + CI_KEYSTORE_PASSWORD
+      # repo secrets so every workflow signs with the same stable key and builds
+      # install over each other. Without the secrets we fall back to a throwaway
+      # keystore with a random one-off password (signature varies per run).
+      - name: Set up CI keystore
+        env:
+          CI_KEYSTORE_B64: ${{ secrets.CI_KEYSTORE_B64 }}
+          CI_KEYSTORE_PASSWORD: ${{ secrets.CI_KEYSTORE_PASSWORD }}
+          CI_KEYSTORE_ALIAS: ${{ secrets.CI_KEYSTORE_ALIAS }}
+        run: |
+          if [ -n "$CI_KEYSTORE_B64" ] && [ -n "$CI_KEYSTORE_PASSWORD" ]; then
+            KEYSTORE_PASSWORD="$CI_KEYSTORE_PASSWORD"
+            printf '%s' "$CI_KEYSTORE_B64" | base64 -d > tonarc-ci.jks
+            KEY_ALIAS="${CI_KEYSTORE_ALIAS:-}"
+            if [ -z "$KEY_ALIAS" ]; then
+              KEY_ALIAS="$(keytool -list -keystore tonarc-ci.jks -storepass "$KEYSTORE_PASSWORD" | grep -i "PrivateKeyEntry" | head -n 1 | cut -d, -f1 | xargs || true)"
+            fi
+            if [ -z "$KEY_ALIAS" ]; then
+              KEY_ALIAS="$(keytool -list -keystore tonarc-ci.jks -storepass "$KEYSTORE_PASSWORD" | grep -i "Entry" | head -n 1 | cut -d, -f1 | xargs || true)"
+            fi
+            if [ -z "$KEY_ALIAS" ]; then
+              KEY_ALIAS="tonarc-ci-key"
+            fi
+          else
+            KEYSTORE_PASSWORD="$(openssl rand -hex 24)"
+            KEY_ALIAS="tonarc-ci-key"
+            keytool -genkey -v -keystore tonarc-ci.jks -alias "$KEY_ALIAS" -keyalg RSA -keysize 4096 -validity 10000 \
+              -storepass "$KEYSTORE_PASSWORD" -keypass "$KEYSTORE_PASSWORD" \
+              -dname "CN=Tonarc CI Throwaway, OU=Dev, O=QuietRays, L=World, S=World, C=US"
+          fi
+          {
+            echo "storeFile=tonarc-ci.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEYSTORE_PASSWORD"
+          } > keystore.properties
+
+      - name: Build alpha release APKs
+        run: >
+          ./gradlew :app:assembleRelease
+          -Ptonarc.enableAbiSplits=true
+          -PAPP_VERSION_NAME=${{ steps.version.outputs.name }}
+          -PAPP_VERSION_CODE=${{ steps.version.outputs.code }}
+
+      - name: Verify and rename split APKs
+        run: |
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          mkdir -p release-apks
+          for abi in arm64-v8a armeabi-v7a; do
+            apk="app/build/outputs/apk/release/app-$abi-release.apk"
+            "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt2" dump badging "$apk" >/dev/null
+            "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose "$apk"
+            cp "$apk" "release-apks/Tonarc-${{ steps.version.outputs.name }}-$abi.apk"
+          done
+
+      - name: Prepare release notes from CHANGELOG.md
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            cat CHANGELOG.md > release-notes.md
+          else
+            echo "Release ${{ steps.version.outputs.name }}" > release-notes.md
+          fi
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ steps.version.outputs.tag }}"
+          --prerelease
+          --notes-file release-notes.md
+          --title "Tonarc ${{ steps.version.outputs.name }}"
+          release-apks/*.apk

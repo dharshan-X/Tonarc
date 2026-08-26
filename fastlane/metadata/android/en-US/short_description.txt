@@ -1,0 +1,1 @@
+Modern local & hybrid music player with smart queue, auto-lyrics & mixes.
