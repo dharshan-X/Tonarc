@@ -1,0 +1,203 @@
+name: Manual Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version Name (e.g. 0.1.0 or 0.1.0-beta.1; leave blank to use gradle.properties)'
+        required: false
+        type: string
+        default: ''
+      version_code:
+        description: 'Version Code (integer; leave blank to compute from gradle.properties)'
+        required: false
+        type: string
+        default: ''
+      is_prerelease:
+        description: 'Mark as Pre-release on GitHub'
+        required: false
+        type: boolean
+        default: false
+      is_draft:
+        description: 'Create as Draft Release (not published until published manually)'
+        required: false
+        type: boolean
+        default: false
+      custom_release_title:
+        description: 'Custom Release Title (optional; defaults to "Tonarc <version>")'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: manual-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Compute Release Version
+        id: version
+        run: |
+          BASE_VERSION="$(grep '^APP_VERSION_NAME=' gradle.properties | cut -d= -f2)"
+          BASE_CODE="$(grep '^APP_VERSION_CODE=' gradle.properties | cut -d= -f2)"
+
+          if [ -n "${{ inputs.version_name }}" ]; then
+            VERSION_NAME="${{ inputs.version_name }}"
+          else
+            VERSION_NAME="$BASE_VERSION"
+          fi
+
+          # Strip leading 'v' if present for name consistency
+          VERSION_NAME="${VERSION_NAME#v}"
+
+          if [ -n "${{ inputs.version_code }}" ]; then
+            VERSION_CODE="${{ inputs.version_code }}"
+          else
+            VERSION_CODE="$BASE_CODE"
+          fi
+
+          TAG_NAME="v$VERSION_NAME"
+
+          if [ -n "${{ inputs.custom_release_title }}" ]; then
+            TITLE="${{ inputs.custom_release_title }}"
+          else
+            TITLE="Tonarc $TAG_NAME"
+          fi
+
+          echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.2.0
+
+      - name: Set up CI Keystore
+        env:
+          CI_KEYSTORE_B64: ${{ secrets.CI_KEYSTORE_B64 }}
+          CI_KEYSTORE_PASSWORD: ${{ secrets.CI_KEYSTORE_PASSWORD }}
+          CI_KEYSTORE_ALIAS: ${{ secrets.CI_KEYSTORE_ALIAS }}
+        run: |
+          if [ -n "$CI_KEYSTORE_B64" ] && [ -n "$CI_KEYSTORE_PASSWORD" ]; then
+            KEYSTORE_PASSWORD="$CI_KEYSTORE_PASSWORD"
+            printf '%s' "$CI_KEYSTORE_B64" | base64 -d > tonarc-ci.jks
+            KEY_ALIAS="${CI_KEYSTORE_ALIAS:-}"
+            if [ -z "$KEY_ALIAS" ]; then
+              KEY_ALIAS="$(keytool -list -keystore tonarc-ci.jks -storepass "$KEYSTORE_PASSWORD" | grep -i "PrivateKeyEntry" | head -n 1 | cut -d, -f1 | xargs || true)"
+            fi
+            if [ -z "$KEY_ALIAS" ]; then
+              KEY_ALIAS="$(keytool -list -keystore tonarc-ci.jks -storepass "$KEYSTORE_PASSWORD" | grep -i "Entry" | head -n 1 | cut -d, -f1 | xargs || true)"
+            fi
+            if [ -z "$KEY_ALIAS" ]; then
+              KEY_ALIAS="tonarc-ci-key"
+            fi
+          else
+            KEYSTORE_PASSWORD="$(openssl rand -hex 24)"
+            KEY_ALIAS="tonarc-ci-key"
+            keytool -genkey -v -keystore tonarc-ci.jks -alias "$KEY_ALIAS" -keyalg RSA -keysize 4096 -validity 10000 \
+              -storepass "$KEYSTORE_PASSWORD" -keypass "$KEYSTORE_PASSWORD" \
+              -dname "CN=Tonarc Release, OU=Dev, O=QuietRays, L=World, S=World, C=US"
+          fi
+          {
+            echo "storeFile=tonarc-ci.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEYSTORE_PASSWORD"
+          } > keystore.properties
+
+      - name: Build ABI Split Release APKs
+        run: >
+          ./gradlew :app:assembleRelease
+          -Ptonarc.enableAbiSplits=true
+          -PAPP_VERSION_NAME=${{ steps.version.outputs.name }}
+          -PAPP_VERSION_CODE=${{ steps.version.outputs.code }}
+          --no-daemon
+
+      - name: Build Universal Release APK
+        run: >
+          ./gradlew :app:assembleRelease
+          -Ptonarc.enableAbiSplits=false
+          -PAPP_VERSION_NAME=${{ steps.version.outputs.name }}
+          -PAPP_VERSION_CODE=${{ steps.version.outputs.code }}
+          --no-daemon
+
+      - name: Verify, Sign Check, and Package APKs
+        run: |
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          mkdir -p release-artifacts
+
+          # Process ABI splits
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            apk="app/build/outputs/apk/release/app-$abi-release.apk"
+            if [ -f "$apk" ]; then
+              "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt2" dump badging "$apk" >/dev/null
+              "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose "$apk"
+              cp "$apk" "release-artifacts/Tonarc-${{ steps.version.outputs.name }}-$abi.apk"
+            fi
+          done
+
+          # Process Universal APK
+          universal_apk="app/build/outputs/apk/release/app-release.apk"
+          if [ -f "$universal_apk" ]; then
+            "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt2" dump badging "$universal_apk" >/dev/null
+            "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose "$universal_apk"
+            cp "$universal_apk" "release-artifacts/Tonarc-${{ steps.version.outputs.name }}-universal.apk"
+          fi
+
+          # Generate SHA256 Checksums
+          cd release-artifacts
+          sha256sum *.apk > sha256sums.txt
+          cd ..
+
+      - name: Prepare Release Notes
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            cat CHANGELOG.md > release-notes.md
+          else
+            echo "Tonarc Release ${{ steps.version.outputs.name }}" > release-notes.md
+          fi
+          echo "" >> release-notes.md
+          echo "### SHA256 Checksums" >> release-notes.md
+          echo "\`\`\`" >> release-notes.md
+          cat release-artifacts/sha256sums.txt >> release-notes.md
+          echo "\`\`\`" >> release-notes.md
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXTRA_FLAGS=()
+          if [ "${{ inputs.is_prerelease }}" = "true" ]; then
+            EXTRA_FLAGS+=("--prerelease")
+          fi
+          if [ "${{ inputs.is_draft }}" = "true" ]; then
+            EXTRA_FLAGS+=("--draft")
+          fi
+
+          # Check if tag/release already exists and delete or overwrite if needed
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Release ${{ steps.version.outputs.tag }} already exists. Updating release assets..."
+            gh release upload "${{ steps.version.outputs.tag }}" release-artifacts/* --clobber
+            gh release edit "${{ steps.version.outputs.tag }}" --notes-file release-notes.md --title "${{ steps.version.outputs.title }}" "${EXTRA_FLAGS[@]}"
+          else
+            gh release create "${{ steps.version.outputs.tag }}" \
+              "${EXTRA_FLAGS[@]}" \
+              --notes-file release-notes.md \
+              --title "${{ steps.version.outputs.title }}" \
+              release-artifacts/*
+          fi
