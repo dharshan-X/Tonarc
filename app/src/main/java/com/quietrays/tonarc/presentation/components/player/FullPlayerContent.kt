@@ -997,6 +997,7 @@ private fun FullPlayerAlbumCoverSection(
                     style = visualizerStyle,
                     isPlaying = isPlayingProvider(),
                     currentPositionMs = currentPositionProvider(),
+                    durationMs = song.duration,
                     modifier = Modifier.fillMaxSize(),
                     accentColor = if (visualizerAccentColor != Color.Unspecified) visualizerAccentColor else MaterialTheme.colorScheme.primary,
                     containerColor = if (visualizerContainerColor != Color.Unspecified) visualizerContainerColor else MaterialTheme.colorScheme.primaryContainer

@@ -21,9 +21,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -226,7 +229,9 @@ fun VisualizerBottomSheet(
                                     VisualizerMode.SPECTRUM_BARS -> Icons.Rounded.GraphicEq
                                     VisualizerMode.FLUID_WAVE -> Icons.Rounded.Waves
                                     VisualizerMode.CIRCULAR_PULSE -> Icons.Rounded.Radio
-                                    VisualizerMode.VINYL_TURNTABLE -> Icons.Rounded.GraphicEq
+                                    VisualizerMode.VINYL_TURNTABLE -> Icons.Rounded.Album
+                                    VisualizerMode.VINTAGE_CASSETTE -> Icons.Rounded.Audiotrack
+                                    VisualizerMode.ANALOG_VU_METERS -> Icons.Rounded.Speed
                                 }
 
                                 Icon(
