@@ -60,8 +60,6 @@ class AudioVisualizerEngineTest {
         assertEquals(VisualizerMode.FLUID_WAVE, VisualizerMode.fromStorageKey("fluid_wave"))
         assertEquals(VisualizerMode.CIRCULAR_PULSE, VisualizerMode.fromStorageKey("circular_pulse"))
         assertEquals(VisualizerMode.VINYL_TURNTABLE, VisualizerMode.fromStorageKey("vinyl_turntable"))
-        assertEquals(VisualizerMode.VINTAGE_CASSETTE, VisualizerMode.fromStorageKey("vintage_cassette"))
-        assertEquals(VisualizerMode.ANALOG_VU_METERS, VisualizerMode.fromStorageKey("analog_vu_meters"))
         assertEquals(VisualizerMode.SPECTRUM_BARS, VisualizerMode.fromStorageKey("unknown_key"))
 
         assertEquals(VisualizerStyle.ACCENT, VisualizerStyle.fromStorageKey("accent"))
@@ -71,29 +69,10 @@ class AudioVisualizerEngineTest {
     }
 
     @Test
-    fun `computeFrame calculates dual channel VU needle angles and tape progress`() {
-        val initialFrame = VisualizerFrameData()
-        val nextFrame = AudioVisualizerEngine.computeFrame(
-            previousFrame = initialFrame,
-            isPlaying = true,
-            currentPositionMs = 30000L,
-            durationMs = 120000L,
-            deltaTimeSec = 0.016f
-        )
-
-        // Needle angles should be within realistic gauge sweep range [-45 deg, +45 deg]
-        assertTrue(nextFrame.leftNeedleAngle in -45f..45f)
-        assertTrue(nextFrame.rightNeedleAngle in -45f..45f)
-
-        // Tape progress at 30s / 120s should be ~0.25
-        assertEquals(0.25f, nextFrame.tapeProgress, 0.02f)
-    }
-
-    @Test
     fun `VisualizerFrameData equality and hashcode`() {
-        val f1 = VisualizerFrameData(frequencyBands = floatArrayOf(0.1f, 0.2f), wavePoints = floatArrayOf(0.5f), bassEnergy = 0.8f, rotationAngle = 10f, leftNeedleAngle = 5f, rightNeedleAngle = -10f, leftPeak = false, rightPeak = true, tapeProgress = 0.5f)
-        val f2 = VisualizerFrameData(frequencyBands = floatArrayOf(0.1f, 0.2f), wavePoints = floatArrayOf(0.5f), bassEnergy = 0.8f, rotationAngle = 10f, leftNeedleAngle = 5f, rightNeedleAngle = -10f, leftPeak = false, rightPeak = true, tapeProgress = 0.5f)
-        val f3 = VisualizerFrameData(frequencyBands = floatArrayOf(0.3f, 0.4f), wavePoints = floatArrayOf(0.5f), bassEnergy = 0.8f, rotationAngle = 10f, leftNeedleAngle = 5f, rightNeedleAngle = -10f, leftPeak = false, rightPeak = true, tapeProgress = 0.5f)
+        val f1 = VisualizerFrameData(frequencyBands = floatArrayOf(0.1f, 0.2f), wavePoints = floatArrayOf(0.5f), bassEnergy = 0.8f, rotationAngle = 10f)
+        val f2 = VisualizerFrameData(frequencyBands = floatArrayOf(0.1f, 0.2f), wavePoints = floatArrayOf(0.5f), bassEnergy = 0.8f, rotationAngle = 10f)
+        val f3 = VisualizerFrameData(frequencyBands = floatArrayOf(0.3f, 0.4f), wavePoints = floatArrayOf(0.5f), bassEnergy = 0.8f, rotationAngle = 10f)
 
         assertEquals(f1, f2)
         assertEquals(f1.hashCode(), f2.hashCode())

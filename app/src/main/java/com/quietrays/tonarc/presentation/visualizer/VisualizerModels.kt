@@ -7,9 +7,7 @@ enum class VisualizerMode(val storageKey: String, val displayName: String, val d
     SPECTRUM_BARS("spectrum_bars", "Spectrum Bars", "32-band dynamic equalizer bars with peak decay"),
     FLUID_WAVE("fluid_wave", "Fluid Wave", "Organic multi-layer fluid sine wave oscillating to rhythm"),
     CIRCULAR_PULSE("circular_pulse", "Circular Pulse", "Radial aura pulsing around album art with bass energy"),
-    VINYL_TURNTABLE("vinyl_turntable", "Vinyl Turntable", "Authentic spinning vinyl record with tonearm"),
-    VINTAGE_CASSETTE("vintage_cassette", "Vintage Cassette", "Retro dual-spool cassette with magnetic tape physics"),
-    ANALOG_VU_METERS("analog_vu_meters", "Analog VU Meters", "Dual backlit analog needle meters with ballistic dB dynamics");
+    VINYL_TURNTABLE("vinyl_turntable", "Vinyl Turntable", "Authentic spinning vinyl record with tonearm");
 
     companion object {
         fun fromStorageKey(key: String?): VisualizerMode =
@@ -34,12 +32,7 @@ data class VisualizerFrameData(
     val frequencyBands: FloatArray = FloatArray(32),
     val wavePoints: FloatArray = FloatArray(64),
     val bassEnergy: Float = 0f,
-    val rotationAngle: Float = 0f,
-    val leftNeedleAngle: Float = -45f,
-    val rightNeedleAngle: Float = -45f,
-    val leftPeak: Boolean = false,
-    val rightPeak: Boolean = false,
-    val tapeProgress: Float = 0f
+    val rotationAngle: Float = 0f
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -51,11 +44,6 @@ data class VisualizerFrameData(
         if (!wavePoints.contentEquals(other.wavePoints)) return false
         if (bassEnergy != other.bassEnergy) return false
         if (rotationAngle != other.rotationAngle) return false
-        if (leftNeedleAngle != other.leftNeedleAngle) return false
-        if (rightNeedleAngle != other.rightNeedleAngle) return false
-        if (leftPeak != other.leftPeak) return false
-        if (rightPeak != other.rightPeak) return false
-        if (tapeProgress != other.tapeProgress) return false
 
         return true
     }
@@ -65,11 +53,6 @@ data class VisualizerFrameData(
         result = 31 * result + wavePoints.contentHashCode()
         result = 31 * result + bassEnergy.hashCode()
         result = 31 * result + rotationAngle.hashCode()
-        result = 31 * result + leftNeedleAngle.hashCode()
-        result = 31 * result + rightNeedleAngle.hashCode()
-        result = 31 * result + leftPeak.hashCode()
-        result = 31 * result + rightPeak.hashCode()
-        result = 31 * result + tapeProgress.hashCode()
         return result
     }
 }

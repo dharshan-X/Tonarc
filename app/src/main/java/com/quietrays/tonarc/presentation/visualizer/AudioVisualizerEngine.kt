@@ -25,8 +25,7 @@ object AudioVisualizerEngine {
         previousFrame: VisualizerFrameData,
         isPlaying: Boolean,
         currentPositionMs: Long,
-        durationMs: Long = 0L,
-        deltaTimeSec: Float = 0.016f
+        deltaTimeSec: Float
     ): VisualizerFrameData {
         val prevBands = previousFrame.frequencyBands
         val newBands = FloatArray(BAND_COUNT)
@@ -34,22 +33,15 @@ object AudioVisualizerEngine {
 
         val timeSec = currentPositionMs / 1000f
 
-        // Angular rotation for vinyl and cassette hubs
+        // Angular rotation for vinyl
         val newRotation = if (isPlaying) {
             (previousFrame.rotationAngle + ROTATION_SPEED_DPS * deltaTimeSec) % 360f
         } else {
             previousFrame.rotationAngle
         }
 
-        // Tape Progress
-        val progress = if (durationMs > 0L) {
-            (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-        } else {
-            previousFrame.tapeProgress
-        }
-
         if (!isPlaying) {
-            // Smooth decay to idle / gentle resting wave and resting needles (-45 deg)
+            // Smooth decay to idle / gentle resting wave
             for (i in 0 until BAND_COUNT) {
                 val decay = prevBands[i] * (1f - (deltaTimeSec * 6f).coerceIn(0f, 1f))
                 newBands[i] = decay.coerceAtLeast(0.04f)
@@ -57,21 +49,11 @@ object AudioVisualizerEngine {
             for (i in 0 until WAVE_POINTS) {
                 newWave[i] = sin(i * 0.1f) * 0.05f
             }
-
-            val restingNeedle = -45f
-            val decayNeedleLeft = previousFrame.leftNeedleAngle + (restingNeedle - previousFrame.leftNeedleAngle) * 0.15f
-            val decayNeedleRight = previousFrame.rightNeedleAngle + (restingNeedle - previousFrame.rightNeedleAngle) * 0.15f
-
             return VisualizerFrameData(
                 frequencyBands = newBands,
                 wavePoints = newWave,
                 bassEnergy = previousFrame.bassEnergy * 0.9f,
-                rotationAngle = newRotation,
-                leftNeedleAngle = decayNeedleLeft.coerceIn(-45f, 45f),
-                rightNeedleAngle = decayNeedleRight.coerceIn(-45f, 45f),
-                leftPeak = false,
-                rightPeak = false,
-                tapeProgress = progress
+                rotationAngle = newRotation
             )
         }
 
@@ -112,37 +94,11 @@ object AudioVisualizerEngine {
             newWave[i] = (w1 + w2 + w3) * (0.4f + bassPulse * 0.6f)
         }
 
-        // Dual Channel Ballistic VU Meter Needles
-        var leftSum = 0f
-        for (i in 0 until 16) leftSum += newBands[i]
-        val leftAvg = leftSum / 16f
-
-        var rightSum = 0f
-        for (i in 16 until 32) rightSum += newBands[i]
-        val rightAvg = rightSum / 16f
-
-        val leftTargetAngle = -45f + (leftAvg * 1.25f).coerceIn(0f, 1f) * 88f
-        val rightTargetAngle = -45f + (rightAvg * 1.25f).coerceIn(0f, 1f) * 88f
-
-        val leftSmooth = if (leftTargetAngle > previousFrame.leftNeedleAngle) 0.45f else 0.12f
-        val rightSmooth = if (rightTargetAngle > previousFrame.rightNeedleAngle) 0.45f else 0.12f
-
-        val newLeftNeedle = (previousFrame.leftNeedleAngle + (leftTargetAngle - previousFrame.leftNeedleAngle) * leftSmooth).coerceIn(-45f, 45f)
-        val newRightNeedle = (previousFrame.rightNeedleAngle + (rightTargetAngle - previousFrame.rightNeedleAngle) * rightSmooth).coerceIn(-45f, 45f)
-
-        val leftPeak = leftAvg > 0.65f
-        val rightPeak = rightAvg > 0.65f
-
         return VisualizerFrameData(
             frequencyBands = newBands,
             wavePoints = newWave,
             bassEnergy = bassPulse.coerceIn(0f, 1f),
-            rotationAngle = newRotation,
-            leftNeedleAngle = newLeftNeedle,
-            rightNeedleAngle = newRightNeedle,
-            leftPeak = leftPeak,
-            rightPeak = rightPeak,
-            tapeProgress = progress
+            rotationAngle = newRotation
         )
     }
 }
@@ -153,8 +109,7 @@ object AudioVisualizerEngine {
 @Composable
 fun rememberVisualizerFrame(
     isPlaying: Boolean,
-    currentPositionMs: Long,
-    durationMs: Long = 0L
+    currentPositionMs: Long
 ): State<VisualizerFrameData> {
     return produceState(
         initialValue = VisualizerFrameData(),
@@ -176,7 +131,6 @@ fun rememberVisualizerFrame(
                     previousFrame = currentData,
                     isPlaying = isPlaying,
                     currentPositionMs = currentPositionMs,
-                    durationMs = durationMs,
                     deltaTimeSec = deltaSec
                 )
                 value = currentData
