@@ -320,15 +320,29 @@ private fun DrawScope.drawVinylTurntable(
     }
 
     // ==========================================
-    // AUTHENTIC AUDIOPHILE S-SHAPED TONEARM
+    // AUTHENTIC AUDIOPHILE S-SHAPED TONEARM (WITH GROOVE JITTER & PLATTER SWAY)
     // ==========================================
 
+    // High-Frequency Mechanical Groove Chatter & Bass Jitter ("Stuttering / Flutter")
+    val rotRad = Math.toRadians(frame.rotationAngle.toDouble()).toFloat()
+    val isSpinning = frame.rotationAngle > 0f
+    val flutterHigh = sin(rotRad * 16.5f) * 0.75f + cos(rotRad * 29.3f) * 0.45f
+    val bassThumpJitter = (frame.bassEnergy * 2.8f) * (sin(rotRad * 11.2f) * 0.85f + cos(rotRad * 33.7f) * 0.55f)
+    val totalJitter = if (isSpinning) (flutterHigh + bassThumpJitter) else 0f
+
+    // Platter Eccentricity (Subtle Slow Radial Sway ~0.55 Hz rotation frequency)
+    val slowSway = if (isSpinning) sin(rotRad * 1.0f) * (vinylRadius * 0.014f) else 0f
+
     // Dynamic Tracking Coordinates
-    val bassVibration = (frame.bassEnergy * 1.5f).coerceIn(0f, 3f)
+    val baseNeedleRadius = vinylRadius * 0.51f + slowSway
+    val needleAngle = 0.25f // Angular position on record
+    val baseNeedleX = center.x + baseNeedleRadius * cos(needleAngle)
+    val baseNeedleY = center.y - baseNeedleRadius * sin(needleAngle)
+
     val pivot = Offset(center.x + vinylRadius * 0.82f, center.y - vinylRadius * 0.74f)
     val needleTarget = Offset(
-        center.x + vinylRadius * 0.52f + bassVibration * 0.5f,
-        center.y - vinylRadius * 0.14f + bassVibration * 0.3f
+        baseNeedleX + totalJitter * 0.7f,
+        baseNeedleY + totalJitter * 0.5f
     )
 
     // Headshell dimensions & alignment vector
@@ -344,9 +358,9 @@ private fun DrawScope.drawVinylTurntable(
         needleTarget.y - u.y * headshellLength
     )
 
-    // S-Curve Control Points
+    // S-Curve Control Points (Responsive damped beam compliance)
     val armCp1 = Offset(pivot.x + vinylRadius * 0.08f, pivot.y + (headshellMount.y - pivot.y) * 0.32f)
-    val armCp2 = Offset(headshellMount.x - vinylRadius * 0.07f, pivot.y + (headshellMount.y - pivot.y) * 0.68f)
+    val armCp2 = Offset(headshellMount.x - vinylRadius * 0.07f + totalJitter * 0.2f, pivot.y + (headshellMount.y - pivot.y) * 0.68f)
 
     val armPath = Path().apply {
         moveTo(pivot.x, pivot.y)
@@ -663,16 +677,19 @@ private fun DrawScope.drawVinylTurntable(
         strokeWidth = 2.2f,
         cap = StrokeCap.Round
     )
-    // Diamond Stylus Contact Glow
+    // Diamond Stylus Contact Glow & Acoustic Spark
+    val sparkPulse = (0.45f + frame.bassEnergy * 0.55f).coerceIn(0f, 1f)
+    val glowRadius = 4.5f + frame.bassEnergy * 3.5f + kotlin.math.abs(totalJitter) * 0.5f
     drawCircle(
-        color = Color.White.copy(alpha = 0.5f),
-        radius = 4.5f,
+        color = if (style == VisualizerStyle.MONOCHROME) Color.White.copy(alpha = 0.35f * sparkPulse)
+                else baseColor.copy(alpha = 0.45f * sparkPulse),
+        radius = glowRadius,
         center = needleTarget,
         style = Fill
     )
     drawCircle(
-        color = Color.White,
-        radius = 2.2f,
+        color = Color.White.copy(alpha = sparkPulse),
+        radius = 2.4f,
         center = needleTarget,
         style = Fill
     )
