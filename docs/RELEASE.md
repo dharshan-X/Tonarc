@@ -1,6 +1,6 @@
 # Release Checklist
 
-PixelPlayerOSS releases are shipped from `main` after the release candidate passes local checks and a basic device smoke test.
+Tonarc releases are shipped from `main` after the release candidate passes local checks and a basic device smoke test.
 
 ## Versioning
 

@@ -1,6 +1,6 @@
 # Contributing to Tonarc
 
-Thank you for your interest in contributing to Tonarc (PixelPlayerOSS)! We welcome contributions of all kinds: bug fixes, new features, UI/UX polish, performance enhancements, translations, and documentation.
+Thank you for your interest in contributing to Tonarc! We welcome contributions of all kinds: bug fixes, new features, UI/UX polish, performance enhancements, translations, and documentation.
 
 This guide outlines our development workflow, architecture guidelines, and engineering conventions.
 
@@ -15,8 +15,8 @@ This guide outlines our development workflow, architecture guidelines, and engin
 
 ### 2. Clone the Repository
 ```bash
-git clone https://github.com/KDharshana/PixelPlayerOSS.git
-cd PixelPlayerOSS
+git clone https://github.com/dharshan-X/Tonarc.git
+cd Tonarc
 ```
 
 ### 3. Build the Project
@@ -91,7 +91,7 @@ To run a specific test class or method:
 
 ## 🐛 Reporting Bugs & Feature Requests
 
-- Check [GitHub Issues](https://github.com/KDharshana/PixelPlayerOSS/issues) before opening a new ticket.
+- Check [GitHub Issues](https://github.com/dharshan-X/Tonarc/issues) before opening a new ticket.
 - Include:
   - App version (e.g. `v0.1.0-alpha.5`)
   - Device model & Android version

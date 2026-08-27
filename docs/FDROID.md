@@ -1,9 +1,9 @@
 # F-Droid
 
-PixelPlayerOSS is published on F-Droid:
+Tonarc is published on F-Droid:
 
 ```text
-https://f-droid.org/packages/com.lostf1sh.pixelplayeross/
+https://f-droid.org/packages/com.quietrays.tonarc/
 ```
 
 The listing is fed by the Fastlane metadata under `fastlane/metadata/android/en-US`

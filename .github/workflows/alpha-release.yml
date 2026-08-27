@@ -7,9 +7,13 @@ on:
     # Docs-only and CI-only merges shouldn't ship a new alpha. Use the manual
     # trigger below to build one from a workflow change when needed.
     paths-ignore:
+      - "**.md"
+      - "*.md"
       - "docs/**"
       - "assets/**"
       - "LICENSE"
+      - ".github/FUNDING.yml"
+      - ".github/ISSUE_TEMPLATE/**"
   workflow_dispatch:
 
 permissions:

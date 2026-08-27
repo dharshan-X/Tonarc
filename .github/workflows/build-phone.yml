@@ -8,6 +8,8 @@ on:
       - 'feature/**'
       - 'fix/**'
     paths-ignore:
+      - "**.md"
+      - "*.md"
       - "docs/**"
       - "assets/**"
       - "LICENSE"
@@ -17,6 +19,14 @@ on:
     branches:
       - main
       - Recomendation
+    paths-ignore:
+      - "**.md"
+      - "*.md"
+      - "docs/**"
+      - "assets/**"
+      - "LICENSE"
+      - ".github/FUNDING.yml"
+      - ".github/ISSUE_TEMPLATE/**"
   workflow_dispatch:
     inputs:
       build_release:

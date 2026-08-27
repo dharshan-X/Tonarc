@@ -943,10 +943,10 @@ fun LibraryScreen(
                             }
                         }
 
-                        if (!isSelectionMode && !isPlaylistSelectionMode && !isAlbumSelectionMode) {
+                        if (!isSelectionMode && !isPlaylistSelectionMode && !isAlbumSelectionMode && currentTabId == LibraryTabId.PLAYLISTS) {
                             TasteProfileCard(
                                 playerViewModel = playerViewModel,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
 

@@ -38,7 +38,7 @@ class MusicBrainzApiService @Inject constructor(
                     .header(
                         "User-Agent",
                         "Tonarc/${BuildConfig.VERSION_NAME} " +
-                            "(https://github.com/PixelPlayerHQ/PixelPlayerOSS)"
+                            "(https://github.com/dharshan-X/Tonarc)"
                     )
                     .header("Accept", "application/json")
                     .build()

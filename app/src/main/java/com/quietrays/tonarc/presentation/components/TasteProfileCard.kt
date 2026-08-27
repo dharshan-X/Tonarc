@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -92,11 +94,17 @@ fun TasteProfileCard(
     val profile = tasteProfile ?: return
 
     var isExpanded by rememberSaveable { mutableStateOf(false) }
+    var isDismissed by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
 
+    if (isDismissed) return
+
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = AbsoluteSmoothCornerShape(cornerRadius = 28.dp, smoothnessAsPercent = 60),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(AbsoluteSmoothCornerShape(cornerRadius = 20.dp, smoothnessAsPercent = 60))
+            .clickable { isExpanded = !isExpanded },
+        shape = AbsoluteSmoothCornerShape(cornerRadius = 20.dp, smoothnessAsPercent = 60),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
@@ -106,140 +114,108 @@ fun TasteProfileCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    brush = Brush.verticalGradient(
+                    brush = Brush.horizontalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.09f),
+                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.04f),
                             Color.Transparent
                         )
                     )
                 )
-                .padding(16.dp)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Header Row
+                // Compact Header Row (Always visible, low profile)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Archetype Icon badge
+                    // Archetype Icon badge (Compact 34dp)
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(34.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.AutoAwesome,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
-                    // Title & Subtitle
+                    // Title & Quick Summary
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = profile.archetypeTitle,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        if (!isExpanded) {
+                            Text(
+                                text = "${formatListeningHours(profile.totalListeningDurationMs)} • ${profile.totalPlays} plays",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Text(
+                                text = profile.archetypeSubtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Quick Play Taste Mix Action
+                    FilledTonalButton(
+                        onClick = { playerViewModel.playTopTasteMix() },
+                        shape = AbsoluteSmoothCornerShape(12.dp, 60),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = "Play Top Taste Mix",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
-                            text = profile.archetypeSubtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            text = "Play",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
-                    // Expand / Collapse icon button
+                    // Expand / Collapse icon indicator
                     val rotation by animateFloatAsState(
                         targetValue = if (isExpanded) 180f else 0f,
                         label = "ExpandRotation"
                     )
                     IconButton(
-                        onClick = { isExpanded = !isExpanded }
+                        onClick = { isExpanded = !isExpanded },
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ExpandMore,
                             contentDescription = if (isExpanded) "Collapse" else "Expand",
                             modifier = Modifier.graphicsLayer { rotationZ = rotation },
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                // Quick Stats Row
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Surface(
-                        shape = AbsoluteSmoothCornerShape(12.dp, 60),
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Headphones,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = formatListeningHours(profile.totalListeningDurationMs),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-
-                    Surface(
-                        shape = AbsoluteSmoothCornerShape(12.dp, 60),
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
-                    ) {
-                        Text(
-                            text = "${profile.totalPlays} plays",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
-
-                    FilledTonalButton(
-                        onClick = { playerViewModel.playTopTasteMix() },
-                        shape = AbsoluteSmoothCornerShape(14.dp, 60),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        modifier = Modifier.height(34.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Play Top Taste",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -252,11 +228,11 @@ fun TasteProfileCard(
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         )
 
                         // Multi-color Segmented Genre Distribution Bar
@@ -275,8 +251,8 @@ fun TasteProfileCard(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(10.dp)
-                                        .clip(AbsoluteSmoothCornerShape(6.dp, 60))
+                                        .height(8.dp)
+                                        .clip(AbsoluteSmoothCornerShape(4.dp, 60))
                                         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                 ) {
                                     val totalPercentage = profile.topGenres.sumOf { it.percentage.toDouble() }.toFloat().coerceAtLeast(1f)
@@ -295,7 +271,7 @@ fun TasteProfileCard(
                                 FlowRow(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     profile.topGenres.forEachIndexed { index, genreRatio ->
                                         val color = GenreSegmentColors[index % GenreSegmentColors.size]
@@ -305,7 +281,7 @@ fun TasteProfileCard(
                                         ) {
                                             Box(
                                                 modifier = Modifier
-                                                    .size(8.dp)
+                                                    .size(7.dp)
                                                     .clip(CircleShape)
                                                     .background(color)
                                             )
@@ -320,11 +296,11 @@ fun TasteProfileCard(
                             }
                         }
 
-                        // Top 5 Artists Section
+                        // Top Artists Section
                         if (profile.topArtists.isNotEmpty()) {
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
                                     text = "Top Artists",
@@ -335,22 +311,22 @@ fun TasteProfileCard(
 
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    profile.topArtists.take(5).forEachIndexed { index, artist ->
+                                    profile.topArtists.take(4).forEachIndexed { index, artist ->
                                         val rank = index + 1
                                         val minutes = TimeUnit.MILLISECONDS.toMinutes(artist.durationMs)
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .clip(AbsoluteSmoothCornerShape(12.dp, 60))
-                                                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f))
-                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                .clip(AbsoluteSmoothCornerShape(10.dp, 60))
+                                                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.35f))
+                                                .padding(horizontal = 10.dp, vertical = 6.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Box(
                                                 modifier = Modifier
-                                                    .size(24.dp)
+                                                    .size(20.dp)
                                                     .clip(CircleShape)
                                                     .background(
                                                         if (rank == 1) MaterialTheme.colorScheme.primaryContainer
@@ -366,20 +342,20 @@ fun TasteProfileCard(
                                                            else MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
                                             }
-                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
                                             Text(
                                                 text = artist.artistName,
-                                                style = MaterialTheme.typography.bodyMedium,
+                                                style = MaterialTheme.typography.bodySmall,
                                                 fontWeight = FontWeight.Medium,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.weight(1f)
                                             )
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
                                             Text(
                                                 text = "${artist.playCount} plays • ${minutes}m",
-                                                style = MaterialTheme.typography.bodySmall,
+                                                style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
@@ -388,48 +364,66 @@ fun TasteProfileCard(
                             }
                         }
 
-                        // Share Button
-                        OutlinedButton(
-                            onClick = {
-                                val genresSummary = if (profile.topGenres.isNotEmpty()) {
-                                    profile.topGenres.take(3).joinToString { it.genre }
-                                } else {
-                                    "N/A"
-                                }
-                                val artistsSummary = if (profile.topArtists.isNotEmpty()) {
-                                    profile.topArtists.take(3).joinToString { it.artistName }
-                                } else {
-                                    "N/A"
-                                }
-                                val shareText = buildString {
-                                    appendLine("My Tonarc Music Archetype: ${profile.archetypeTitle}")
-                                    appendLine("Total Listening: ${formatListeningHours(profile.totalListeningDurationMs)}")
-                                    appendLine("Top Genres: $genresSummary")
-                                    appendLine("Top Artists: $artistsSummary")
-                                    appendLine()
-                                    append("Listen with Tonarc: https://github.com/KDharshana/PixelPlayerOSS")
-                                }
-                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                    putExtra(Intent.EXTRA_TEXT, shareText)
-                                    type = "text/plain"
-                                }
-                                val shareIntent = Intent.createChooser(sendIntent, "Share Taste Profile")
-                                context.startActivity(shareIntent)
-                            },
-                            shape = AbsoluteSmoothCornerShape(16.dp, 60),
-                            modifier = Modifier.fillMaxWidth()
+                        // Bottom Action Row: Share + Dismiss Options
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Share,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Share Taste Profile",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            OutlinedButton(
+                                onClick = {
+                                    val genresSummary = if (profile.topGenres.isNotEmpty()) {
+                                        profile.topGenres.take(3).joinToString { it.genre }
+                                    } else {
+                                        "N/A"
+                                    }
+                                    val artistsSummary = if (profile.topArtists.isNotEmpty()) {
+                                        profile.topArtists.take(3).joinToString { it.artistName }
+                                    } else {
+                                        "N/A"
+                                    }
+                                    val shareText = buildString {
+                                        appendLine("My Tonarc Music Archetype: ${profile.archetypeTitle}")
+                                        appendLine("Total Listening: ${formatListeningHours(profile.totalListeningDurationMs)}")
+                                        appendLine("Top Genres: $genresSummary")
+                                        appendLine("Top Artists: $artistsSummary")
+                                        appendLine()
+                                        append("Listen with Tonarc: https://github.com/dharshan-X/Tonarc")
+                                    }
+                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                        putExtra(Intent.EXTRA_TEXT, shareText)
+                                        type = "text/plain"
+                                    }
+                                    val shareIntent = Intent.createChooser(sendIntent, "Share Taste Profile")
+                                    context.startActivity(shareIntent)
+                                },
+                                shape = AbsoluteSmoothCornerShape(12.dp, 60),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier.weight(1f).height(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Share,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Share Profile",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            TextButton(
+                                onClick = { isDismissed = true },
+                                modifier = Modifier.height(36.dp)
+                            ) {
+                                Text(
+                                    text = "Hide",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
