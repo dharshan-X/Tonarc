@@ -319,32 +319,361 @@ private fun DrawScope.drawVinylTurntable(
         )
     }
 
-    // Stylized Tonearm
-    val armPivot = Offset(size.width * 0.88f, size.height * 0.12f)
-    val armTarget = Offset(center.x + vinylRadius * 0.6f, center.y - vinylRadius * 0.2f)
+    // ==========================================
+    // AUTHENTIC AUDIOPHILE S-SHAPED TONEARM
+    // ==========================================
 
-    // Arm Base
-    drawCircle(
-        color = Color(0xFFB0BEC5),
-        radius = 12f,
-        center = armPivot,
-        style = Fill
+    // Dynamic Tracking Coordinates
+    val bassVibration = (frame.bassEnergy * 1.5f).coerceIn(0f, 3f)
+    val pivot = Offset(center.x + vinylRadius * 0.82f, center.y - vinylRadius * 0.74f)
+    val needleTarget = Offset(
+        center.x + vinylRadius * 0.52f + bassVibration * 0.5f,
+        center.y - vinylRadius * 0.14f + bassVibration * 0.3f
     )
 
-    // Arm Line
+    // Headshell dimensions & alignment vector
+    val headshellLength = vinylRadius * 0.18f
+    val headshellAngleRad = 1.18f // ~67.5 degrees pointing towards the groove tangent
+    val dirX = cos(headshellAngleRad)
+    val dirY = -sin(headshellAngleRad)
+    val u = Offset(dirX, -dirY) // Direction vector from mount to needle
+    val v = Offset(u.y, -u.x)   // Normal vector (rightwards)
+
+    val headshellMount = Offset(
+        needleTarget.x - u.x * headshellLength,
+        needleTarget.y - u.y * headshellLength
+    )
+
+    // S-Curve Control Points
+    val armCp1 = Offset(pivot.x + vinylRadius * 0.08f, pivot.y + (headshellMount.y - pivot.y) * 0.32f)
+    val armCp2 = Offset(headshellMount.x - vinylRadius * 0.07f, pivot.y + (headshellMount.y - pivot.y) * 0.68f)
+
+    val armPath = Path().apply {
+        moveTo(pivot.x, pivot.y)
+        cubicTo(
+            armCp1.x, armCp1.y,
+            armCp2.x, armCp2.y,
+            headshellMount.x, headshellMount.y
+        )
+    }
+
+    // 1. TONEARM DROP SHADOW (Deep physical elevation above spinning record)
+    val shadowOffset = Offset(10f, 14f)
+    val shadowPath = Path().apply {
+        moveTo(pivot.x + shadowOffset.x, pivot.y + shadowOffset.y)
+        cubicTo(
+            armCp1.x + shadowOffset.x, armCp1.y + shadowOffset.y,
+            armCp2.x + shadowOffset.x, armCp2.y + shadowOffset.y,
+            headshellMount.x + shadowOffset.x, headshellMount.y + shadowOffset.y
+        )
+    }
+    drawPath(
+        path = shadowPath,
+        color = Color.Black.copy(alpha = 0.35f),
+        style = Stroke(width = 12f, cap = StrokeCap.Round)
+    )
+    drawCircle(
+        color = Color.Black.copy(alpha = 0.30f),
+        radius = 14f,
+        center = needleTarget + shadowOffset
+    )
+
+    // 2. COUNTERWEIGHT ASSEMBLY (Behind pivot, angled top-right)
+    val cwAngleRad = -0.785f // -45 degrees
+    val cwDir = Offset(cos(cwAngleRad), sin(cwAngleRad))
+    val cwNormal = Offset(-cwDir.y, cwDir.x)
+    val cwShaftEnd = pivot + cwDir * (vinylRadius * 0.18f)
+    val cwCenter = pivot + cwDir * (vinylRadius * 0.11f)
+
+    // Counterweight Shaft (Stainless Steel Rod)
     drawLine(
-        color = Color(0xFFCFD8DC),
-        start = armPivot,
-        end = armTarget,
-        strokeWidth = 4f,
+        color = Color(0xFF64748B),
+        start = pivot,
+        end = cwShaftEnd,
+        strokeWidth = 6.5f,
+        cap = StrokeCap.Round
+    )
+    drawLine(
+        color = Color(0xFFCBD5E1),
+        start = pivot + Offset(0f, -1f),
+        end = cwShaftEnd + Offset(0f, -1f),
+        strokeWidth = 2f,
         cap = StrokeCap.Round
     )
 
-    // Cartridge / Needle Head
+    // Counterweight Main Cylinder (Heavy Solid Metal Ring)
+    val cwRadius = 14f
+    val cwHalfThickness = 8f
+    val cwP1 = cwCenter - cwDir * cwHalfThickness - cwNormal * cwRadius
+    val cwP2 = cwCenter + cwDir * cwHalfThickness - cwNormal * cwRadius
+    val cwP3 = cwCenter + cwDir * cwHalfThickness + cwNormal * cwRadius
+    val cwP4 = cwCenter - cwDir * cwHalfThickness + cwNormal * cwRadius
+
+    val cwPath = Path().apply {
+        moveTo(cwP1.x, cwP1.y)
+        lineTo(cwP2.x, cwP2.y)
+        lineTo(cwP3.x, cwP3.y)
+        lineTo(cwP4.x, cwP4.y)
+        close()
+    }
+    drawPath(
+        path = cwPath,
+        brush = Brush.linearGradient(
+            0.0f to Color(0xFF475569),
+            0.35f to Color(0xFFE2E8F0),
+            0.65f to Color(0xFF94A3B8),
+            1.0f to Color(0xFF334155),
+            start = cwCenter - cwNormal * cwRadius,
+            end = cwCenter + cwNormal * cwRadius
+        )
+    )
+    drawPath(
+        path = cwPath,
+        color = Color(0xFF1E293B),
+        style = Stroke(width = 1.5f)
+    )
+
+    // Counterweight Tracking Force Dial (Knurled Black Band)
+    val dialCenter = cwCenter - cwDir * (cwHalfThickness - 3f)
+    drawLine(
+        color = Color(0xFF0F172A),
+        start = dialCenter - cwNormal * (cwRadius + 1f),
+        end = dialCenter + cwNormal * (cwRadius + 1f),
+        strokeWidth = 3f
+    )
+
+    // 3. GIMBAL / PIVOT BEARING HOUSING
+    // Outer Base Plate
     drawCircle(
-        color = baseColor,
-        radius = 6f,
-        center = armTarget,
+        color = Color(0xFF1E293B),
+        radius = 24f,
+        center = pivot,
+        style = Fill
+    )
+    drawCircle(
+        brush = Brush.sweepGradient(
+            0.0f to Color(0xFF94A3B8),
+            0.25f to Color(0xFFE2E8F0),
+            0.5f to Color(0xFF475569),
+            0.75f to Color(0xFFCBD5E1),
+            1.0f to Color(0xFF94A3B8),
+            center = pivot
+        ),
+        radius = 24f,
+        center = pivot,
+        style = Stroke(width = 2.5f)
+    )
+
+    // Cueing Arm Bar / Tonearm Rest Pin
+    val restPinStart = pivot + Offset(-12f, 10f)
+    val restPinEnd = pivot + Offset(-18f, 22f)
+    drawLine(
+        color = Color(0xFF64748B),
+        start = restPinStart,
+        end = restPinEnd,
+        strokeWidth = 3.5f,
+        cap = StrokeCap.Round
+    )
+
+    // Gimbal Ring Assembly
+    drawCircle(
+        brush = Brush.radialGradient(
+            0.0f to Color(0xFFE2E8F0),
+            0.7f to Color(0xFF94A3B8),
+            1.0f to Color(0xFF475569),
+            center = pivot,
+            radius = 16f
+        ),
+        radius = 16f,
+        center = pivot,
+        style = Fill
+    )
+    drawCircle(
+        color = Color(0xFF0F172A),
+        radius = 16f,
+        center = pivot,
+        style = Stroke(width = 1.5f)
+    )
+
+    // Center Bearing Pivot & Screw Accent
+    drawCircle(
+        color = Color(0xFF334155),
+        radius = 9f,
+        center = pivot,
+        style = Fill
+    )
+    drawCircle(
+        color = Color(0xFFF1F5F9),
+        radius = 4.5f,
+        center = pivot,
+        style = Fill
+    )
+    drawLine(
+        color = Color(0xFF475569),
+        start = pivot + Offset(-3f, 0f),
+        end = pivot + Offset(3f, 0f),
+        strokeWidth = 1.2f
+    )
+
+    // 4. SCULPTED S-SHAPED TONEARM TUBE (Multi-layer Metallic Shading)
+    // Base Tube Body
+    drawPath(
+        path = armPath,
+        color = Color(0xFF64748B),
+        style = Stroke(width = 8.5f, cap = StrokeCap.Round)
+    )
+    // Metallic Silver Core
+    drawPath(
+        path = armPath,
+        brush = Brush.linearGradient(
+            0.0f to Color(0xFFE2E8F0),
+            0.5f to Color(0xFFF8FAFC),
+            1.0f to Color(0xFFCBD5E1),
+            start = pivot,
+            end = headshellMount
+        ),
+        style = Stroke(width = 6.5f, cap = StrokeCap.Round)
+    )
+    // Specular Highlight Ridge
+    drawPath(
+        path = armPath,
+        color = Color.White.copy(alpha = 0.90f),
+        style = Stroke(width = 2.2f, cap = StrokeCap.Round)
+    )
+
+    // 5. HEADSHELL & PHONO CARTRIDGE ASSEMBLY
+    // Arm / Headshell Locking Collar Ring
+    drawLine(
+        color = Color(0xFF334155),
+        start = headshellMount - v * 6f,
+        end = headshellMount + v * 6f,
+        strokeWidth = 5f,
+        cap = StrokeCap.Butt
+    )
+    drawLine(
+        color = Color(0xFFCBD5E1),
+        start = headshellMount - v * 6f,
+        end = headshellMount + v * 6f,
+        strokeWidth = 2f,
+        cap = StrokeCap.Butt
+    )
+
+    // Headshell Body (Aerodynamic angled wedge)
+    val hsRearWidth = 10f
+    val hsFrontWidth = 14f
+    val hsLength = headshellLength * 0.72f
+    val hsFrontCenter = headshellMount + u * hsLength
+
+    val hsP1 = headshellMount - v * (hsRearWidth * 0.5f)
+    val hsP2 = headshellMount + v * (hsRearWidth * 0.5f)
+    val hsP3 = hsFrontCenter + v * (hsFrontWidth * 0.5f)
+    val hsP4 = hsFrontCenter - v * (hsFrontWidth * 0.5f)
+
+    val headshellPath = Path().apply {
+        moveTo(hsP1.x, hsP1.y)
+        lineTo(hsP2.x, hsP2.y)
+        lineTo(hsP3.x, hsP3.y)
+        lineTo(hsP4.x, hsP4.y)
+        close()
+    }
+
+    // Headshell Shell Fill & Bevel
+    drawPath(
+        path = headshellPath,
+        brush = Brush.linearGradient(
+            0.0f to Color(0xFF1E293B),
+            0.5f to Color(0xFF334155),
+            1.0f to Color(0xFF0F172A),
+            start = hsP1,
+            end = hsP3
+        )
+    )
+    drawPath(
+        path = headshellPath,
+        color = Color(0xFF94A3B8),
+        style = Stroke(width = 1.5f)
+    )
+
+    // Headshell Top Weight-Reduction Slots
+    val slotCenter = headshellMount + u * (hsLength * 0.45f)
+    drawLine(
+        color = Color(0xFF0F172A),
+        start = slotCenter - v * 3f - u * 4f,
+        end = slotCenter - v * 3f + u * 4f,
+        strokeWidth = 1.8f,
+        cap = StrokeCap.Round
+    )
+    drawLine(
+        color = Color(0xFF0F172A),
+        start = slotCenter + v * 3f - u * 4f,
+        end = slotCenter + v * 3f + u * 4f,
+        strokeWidth = 1.8f,
+        cap = StrokeCap.Round
+    )
+
+    // Finger Lift Hook (Iconic cueing hook on outer side)
+    val hookRoot = headshellMount + u * (hsLength * 0.5f) + v * (hsFrontWidth * 0.45f)
+    val hookCp = hookRoot + v * 12f - u * 2f
+    val hookEnd = hookRoot + v * 14f - u * 10f
+    val hookPath = Path().apply {
+        moveTo(hookRoot.x, hookRoot.y)
+        quadraticTo(hookCp.x, hookCp.y, hookEnd.x, hookEnd.y)
+    }
+    drawPath(
+        path = hookPath,
+        color = Color(0xFFE2E8F0),
+        style = Stroke(width = 2.5f, cap = StrokeCap.Round)
+    )
+
+    // Phono Cartridge Body (Vibrant Accent Color / Audiophile Cartridge)
+    val cartridgeColor = if (style == VisualizerStyle.MONOCHROME) Color(0xFFE2E8F0) else baseColor
+    val cartLength = headshellLength * 0.4f
+    val cartWidth = 10f
+    val cartStart = hsFrontCenter - u * (cartLength * 0.3f)
+    val cartEnd = hsFrontCenter + u * (cartLength * 0.7f)
+
+    val cartP1 = cartStart - v * (cartWidth * 0.5f)
+    val cartP2 = cartStart + v * (cartWidth * 0.5f)
+    val cartP3 = cartEnd + v * (cartWidth * 0.4f)
+    val cartP4 = cartEnd - v * (cartWidth * 0.4f)
+
+    val cartPath = Path().apply {
+        moveTo(cartP1.x, cartP1.y)
+        lineTo(cartP2.x, cartP2.y)
+        lineTo(cartP3.x, cartP3.y)
+        lineTo(cartP4.x, cartP4.y)
+        close()
+    }
+    drawPath(
+        path = cartPath,
+        color = cartridgeColor,
+        style = Fill
+    )
+    drawPath(
+        path = cartPath,
+        color = Color.White.copy(alpha = 0.5f),
+        style = Stroke(width = 1f)
+    )
+
+    // Cantilever Needle & Diamond Stylus Tip
+    drawLine(
+        color = Color(0xFFCBD5E1),
+        start = cartEnd,
+        end = needleTarget,
+        strokeWidth = 2.2f,
+        cap = StrokeCap.Round
+    )
+    // Diamond Stylus Contact Glow
+    drawCircle(
+        color = Color.White.copy(alpha = 0.5f),
+        radius = 4.5f,
+        center = needleTarget,
+        style = Fill
+    )
+    drawCircle(
+        color = Color.White,
+        radius = 2.2f,
+        center = needleTarget,
         style = Fill
     )
 }
