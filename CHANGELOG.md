@@ -58,14 +58,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fastlane Store Metadata: Updated store descriptions, tags, and icons.
 - F-Droid Recipe: Created metadata build recipe for com.quietrays.tonarc with NonFreeNet anti-feature disclosure.
 
-#### 8. Real-Time Audio-Reactive Visualizers
+#### 8. Real-Time Audio-Reactive Visualizers & Audiophile Vinyl Turntable
 - 4 Hardware-Accelerated Modes:
   - Spectrum Bars: 32-band dynamic equalizer frequency bars with peak hold decay.
   - Fluid Wave: Multi-layer organic fluid sine wave responding to playback rhythm.
   - Circular Pulse: Radial expanding acoustic aura around the album art.
-  - Vinyl Turntable: Realistic rotating vinyl disc with concentric micro-grooves and tonearm.
+  - Vinyl Turntable: Realistic rotating vinyl disc with concentric micro-grooves and authentic S-curved tonearm.
+- Audiophile Tonearm Architecture:
+  - Sculpted S-curve tube geometry with multi-layer brushed silver and specular highlights.
+  - Heavy counterweight assembly with stainless steel shaft and knurled tracking force ring.
+  - Gimbal pivot housing with bearing and center screw detailing.
+  - Aerodynamic beveled headshell with weight-reduction slots, finger lift cue hook, phono cartridge, and glowing diamond stylus tip.
+  - Physical elevation drop shadow and subtle audio-reactive bass resonance tracking.
 - Custom Color Styling: Theme Accent, Dynamic Gradient, and Monochrome options.
 - 1-Tap Quick Control: Dedicated visualizer button in Now Playing action bar to toggle on/off or open the visualizer effects bottom sheet.
 - Settings Integration: Appearance settings toggle and mode selector under Now Playing.
+
+#### 9. Library UI, Taste Profile Ergonomics & Genre Enhancements
+- Ultra-Compact Taste Profile Card: Redesigned Taste Profile card with low-profile header, full-surface touch responsiveness, direct 1-tap "Play" mix button, and dismiss capability.
+- Preserved Library Viewport: Restricted taste card to the Playlists tab to maintain 100% field-of-view for browsing songs, albums, and artists.
+- Multi-Delimiter Genre Parsing: Support for `/`, `;`, `|`, and `,` genre delimiters across Room DAOs and repository layers.
+- Smart Genre Query Matching: Precise keyword disambiguation preventing partial keyword collisions in YouTube Music catalog lookups.
+
+#### 10. Repository & Build Modernization
+- Updated all links and metadata to `dharshan-X/Tonarc`.
+- Excluded documentation and markdown files (`**.md`) from triggering unnecessary GitHub Actions CI workflows.
 
 ---

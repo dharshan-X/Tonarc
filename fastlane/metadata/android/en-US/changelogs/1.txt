@@ -1,9 +1,10 @@
 Tonarc 0.1.0-alpha:
 
 * Initial release of Tonarc music player.
-* Full YouTube Music library & Liked Songs two-way sync.
-* Instant Radio & continuous infinite queue extension.
+* Full YouTube Music library, Liked Songs two-way sync & Genre browsing.
+* Instant Radio & continuous infinite queue replenishment.
 * Multi-source synchronized lyrics (LRCLIB + YouTube Timed Text transcripts).
 * Time-of-day contextual mixes & Discovery Radar.
-* Library Taste Profile card with listening analytics.
+* Real-time audio visualizers with authentic audiophile Vinyl Turntable.
+* Library Taste Profile card with listening analytics and 1-tap playback.
 * Modern Material 3 Expressive UI and adaptive vinyl turntable icon.
