@@ -91,6 +91,43 @@ class GenreDetailViewModelYouTubeTest {
         assertEquals(1, ytResult?.topSongs?.size)
         assertEquals("Blinding Lights", ytResult?.topSongs?.first()?.title)
 
-        coVerify { youTubeRepository.getYouTubeGenreExplore(any()) }
+        coVerify { youTubeRepository.getYouTubeGenreExplore(any(), any()) }
+    }
+
+    @Test
+    fun `loadMoreYouTubeContent appends additional tracks to youtubeContent`() = runTest {
+        val testGenre = YouTubeGenre(id = "pop", title = "Pop", colorHex = 0xFFE91E63)
+        val initialSongs = listOf(createSong("yt_1", "Song 1", "Artist 1"))
+        val secondBatchSongs = listOf(createSong("yt_2", "Song 2", "Artist 2"))
+
+        coEvery { youTubeRepository.getYouTubeGenreExplore(match { it.id == "pop" || it.title == "Pop" }, null) } returns YouTubeGenreExploreResult(
+            genre = testGenre,
+            topSongs = initialSongs,
+            playlists = emptyList(),
+            continuationToken = "token_page_2"
+        )
+        coEvery { youTubeRepository.getYouTubeGenreExplore(match { it.id == "pop" || it.title == "Pop" }, "token_page_2") } returns YouTubeGenreExploreResult(
+            genre = testGenre,
+            topSongs = secondBatchSongs,
+            playlists = emptyList(),
+            continuationToken = null
+        )
+
+        val savedStateHandle = SavedStateHandle(mapOf("genreId" to "Pop"))
+        val viewModel = GenreDetailViewModel(
+            musicRepository = musicRepository,
+            youTubeRepository = youTubeRepository,
+            savedStateHandle = savedStateHandle,
+            dispatchers = testDispatchers
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.youtubeContent.value?.topSongs?.size)
+
+        viewModel.loadMoreYouTubeContent()
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.youtubeContent.value?.topSongs?.size)
     }
 }

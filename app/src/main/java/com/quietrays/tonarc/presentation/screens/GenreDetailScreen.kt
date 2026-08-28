@@ -99,6 +99,8 @@ fun GenreDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val youtubeContent by viewModel.youtubeContent.collectAsStateWithLifecycle()
     val isYouTubeLoading by viewModel.isYouTubeLoading.collectAsStateWithLifecycle()
+    val isLoadingMoreYouTube by viewModel.isLoadingMoreYouTube.collectAsStateWithLifecycle()
+    val hasMoreYouTube by viewModel.hasMoreYouTube.collectAsStateWithLifecycle()
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
@@ -115,6 +117,20 @@ fun GenreDetailScreen(
 
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+
+    val shouldLoadMoreYouTube by remember {
+        derivedStateOf {
+            val layoutInfo = lazyListState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItem >= totalItems - 6 && !isLoadingMoreYouTube && hasMoreYouTube
+        }
+    }
+    LaunchedEffect(shouldLoadMoreYouTube) {
+        if (shouldLoadMoreYouTube) {
+            viewModel.loadMoreYouTubeContent()
+        }
+    }
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -338,175 +354,181 @@ fun GenreDetailScreen(
                     }
                 }
 
-                // YouTube Music Online Section
-                item(key = "genre_youtube_explore_section") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp, bottom = 8.dp)
-                    ) {
-                        if (isYouTubeLoading) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                // 1. Initial Loading Indicator for YouTube Content
+                if (isYouTubeLoading && (youtubeContent == null || youtubeContent?.topSongs?.isEmpty() == true)) {
+                    item(key = "genre_youtube_initial_loading") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.5.dp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Loading $genreDisplayName on YouTube Music...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // 2. Curated Playlists Section (Horizontal carousel)
+                if (youtubeContent != null && (youtubeContent?.playlists?.isNotEmpty() == true)) {
+                    val ytPlaylists = youtubeContent?.playlists ?: emptyList()
+                    item(key = "genre_youtube_curated_playlists") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp, bottom = 8.dp)
+                        ) {
+                            Text(
+                                text = "Curated Playlists",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp)
                             ) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                Spacer(modifier = Modifier.width(10.dp))
+                                items(ytPlaylists, key = { it.id }) { playlist ->
+                                    Card(
+                                        modifier = Modifier
+                                            .width(140.dp)
+                                            .clickable {
+                                                navController.navigateSafely(
+                                                    com.quietrays.tonarc.presentation.navigation.Screen.PlaylistDetail.createRoute(playlist.id)
+                                                )
+                                            },
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                        )
+                                    ) {
+                                        Column(modifier = Modifier.padding(8.dp)) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(124.dp)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                            ) {
+                                                AsyncImage(
+                                                    model = playlist.coverImageUri,
+                                                    contentDescription = playlist.name,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Text(
+                                                text = playlist.name,
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "${playlist.songCount} tracks",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Trending on YouTube Music Vertical Songs Section
+                if (youtubeContent != null && (youtubeContent?.topSongs?.isNotEmpty() == true)) {
+                    val ytSongs = youtubeContent?.topSongs ?: emptyList()
+                    item(key = "genre_youtube_trending_header") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Trending on YouTube Music",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f, fill = false),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            FilledTonalButton(
+                                onClick = {
+                                    ytSongs.firstOrNull()?.let { firstSong ->
+                                        playerViewModel.showAndPlaySong(firstSong, ytSongs, "$genreDisplayName on YouTube")
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Loading $genreDisplayName on YouTube Music...",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "Play All",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
-                        } else if (youtubeContent != null) {
-                            val ytSongs = youtubeContent?.topSongs ?: emptyList()
-                            val ytPlaylists = youtubeContent?.playlists ?: emptyList()
+                        }
+                    }
 
-                            if (ytSongs.isNotEmpty()) {
-                                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = "Trending on YouTube Music",
-                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.weight(1f, fill = false),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        FilledTonalButton(
-                                            onClick = {
-                                                ytSongs.firstOrNull()?.let { firstSong ->
-                                                    playerViewModel.showAndPlaySong(firstSong, ytSongs, "$genreDisplayName on YouTube")
-                                                }
-                                            },
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.PlayArrow,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = "Play All",
-                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                                maxLines = 1,
-                                                softWrap = false
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                    ) {
-                                        items(ytSongs, key = { it.id }) { song ->
-                                            Card(
-                                                modifier = Modifier
-                                                    .width(140.dp)
-                                                    .clickable {
-                                                        playerViewModel.showAndPlaySong(song, ytSongs, "$genreDisplayName on YouTube")
-                                                    },
-                                                shape = RoundedCornerShape(12.dp),
-                                                colors = CardDefaults.cardColors(
-                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                                )
-                                            ) {
-                                                Column(modifier = Modifier.padding(8.dp)) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(124.dp)
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                    ) {
-                                                        AsyncImage(
-                                                            model = song.albumArtUriString ?: song.path,
-                                                            contentDescription = song.title,
-                                                            contentScale = ContentScale.Crop,
-                                                            modifier = Modifier.fillMaxSize()
-                                                        )
-                                                    }
-                                                    Spacer(modifier = Modifier.height(6.dp))
-                                                    Text(
-                                                        text = song.title,
-                                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                    Text(
-                                                        text = song.artist,
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
+                    itemsIndexed(
+                        items = ytSongs,
+                        key = { index, song -> "genre_yt_song_${song.id}_$index" }
+                    ) { index, song ->
+                        val isCurrent = stablePlayerState.currentSong?.id == song.id
+                        val isPlaying = stablePlayerState.isPlaying
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            EnhancedSongListItem(
+                                song = song,
+                                isPlaying = isPlaying,
+                                isCurrentSong = isCurrent,
+                                showAlbumArt = true,
+                                customShape = RoundedCornerShape(16.dp),
+                                onClick = {
+                                    playerViewModel.showAndPlaySong(song, ytSongs, "$genreDisplayName on YouTube")
+                                },
+                                onMoreOptionsClick = { clickedSong ->
+                                    showSongOptionsSheet = clickedSong
                                 }
-                            }
+                            )
+                        }
+                    }
+                }
 
-                            if (ytPlaylists.isNotEmpty()) {
-                                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                    Text(
-                                        text = "Curated Playlists",
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                    ) {
-                                        items(ytPlaylists, key = { it.id }) { playlist ->
-                                            Card(
-                                                modifier = Modifier.width(140.dp),
-                                                shape = RoundedCornerShape(12.dp),
-                                                colors = CardDefaults.cardColors(
-                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                                )
-                                            ) {
-                                                Column(modifier = Modifier.padding(8.dp)) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(124.dp)
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                    ) {
-                                                        AsyncImage(
-                                                            model = playlist.coverImageUri,
-                                                            contentDescription = playlist.name,
-                                                            contentScale = ContentScale.Crop,
-                                                            modifier = Modifier.fillMaxSize()
-                                                        )
-                                                    }
-                                                    Spacer(modifier = Modifier.height(6.dp))
-                                                    Text(
-                                                        text = playlist.name,
-                                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                    Text(
-                                                        text = "${playlist.songCount} tracks",
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                // 4. Loading More Footer Indicator
+                if (isLoadingMoreYouTube) {
+                    item(key = "genre_youtube_loading_more_footer") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 2.5.dp
+                            )
                         }
                     }
                 }

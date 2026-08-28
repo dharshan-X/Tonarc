@@ -118,6 +118,16 @@ class GenreDetailViewModel @Inject constructor(
     private val _isYouTubeLoading = MutableStateFlow(false)
     val isYouTubeLoading: StateFlow<Boolean> = _isYouTubeLoading.asStateFlow()
 
+    private val _isLoadingMoreYouTube = MutableStateFlow(false)
+    val isLoadingMoreYouTube: StateFlow<Boolean> = _isLoadingMoreYouTube.asStateFlow()
+
+    private val _hasMoreYouTube = MutableStateFlow(false)
+    val hasMoreYouTube: StateFlow<Boolean> = _hasMoreYouTube.asStateFlow()
+
+    private var currentGenreName: String = ""
+    private var currentContinuationToken: String? = null
+    private var isFetchingMoreYouTube = false
+
     private var artistMap: Map<String, String?> = emptyMap()
 
     init {
@@ -131,17 +141,79 @@ class GenreDetailViewModel @Inject constructor(
     }
 
     fun loadYouTubeGenreContent(genreName: String) {
+        currentGenreName = genreName
+        currentContinuationToken = null
         viewModelScope.launch {
             _isYouTubeLoading.value = true
             try {
                 val matchedGenre = YouTubeGenreCatalog.findGenreOrMood(genreName)
-                val result = youTubeRepository.getYouTubeGenreExplore(matchedGenre)
-                _youtubeContent.value = result
+                val initialResult = youTubeRepository.getYouTubeGenreExplore(matchedGenre)
+                val collectedSongs = initialResult.topSongs.toMutableList()
+                var token = initialResult.continuationToken
+
+                var pageCount = 1
+                while (!token.isNullOrBlank() && pageCount < 3) {
+                    val nextPage = runCatching {
+                        youTubeRepository.getYouTubeGenreExplore(matchedGenre, continuation = token)
+                    }.getOrNull()
+                    if (nextPage != null && nextPage.topSongs.isNotEmpty()) {
+                        collectedSongs.addAll(nextPage.topSongs)
+                        token = nextPage.continuationToken
+                        pageCount++
+                    } else {
+                        break
+                    }
+                }
+
+                currentContinuationToken = token
+                _hasMoreYouTube.value = !token.isNullOrBlank()
+                _youtubeContent.value = initialResult.copy(
+                    topSongs = collectedSongs.distinctBy { it.id },
+                    continuationToken = token
+                )
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Timber.tag("GenreDetailVM").e(e, "Failed to load YouTube genre content for $genreName")
             } finally {
                 _isYouTubeLoading.value = false
+            }
+        }
+    }
+
+    fun loadMoreYouTubeContent() {
+        val token = currentContinuationToken
+        if (token.isNullOrBlank() || isFetchingMoreYouTube || _isYouTubeLoading.value) return
+
+        isFetchingMoreYouTube = true
+        _isLoadingMoreYouTube.value = true
+
+        viewModelScope.launch {
+            try {
+                val matchedGenre = YouTubeGenreCatalog.findGenreOrMood(currentGenreName)
+                val nextPage = youTubeRepository.getYouTubeGenreExplore(matchedGenre, continuation = token)
+                if (nextPage.topSongs.isNotEmpty()) {
+                    currentContinuationToken = nextPage.continuationToken
+                    _hasMoreYouTube.value = !currentContinuationToken.isNullOrBlank()
+                    _youtubeContent.update { current ->
+                        if (current != null) {
+                            current.copy(
+                                topSongs = (current.topSongs + nextPage.topSongs).distinctBy { it.id },
+                                continuationToken = currentContinuationToken
+                            )
+                        } else {
+                            nextPage
+                        }
+                    }
+                } else {
+                    currentContinuationToken = null
+                    _hasMoreYouTube.value = false
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Timber.tag("GenreDetailVM").e(e, "Failed to load more YouTube genre content")
+            } finally {
+                isFetchingMoreYouTube = false
+                _isLoadingMoreYouTube.value = false
             }
         }
     }

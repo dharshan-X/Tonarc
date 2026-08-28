@@ -249,23 +249,26 @@ class YouTubeRepository @Inject constructor(
     /**
      * Fetches top tracks and curated playlists for a YouTube Music genre or mood.
      */
-    suspend fun getYouTubeGenreExplore(genre: YouTubeGenre): YouTubeGenreExploreResult = withContext(Dispatchers.IO) {
+    suspend fun getYouTubeGenreExplore(genre: YouTubeGenre, continuation: String? = null): YouTubeGenreExploreResult = withContext(Dispatchers.IO) {
         val songsDeferred = async {
             runCatching {
                 innertubeApiService.search(
                     query = "${genre.title} hits",
-                    params = InnertubeApiService.YTM_FILTER_SONGS
+                    params = InnertubeApiService.YTM_FILTER_SONGS,
+                    continuation = continuation
                 )
             }.getOrNull()
         }
 
         val playlistsDeferred = async {
-            runCatching {
-                innertubeApiService.search(
-                    query = "${genre.title} playlist",
-                    params = InnertubeApiService.YTM_FILTER_PLAYLISTS
-                )
-            }.getOrNull()
+            if (continuation == null) {
+                runCatching {
+                    innertubeApiService.search(
+                        query = "${genre.title} playlist",
+                        params = InnertubeApiService.YTM_FILTER_PLAYLISTS
+                    )
+                }.getOrNull()
+            } else null
         }
 
         val songsResult = songsDeferred.await()
@@ -286,7 +289,8 @@ class YouTubeRepository @Inject constructor(
         YouTubeGenreExploreResult(
             genre = genre,
             topSongs = songs,
-            playlists = playlists
+            playlists = playlists,
+            continuationToken = songsResult?.continuationToken
         )
     }
 

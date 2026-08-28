@@ -14,7 +14,8 @@ data class YouTubeGenre(
 data class YouTubeGenreExploreResult(
     val genre: YouTubeGenre,
     val topSongs: List<Song> = emptyList(),
-    val playlists: List<Playlist> = emptyList()
+    val playlists: List<Playlist> = emptyList(),
+    val continuationToken: String? = null
 )
 
 object YouTubeGenreCatalog {
