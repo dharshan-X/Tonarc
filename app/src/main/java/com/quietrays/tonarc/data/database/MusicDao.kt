@@ -1602,6 +1602,12 @@ interface MusicDao {
             OR genre LIKE :genreSuffix
             OR genre LIKE :genreMiddleWithSpace
             OR genre LIKE :genreMiddle
+            OR genre LIKE '%' || '/' || :genreName || '%'
+            OR genre LIKE '%' || ';' || :genreName || '%'
+            OR genre LIKE :genreName || '/%'
+            OR genre LIKE :genreName || ';%'
+            OR genre LIKE '%/' || :genreName
+            OR genre LIKE '%;' || :genreName
         )
         ORDER BY title ASC
     """)

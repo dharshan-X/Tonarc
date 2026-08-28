@@ -250,10 +250,11 @@ class YouTubeRepository @Inject constructor(
      * Fetches top tracks and curated playlists for a YouTube Music genre or mood.
      */
     suspend fun getYouTubeGenreExplore(genre: YouTubeGenre, continuation: String? = null): YouTubeGenreExploreResult = withContext(Dispatchers.IO) {
+        val query = genre.searchQuery.ifBlank { "${genre.title} hits" }
         val songsDeferred = async {
             runCatching {
                 innertubeApiService.search(
-                    query = "${genre.title} hits",
+                    query = query,
                     params = InnertubeApiService.YTM_FILTER_SONGS,
                     continuation = continuation
                 )

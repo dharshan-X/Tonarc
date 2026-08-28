@@ -233,7 +233,7 @@ class GenreDetailViewModel @Inject constructor(
             try {
                 val initialGenre = withContext(dispatchers.default) {
                     val genres = musicRepository.getGenres().first()
-                    genres.find { it.id.equals(genreId, ignoreCase = true) }
+                    genres.find { it.id.equals(genreId, ignoreCase = true) || it.name.equals(genreId, ignoreCase = true) }
                 }
                 
                 if (initialGenre != null) {
@@ -242,7 +242,7 @@ class GenreDetailViewModel @Inject constructor(
 
                 val result = withContext(dispatchers.default) {
                     val genres = musicRepository.getGenres().first()
-                    val genre = initialGenre ?: genres.find { it.id.equals(genreId, ignoreCase = true) }
+                    val genre = initialGenre ?: genres.find { it.id.equals(genreId, ignoreCase = true) || it.name.equals(genreId, ignoreCase = true) }
                         ?: Genre(
                             id = genreId,
                             name = genreId.replace("_", " ").replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }, 

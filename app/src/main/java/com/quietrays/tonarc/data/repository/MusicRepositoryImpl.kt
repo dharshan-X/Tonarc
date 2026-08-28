@@ -870,7 +870,7 @@ class MusicRepositoryImpl @Inject constructor(
                     ) { genreNames, hasUnknown ->
                         val knownGenres = genreNames
                             .asSequence()
-                            .flatMap { raw -> raw.split(",") } // split "Rock, Pop" → ["Rock", "Pop"]
+                            .flatMap { raw -> raw.split(Regex("[,/;|\\\\]+")) } // split "Rock, Pop", "Pop/Rock", "Pop; Rock"
                             .map { it.trim() }
                             .filter { it.isNotBlank() }
                             .map { buildGenre(it) }
