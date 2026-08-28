@@ -245,22 +245,39 @@ fun GenreCategoriesGrid(
                     }
                 }
 
-                Row(
+                LazyRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FilterChip(
-                        selected = selectedSource == "LIBRARY",
-                        onClick = { selectedSource = "LIBRARY" },
-                        label = { Text("Local Library (${genres.size})") },
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    FilterChip(
-                        selected = selectedSource == "YOUTUBE",
-                        onClick = { selectedSource = "YOUTUBE" },
-                        label = { Text("YouTube Music (${YouTubeGenreCatalog.all.size})") },
-                        shape = RoundedCornerShape(16.dp)
-                    )
+                    item {
+                        FilterChip(
+                            selected = selectedSource == "LIBRARY",
+                            onClick = { selectedSource = "LIBRARY" },
+                            label = {
+                                Text(
+                                    text = "Local Library (${genres.size})",
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            },
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = selectedSource == "YOUTUBE",
+                            onClick = { selectedSource = "YOUTUBE" },
+                            label = {
+                                Text(
+                                    text = "YouTube Music (${YouTubeGenreCatalog.all.size})",
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            },
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    }
                 }
             }
         }

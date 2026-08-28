@@ -203,7 +203,13 @@ private fun DashboardContent(
                             onClick = {
                                 if (isSelected) onGenreSelect(null) else onGenreSelect(genre)
                             },
-                            label = { Text(genre.title) },
+                            label = {
+                                Text(
+                                    text = genre.title,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            },
                             shape = RoundedCornerShape(16.dp)
                         )
                     }

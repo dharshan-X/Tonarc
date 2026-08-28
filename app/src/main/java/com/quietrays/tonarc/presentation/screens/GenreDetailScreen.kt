@@ -375,15 +375,19 @@ fun GenreDetailScreen(
                                         Text(
                                             text = "Trending on YouTube Music",
                                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = MaterialTheme.colorScheme.primary
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.weight(1f, fill = false),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         FilledTonalButton(
                                             onClick = {
                                                 ytSongs.firstOrNull()?.let { firstSong ->
                                                     playerViewModel.showAndPlaySong(firstSong, ytSongs, "$genreDisplayName on YouTube")
                                                 }
                                             },
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Rounded.PlayArrow,
@@ -391,7 +395,12 @@ fun GenreDetailScreen(
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Play Online Hits")
+                                            Text(
+                                                text = "Play All",
+                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
                                         }
                                     }
 
