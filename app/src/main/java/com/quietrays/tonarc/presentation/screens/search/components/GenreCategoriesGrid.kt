@@ -295,6 +295,7 @@ fun GenreCategoriesGrid(
             items(YouTubeGenreCatalog.all, key = { "yt_${it.id}" }) { ytGenre ->
                 YouTubeGenreItemCard(
                     genre = ytGenre,
+                    customIcons = customGenreIcons,
                     onClick = {
                         val syntheticGenre = Genre(
                             id = ytGenre.title,
@@ -316,14 +317,27 @@ fun GenreCategoriesGrid(
 @Composable
 private fun YouTubeGenreItemCard(
     genre: YouTubeGenre,
+    customIcons: Map<String, Int> = emptyMap(),
     onClick: () -> Unit,
     isGridView: Boolean
 ) {
+    val isDark = LocalTonarcDarkTheme.current
+    val themeColor = remember(genre.id, genre.title, isDark) {
+        com.quietrays.tonarc.ui.theme.GenreThemeUtils.getGenreThemeColor(
+            genre = null,
+            isDark = isDark,
+            fallbackGenreId = genre.title
+        )
+    }
+    val backgroundColor = themeColor.container
+    val onBackgroundColor = themeColor.onContainer
+
     val shape = RoundedCornerShape(20.dp)
+
     val cardModifier = if (isGridView) {
         Modifier.aspectRatio(1.2f)
     } else {
-        Modifier.fillMaxWidth().height(96.dp)
+        Modifier.fillMaxWidth().height(100.dp)
     }
 
     Card(
@@ -331,63 +345,84 @@ private fun YouTubeGenreItemCard(
             .clip(shape)
             .clickable(onClick = onClick),
         shape = shape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .clip(RoundedCornerShape(20.dp))
+                .background(backgroundColor)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            val textMeasurer = rememberTextMeasurer()
+            val density = LocalDensity.current
+            val titleStartPadding = 14.dp
+            val titleEndPadding = if (isGridView) 14.dp else 96.dp
+            val titlePresentation = remember(
+                genre.id,
+                genre.title,
+                isGridView,
+                maxWidth,
+                density.density,
+                density.fontScale
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color(genre.colorHex).copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (genre.category == "Mood") Icons.Rounded.GraphicEq else Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        tint = Color(genre.colorHex),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                ) {
-                    Text(
-                        text = "YT",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
+                val startPaddingPx = with(density) { titleStartPadding.roundToPx() }
+                val endPaddingPx = with(density) { titleEndPadding.roundToPx() }
+                GenreTypography.resolveTitlePresentation(
+                    genreId = genre.id,
+                    genreName = genre.title,
+                    isGridView = isGridView,
+                    cardWidthPx = with(density) { maxWidth.roundToPx() },
+                    horizontalPaddingPx = (startPaddingPx + endPaddingPx) / 2,
+                    textMeasurer = textMeasurer
+                )
             }
 
-            Column {
-                Text(
-                    text = genre.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
+            Box(
+                modifier = Modifier
+                    .size(90.dp)
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 16.dp, y = 16.dp)
+            ) {
+                SmartImage(
+                    model = GenreIconProvider.getGenreImageResource(genre.title, customIcons),
+                    contentDescription = stringResource(R.string.cd_genre_illustration),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(0.55f),
+                    colorFilter = ColorFilter.tint(onBackgroundColor),
+                    contentScale = ContentScale.Crop
                 )
-                genre.subtitle?.let {
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .padding(start = titleStartPadding, top = 14.dp, end = titleEndPadding),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                Text(
+                    text = titlePresentation.firstLine,
+                    style = titlePresentation.style,
+                    color = onBackgroundColor,
+                    softWrap = false,
+                    minLines = 1,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                titlePresentation.secondLine?.let { secondLine ->
                     Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = secondLine,
+                        style = titlePresentation.style,
+                        color = onBackgroundColor,
+                        softWrap = false,
+                        minLines = 1,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(titlePresentation.secondLineWidthFraction)
                     )
                 }
             }
