@@ -26,24 +26,31 @@ concurrency:
 
 jobs:
   mirror:
-    if: github.repository == 'dharshan-X/Tonarc' && secrets.GITLAB_MIRROR_SSH_PRIVATE_KEY != ''
+    if: github.repository == 'dharshan-X/Tonarc'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Configure GitLab SSH key
+      - name: Check and Configure GitLab SSH key
+        id: ssh_check
         env:
           SSH_PRIVATE_KEY: ${{ secrets.GITLAB_MIRROR_SSH_PRIVATE_KEY }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$SSH_PRIVATE_KEY"
+          if [ -z "${SSH_PRIVATE_KEY:-}" ]; then
+            echo "GITLAB_MIRROR_SSH_PRIVATE_KEY is not set. Skipping mirror."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/gitlab_mirror
           chmod 600 ~/.ssh/gitlab_mirror
           ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Mirror heads and tags
+        if: steps.ssh_check.outputs.configured == 'true'
         env:
           GIT_SSH_COMMAND: ssh -i ~/.ssh/gitlab_mirror -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes
         shell: bash
