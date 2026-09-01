@@ -10,6 +10,7 @@ on:
       - "**.md"
       - "*.md"
       - "docs/**"
+      - "metadata/**"
       - "assets/**"
       - "LICENSE"
       - ".github/FUNDING.yml"
@@ -25,7 +26,7 @@ concurrency:
 
 jobs:
   mirror:
-    if: github.repository == 'dharshan-X/Tonarc'
+    if: github.repository == 'dharshan-X/Tonarc' && secrets.GITLAB_MIRROR_SSH_PRIVATE_KEY != ''
     runs-on: ubuntu-latest
 
     steps:

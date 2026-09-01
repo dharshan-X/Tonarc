@@ -10,6 +10,7 @@ on:
       - "**.md"
       - "*.md"
       - "docs/**"
+      - "metadata/**"
       - "assets/**"
       - "LICENSE"
       - ".github/FUNDING.yml"
