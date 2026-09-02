@@ -265,6 +265,49 @@ class PlaybackStatsRepositoryTest {
         assertThat(summary.topAlbums.single().album).isEqualTo("Collage")
     }
 
+    @Test
+    fun `loadSummary resolves YouTube songs with and without youtube_ prefix`() = runTest {
+        val repository = createRepository()
+        val zoneId = ZoneId.systemDefault()
+        val start = LocalDate.of(2026, 4, 10)
+            .atTime(10, 0)
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+        val durationMs = 120_000L
+
+        val eventYtWithPrefix = PlaybackStatsRepository.PlaybackEvent(
+            songId = "youtube_dQw4w9WgXcQ",
+            timestamp = start + durationMs,
+            durationMs = durationMs,
+            startTimestamp = start,
+            endTimestamp = start + durationMs
+        )
+        val eventYtRaw = PlaybackStatsRepository.PlaybackEvent(
+            songId = "anirudh999",
+            timestamp = start + (2 * durationMs),
+            durationMs = durationMs,
+            startTimestamp = start + durationMs,
+            endTimestamp = start + (2 * durationMs)
+        )
+
+        val ytSong1 = song("youtube_dQw4w9WgXcQ", artist = "Rick Astley").copy(youtubeId = "dQw4w9WgXcQ", album = "Whenever You Need Somebody")
+        val ytSong2 = song("youtube_anirudh999", artist = "Anirudh Ravichander").copy(youtubeId = "anirudh999", album = "Vikram")
+
+        val summary = repository.buildSummaryFromEvents(
+            range = StatsTimeRange.DAY,
+            songs = listOf(ytSong1, ytSong2),
+            allEvents = listOf(eventYtWithPrefix, eventYtRaw),
+            nowMillis = start + (3 * durationMs)
+        )
+
+        assertThat(summary.topSongs).hasSize(2)
+        assertThat(summary.topArtists).hasSize(2)
+        val artists = summary.topArtists.map { it.artist }
+        assertThat(artists).contains("Rick Astley")
+        assertThat(artists).contains("Anirudh Ravichander")
+    }
+
     private fun createRepository(): PlaybackStatsRepository {
         val uniqueDir = createTempDirectory(
             "playback-stats-test-${Instant.now().toEpochMilli()}-"

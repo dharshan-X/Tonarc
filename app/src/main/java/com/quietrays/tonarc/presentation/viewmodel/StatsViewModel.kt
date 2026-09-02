@@ -2,6 +2,7 @@ package com.quietrays.tonarc.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.quietrays.tonarc.data.database.YouTubeDao
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.repository.MusicRepository
 import com.quietrays.tonarc.data.stats.PlaybackStatsRepository
@@ -25,7 +26,8 @@ import kotlinx.collections.immutable.toImmutableList
 @HiltViewModel
 class StatsViewModel @Inject constructor(
     private val playbackStatsRepository: PlaybackStatsRepository,
-    private val musicRepository: MusicRepository
+    private val musicRepository: MusicRepository,
+    private val youTubeDao: YouTubeDao
 ) : ViewModel() {
 
     data class StatsUiState(
@@ -173,7 +175,9 @@ class StatsViewModel @Inject constructor(
         cachedSongs?.let { existing ->
             if (existing.isNotEmpty()) return existing
         }
-        val songs = musicRepository.getAllSongsOnce()
+        val localSongs = musicRepository.getAllSongsOnce()
+        val ytSongs = runCatching { youTubeDao.getAllYouTubeSongsList().map { it.toSong() } }.getOrDefault(emptyList())
+        val songs = (localSongs + ytSongs).distinctBy { it.id }
         cachedSongs = songs
         return songs
     }

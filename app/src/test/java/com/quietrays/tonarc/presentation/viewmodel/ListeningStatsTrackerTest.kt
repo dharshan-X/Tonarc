@@ -22,6 +22,7 @@ class ListeningStatsTrackerTest {
     private val playbackStatsRepository: PlaybackStatsRepository = mockk(relaxed = true)
     private val scrobbleManager: ScrobbleManager = mockk(relaxed = true)
     private val itemEmbeddingStore: com.quietrays.tonarc.data.recommendation.ItemEmbeddingStore = mockk(relaxed = true)
+    private val youTubeDao: com.quietrays.tonarc.data.database.YouTubeDao = mockk(relaxed = true)
 
     @BeforeEach
     fun setUp() {
@@ -39,7 +40,8 @@ class ListeningStatsTrackerTest {
             dailyMixManager = dailyMixManager,
             playbackStatsRepository = playbackStatsRepository,
             scrobbleManager = scrobbleManager,
-            itemEmbeddingStore = itemEmbeddingStore
+            itemEmbeddingStore = itemEmbeddingStore,
+            youTubeDao = youTubeDao
         )
         val song = song(
             songId = "looped-song",
@@ -74,7 +76,8 @@ class ListeningStatsTrackerTest {
             dailyMixManager = dailyMixManager,
             playbackStatsRepository = playbackStatsRepository,
             scrobbleManager = scrobbleManager,
-            itemEmbeddingStore = itemEmbeddingStore
+            itemEmbeddingStore = itemEmbeddingStore,
+            youTubeDao = youTubeDao
         )
         val song = song(songId = "song-1")
         val firstChunkMs = 7_000L

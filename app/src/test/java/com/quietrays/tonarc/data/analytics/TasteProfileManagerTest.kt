@@ -18,6 +18,7 @@ class TasteProfileManagerTest {
 
     private val engagementDao: EngagementDao = mockk(relaxed = true)
     private val musicRepository: MusicRepository = mockk(relaxed = true)
+    private val youTubeDao: com.quietrays.tonarc.data.database.YouTubeDao = mockk(relaxed = true)
     private val userPreferencesRepository: UserPreferencesRepository = mockk(relaxed = true)
 
     private lateinit var tasteProfileManager: TasteProfileManager
@@ -27,6 +28,7 @@ class TasteProfileManagerTest {
         tasteProfileManager = TasteProfileManager(
             engagementDao = engagementDao,
             musicRepository = musicRepository,
+            youTubeDao = youTubeDao,
             userPreferencesRepository = userPreferencesRepository
         )
     }
@@ -310,6 +312,39 @@ class TasteProfileManagerTest {
         assertEquals(1, profile.topArtists.size)
         assertEquals("Ryan Mack", profile.topArtists[0].artistName)
         assertEquals(10, profile.topArtists[0].playCount)
+    }
+
+    @Test
+    fun `computeTasteProfile includes played YouTube Music songs in top songs and top artists`() = runTest {
+        val ytSongEntity = com.quietrays.tonarc.data.database.YouTubeSongEntity(
+            id = "yt_anirudh123",
+            videoId = "anirudh123",
+            title = "Kanave Kanave",
+            artist = "Anirudh Ravichander",
+            album = null,
+            duration = 240_000L
+        )
+
+        val localSong = createSong("local_1", title = "Memories", artist = "Maroon 5", genre = "Pop")
+
+        val engagements = listOf(
+            SongEngagementEntity(songId = "youtube_anirudh123", playCount = 45, totalPlayDurationMs = 450_000L, lastPlayedTimestamp = timestampForHour(14)),
+            SongEngagementEntity(songId = "local_1", playCount = 10, totalPlayDurationMs = 100_000L, lastPlayedTimestamp = timestampForHour(14))
+        )
+
+        coEvery { musicRepository.getAllSongsOnce() } returns listOf(localSong)
+        coEvery { youTubeDao.getAllYouTubeSongsList() } returns listOf(ytSongEntity)
+        coEvery { engagementDao.getAllEngagements() } returns engagements
+
+        val profile = tasteProfileManager.computeTasteProfile()
+
+        assertEquals(2, profile.topSongs.size)
+        assertEquals("Kanave Kanave", profile.topSongs[0].title)
+        assertEquals("Anirudh Ravichander", profile.topSongs[0].artist)
+
+        assertEquals(2, profile.topArtists.size)
+        assertEquals("Anirudh Ravichander", profile.topArtists[0].artistName)
+        assertEquals(45, profile.topArtists[0].playCount)
     }
 }
 

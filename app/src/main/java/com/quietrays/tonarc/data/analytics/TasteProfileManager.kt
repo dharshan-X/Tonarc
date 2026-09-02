@@ -2,6 +2,7 @@ package com.quietrays.tonarc.data.analytics
 
 import com.quietrays.tonarc.data.database.EngagementDao
 import com.quietrays.tonarc.data.database.SongEngagementEntity
+import com.quietrays.tonarc.data.database.YouTubeDao
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.preferences.UserPreferencesRepository
 import com.quietrays.tonarc.data.repository.MusicRepository
@@ -36,12 +37,15 @@ data class TasteProfile(
 class TasteProfileManager @Inject constructor(
     private val engagementDao: EngagementDao,
     private val musicRepository: MusicRepository,
+    private val youTubeDao: YouTubeDao,
     private val userPreferencesRepository: UserPreferencesRepository
 ) {
 
     suspend fun computeTasteProfile(): TasteProfile {
         val engagements = engagementDao.getAllEngagements()
-        val allSongs = musicRepository.getAllSongsOnce()
+        val localSongs = musicRepository.getAllSongsOnce()
+        val ytSongs = runCatching { youTubeDao.getAllYouTubeSongsList().map { it.toSong() } }.getOrDefault(emptyList())
+        val allSongs = (localSongs + ytSongs).distinctBy { it.id }
 
         if (allSongs.isEmpty() || engagements.isEmpty()) {
             return baselineProfile()
@@ -54,7 +58,18 @@ class TasteProfileManager @Inject constructor(
             return baselineProfile()
         }
 
-        val songsById = allSongs.associateBy { it.id }
+        val songsById = buildMap {
+            for (song in allSongs) {
+                put(song.id, song)
+                song.youtubeId?.let { yid ->
+                    put(yid, song)
+                    put("youtube_$yid", song)
+                }
+                if (song.id.startsWith("youtube_")) {
+                    put(song.id.removePrefix("youtube_"), song)
+                }
+            }
+        }
 
         // Top songs ranking (top 20 most engaged)
         val topSongs = engagements
@@ -272,8 +287,7 @@ class TasteProfileManager @Inject constructor(
             "<unknown album>",
             "various artists",
             "download",
-            "downloads",
-            "youtube music"
+            "downloads"
         )
 
         fun isPlaceholderName(name: String?): Boolean {

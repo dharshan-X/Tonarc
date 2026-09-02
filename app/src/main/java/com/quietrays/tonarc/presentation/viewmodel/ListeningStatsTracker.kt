@@ -3,6 +3,8 @@ package com.quietrays.tonarc.presentation.viewmodel
 import android.os.SystemClock
 import androidx.media3.common.C
 import com.quietrays.tonarc.data.DailyMixManager
+import com.quietrays.tonarc.data.database.YouTubeDao
+import com.quietrays.tonarc.data.database.YouTubeSongEntity
 import com.quietrays.tonarc.data.listenbrainz.ScrobbleManager
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.stats.PlaybackStatsRepository
@@ -34,7 +36,8 @@ class ListeningStatsTracker @Inject constructor(
     private val dailyMixManager: DailyMixManager,
     private val playbackStatsRepository: PlaybackStatsRepository,
     private val scrobbleManager: ScrobbleManager,
-    private val itemEmbeddingStore: com.quietrays.tonarc.data.recommendation.ItemEmbeddingStore
+    private val itemEmbeddingStore: com.quietrays.tonarc.data.recommendation.ItemEmbeddingStore,
+    private val youTubeDao: YouTubeDao
 ) {
     private var currentSession: ActiveSession? = null
     private var pendingVoluntarySongId: String? = null
@@ -72,6 +75,28 @@ class ListeningStatsTracker @Inject constructor(
         durationMs: Long,
         isPlaying: Boolean
     ) {
+        if (song != null && (song.youtubeId != null || song.id.startsWith("youtube_"))) {
+            val videoId = song.youtubeId ?: song.id.removePrefix("youtube_")
+            persistenceScope.launch {
+                runCatching {
+                    val existing = youTubeDao.getSongByVideoId(videoId)
+                    if (existing == null) {
+                        youTubeDao.insertSong(
+                            YouTubeSongEntity(
+                                id = "youtube_$videoId",
+                                videoId = videoId,
+                                playlistId = "__playback_history__",
+                                title = song.title,
+                                artist = song.artist,
+                                album = song.album.takeIf { it != "YouTube Music" },
+                                duration = song.duration,
+                                thumbnailUrl = song.albumArtUriString
+                            )
+                        )
+                    }
+                }
+            }
+        }
         onTrackChanged(
             songId = song?.id,
             positionMs = positionMs,

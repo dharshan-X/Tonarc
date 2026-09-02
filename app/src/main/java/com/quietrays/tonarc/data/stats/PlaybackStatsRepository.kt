@@ -239,7 +239,18 @@ class PlaybackStatsRepository @Inject constructor(
             )
         }
 
-        val songMap = songs.associateBy { it.id }
+        val songMap = buildMap {
+            for (s in songs) {
+                put(s.id, s)
+                s.youtubeId?.let { yid ->
+                    put(yid, s)
+                    put("youtube_$yid", s)
+                }
+                if (s.id.startsWith("youtube_")) {
+                    put(s.id.removePrefix("youtube_"), s)
+                }
+            }
+        }
         val normalizedEvents = filteredEvents
 
         val segmentsBySong = normalizedEvents
@@ -387,7 +398,7 @@ class PlaybackStatsRepository @Inject constructor(
         val topAlbums = segmentsBySong.entries
             .mapNotNull { (songId, segments) ->
                 val song = songMap[songId] ?: return@mapNotNull null
-                val album = song.album.takeIf { it.isNotBlank() && !isPlaceholderName(it) } ?: return@mapNotNull null
+                val album = song.album.takeIf { it.isNotBlank() && !isPlaceholderName(it) && !it.equals("YouTube Music", ignoreCase = true) } ?: return@mapNotNull null
                 Pair(album, Pair(song, segments))
             }
             .groupBy({ it.first }, { it.second })
@@ -1112,8 +1123,7 @@ class PlaybackStatsRepository @Inject constructor(
             "<unknown genre>",
             "various artists",
             "download",
-            "downloads",
-            "youtube music"
+            "downloads"
         )
 
         fun isPlaceholderName(name: String?): Boolean {
