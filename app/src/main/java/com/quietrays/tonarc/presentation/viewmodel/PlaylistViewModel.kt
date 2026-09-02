@@ -21,8 +21,11 @@ import com.quietrays.tonarc.data.repository.MusicRepository
 import com.quietrays.tonarc.data.database.YouTubeDao
 import com.quietrays.tonarc.data.database.YouTubePlaylistEntity
 import com.quietrays.tonarc.data.database.YouTubeSongEntity
+import com.quietrays.tonarc.data.network.spotify.SpotifyPlaylist
+import com.quietrays.tonarc.data.network.spotify.SpotifyPlaylistFetcher
 import com.quietrays.tonarc.data.network.youtube.SyncState
 import com.quietrays.tonarc.data.network.youtube.YouTubeLibrarySyncEngine
+import com.quietrays.tonarc.data.spotify.SpotifyMatchingEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -93,6 +96,8 @@ class PlaylistViewModel @Inject constructor(
     private val youTubeRepository: com.quietrays.tonarc.data.youtube.YouTubeRepository,
     private val youTubeLibrarySyncEngine: YouTubeLibrarySyncEngine,
     private val youTubeDao: YouTubeDao,
+    private val spotifyPlaylistFetcher: SpotifyPlaylistFetcher,
+    private val spotifyMatchingEngine: SpotifyMatchingEngine,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -133,6 +138,9 @@ class PlaylistViewModel @Inject constructor(
 
     private val _youtubeImportState = MutableStateFlow<YouTubeImportState>(YouTubeImportState.Idle)
     val youtubeImportState: StateFlow<YouTubeImportState> = _youtubeImportState.asStateFlow()
+
+    private val _spotifyImportState = MutableStateFlow<SpotifyImportState>(SpotifyImportState.Idle)
+    val spotifyImportState: StateFlow<SpotifyImportState> = _spotifyImportState.asStateFlow()
 
     private val _playlistCreationEvent = MutableSharedFlow<Boolean>(
         extraBufferCapacity = 1,
@@ -1440,6 +1448,117 @@ class PlaylistViewModel @Inject constructor(
     fun resetYouTubeImportState() {
         _youtubeImportState.value = YouTubeImportState.Idle
     }
+
+    fun previewSpotifyPlaylist(urlOrId: String) {
+        val playlistId = spotifyPlaylistFetcher.extractPlaylistId(urlOrId)
+        if (playlistId.isNullOrBlank()) {
+            _spotifyImportState.value = SpotifyImportState.Error("Invalid Spotify playlist link or ID")
+            return
+        }
+        _spotifyImportState.value = SpotifyImportState.Loading("Fetching Spotify playlist...")
+        viewModelScope.launch {
+            try {
+                val result = spotifyPlaylistFetcher.fetchPlaylist(playlistId)
+                result.fold(
+                    onSuccess = { playlist ->
+                        _spotifyImportState.value = SpotifyImportState.Preview(playlist)
+                    },
+                    onFailure = { error ->
+                        _spotifyImportState.value = SpotifyImportState.Error(error.message ?: "Failed to load Spotify playlist")
+                    }
+                )
+            } catch (e: Exception) {
+                _spotifyImportState.value = SpotifyImportState.Error(e.message ?: "Failed to load Spotify playlist")
+            }
+        }
+    }
+
+    fun saveSpotifyPlaylist(
+        playlist: SpotifyPlaylist,
+        customTitle: String? = null,
+        saveAsCloud: Boolean = true,
+        saveAsLocal: Boolean = true
+    ) {
+        _spotifyImportState.value = SpotifyImportState.Matching(
+            current = 0,
+            total = playlist.tracks.size,
+            currentTrackTitle = playlist.tracks.firstOrNull()?.title.orEmpty()
+        )
+        viewModelScope.launch {
+            try {
+                val results = spotifyMatchingEngine.matchTracks(
+                    tracks = playlist.tracks,
+                    matchLocal = saveAsLocal,
+                    matchCloud = saveAsCloud
+                ) { progress ->
+                    _spotifyImportState.value = SpotifyImportState.Matching(
+                        current = progress.current,
+                        total = progress.total,
+                        currentTrackTitle = progress.currentTrackTitle
+                    )
+                }
+                val matchedSongs = results.mapNotNull { it.matchedSong }
+                if (matchedSongs.isEmpty()) {
+                    _spotifyImportState.value = SpotifyImportState.Error("No matching songs found for this playlist")
+                    return@launch
+                }
+                val playlistTitle = customTitle?.takeIf { it.isNotBlank() } ?: playlist.title
+                val targetPlaylistId = "spotify_${playlist.id}"
+                val now = System.currentTimeMillis()
+                val coverUrl = playlist.coverUri ?: matchedSongs.firstOrNull()?.albumArtUriString
+
+                if (saveAsCloud) {
+                    val songEntities = matchedSongs.map { s ->
+                        val vid = s.youtubeId ?: s.id.removePrefix("youtube_")
+                        YouTubeSongEntity(
+                            id = s.id,
+                            videoId = vid,
+                            playlistId = targetPlaylistId,
+                            title = s.title,
+                            artist = s.artist,
+                            album = s.album,
+                            duration = s.duration,
+                            thumbnailUrl = s.albumArtUriString,
+                            year = s.year,
+                            dateAdded = now
+                        )
+                    }
+                    youTubeDao.deleteSongsByPlaylist(targetPlaylistId)
+                    youTubeDao.insertSongs(songEntities)
+                    youTubeDao.insertPlaylist(
+                        YouTubePlaylistEntity(
+                            id = targetPlaylistId,
+                            name = playlistTitle,
+                            songCount = matchedSongs.size,
+                            thumbnailUrl = coverUrl,
+                            dateAdded = now,
+                            dateModified = now
+                        )
+                    )
+                }
+
+                if (saveAsLocal) {
+                    val songIds = matchedSongs.map { it.id }
+                    createPlaylist(name = playlistTitle, songIds = songIds)
+                }
+
+                loadPlaylistsAndInitialSortOption()
+
+                _spotifyImportState.value = SpotifyImportState.Success(
+                    playlistTitle = playlistTitle,
+                    matchedCount = matchedSongs.size,
+                    totalCount = playlist.tracks.size,
+                    playlistId = targetPlaylistId
+                )
+            } catch (e: Exception) {
+                _spotifyImportState.value = SpotifyImportState.Error(e.message ?: "Failed to save Spotify playlist")
+            }
+        }
+    }
+
+    fun resetSpotifyImportState() {
+        _spotifyImportState.value = SpotifyImportState.Idle
+    }
 }
 
 sealed interface YouTubeImportState {
@@ -1455,4 +1574,13 @@ sealed interface YouTubeImportState {
     ) : YouTubeImportState
     data class Success(val title: String, val trackCount: Int) : YouTubeImportState
     data class Error(val message: String) : YouTubeImportState
+}
+
+sealed interface SpotifyImportState {
+    data object Idle : SpotifyImportState
+    data class Loading(val message: String) : SpotifyImportState
+    data class Preview(val playlist: SpotifyPlaylist) : SpotifyImportState
+    data class Matching(val current: Int, val total: Int, val currentTrackTitle: String) : SpotifyImportState
+    data class Success(val playlistTitle: String, val matchedCount: Int, val totalCount: Int, val playlistId: String) : SpotifyImportState
+    data class Error(val message: String) : SpotifyImportState
 }

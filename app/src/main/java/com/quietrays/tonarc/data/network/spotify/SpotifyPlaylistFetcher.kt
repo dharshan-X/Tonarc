@@ -21,7 +21,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class SpotifyPlaylistFetcher @Inject constructor(
-    private val okHttpClient: OkHttpClient = OkHttpClient()
+    private val okHttpClient: OkHttpClient
 ) {
 
     companion object {

@@ -7,6 +7,7 @@ import com.quietrays.tonarc.data.database.YouTubePlaylistEntity
 import com.quietrays.tonarc.data.database.YouTubeSongEntity
 import com.quietrays.tonarc.data.model.Playlist
 import com.quietrays.tonarc.data.model.Song
+import com.quietrays.tonarc.data.network.spotify.SpotifyPlaylistFetcher
 import com.quietrays.tonarc.data.network.youtube.SyncState
 import com.quietrays.tonarc.data.network.youtube.YouTubeLibrarySyncEngine
 import com.quietrays.tonarc.data.offline.CloudOfflineRepository
@@ -14,6 +15,7 @@ import com.quietrays.tonarc.data.playlist.M3uManager
 import com.quietrays.tonarc.data.playlist.NlpPlaylistGenerator
 import com.quietrays.tonarc.data.preferences.PlaylistPreferencesRepository
 import com.quietrays.tonarc.data.repository.MusicRepository
+import com.quietrays.tonarc.data.spotify.SpotifyMatchingEngine
 import com.quietrays.tonarc.data.youtube.YouTubeRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -44,6 +46,8 @@ class PlaylistViewModelTest {
     private val youTubeRepository: YouTubeRepository = mockk(relaxed = true)
     private val youTubeLibrarySyncEngine: YouTubeLibrarySyncEngine = mockk(relaxed = true)
     private val youTubeDao: YouTubeDao = mockk(relaxed = true)
+    private val spotifyPlaylistFetcher: SpotifyPlaylistFetcher = mockk(relaxed = true)
+    private val spotifyMatchingEngine: SpotifyMatchingEngine = mockk(relaxed = true)
     private val context: Context = mockk(relaxed = true)
 
     private val userPlaylistsFlow = MutableStateFlow<List<Playlist>>(emptyList())
@@ -72,6 +76,8 @@ class PlaylistViewModelTest {
             youTubeRepository,
             youTubeLibrarySyncEngine,
             youTubeDao,
+            spotifyPlaylistFetcher,
+            spotifyMatchingEngine,
             context
         )
     }
