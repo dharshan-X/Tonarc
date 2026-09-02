@@ -128,8 +128,11 @@ import com.quietrays.tonarc.presentation.components.sanitizeNavigationBarBottomI
 import com.quietrays.tonarc.presentation.navigation.AppNavigation
 import com.quietrays.tonarc.presentation.navigation.Screen
 import com.quietrays.tonarc.presentation.screens.SetupScreen
+import com.quietrays.tonarc.presentation.components.ImportSpotifyPlaylistDialog
 import com.quietrays.tonarc.presentation.viewmodel.MainViewModel
 import com.quietrays.tonarc.presentation.viewmodel.PlayerViewModel
+import com.quietrays.tonarc.presentation.viewmodel.PlaylistViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.quietrays.tonarc.ui.theme.TonarcTheme
 import com.quietrays.tonarc.utils.AppLocaleManager
 import com.quietrays.tonarc.utils.CrashHandler
@@ -180,6 +183,7 @@ class MainActivity : ComponentActivity() {
     lateinit var syncManager: SyncManager
     private val _pendingPlaylistNavigation = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private val _pendingShuffleAll = kotlinx.coroutines.flow.MutableStateFlow(false)
+    private val _pendingSpotifyImportUrl = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
     private val requestAllFilesAccessLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { _ ->
     }
@@ -355,17 +359,29 @@ class MainActivity : ComponentActivity() {
             }
 
             intent.action == android.content.Intent.ACTION_VIEW && intent.data != null -> {
-                intent.data?.let { uri ->
-                    persistUriPermissionIfNeeded(intent, uri)
-                    playerViewModel.playExternalUri(uri)
+                val dataString = intent.data?.toString()
+                val spotifyUrl = extractSpotifyPlaylistUrl(dataString)
+                if (spotifyUrl != null) {
+                    _pendingSpotifyImportUrl.value = spotifyUrl
+                } else {
+                    intent.data?.let { uri ->
+                        persistUriPermissionIfNeeded(intent, uri)
+                        playerViewModel.playExternalUri(uri)
+                    }
                 }
                 clearExternalIntentPayload(intent)
             }
 
-            intent.action == android.content.Intent.ACTION_SEND && intent.type?.startsWith("audio/") == true -> {
-                resolveStreamUri(intent)?.let { uri ->
-                    persistUriPermissionIfNeeded(intent, uri)
-                    playerViewModel.playExternalUri(uri)
+            intent.action == android.content.Intent.ACTION_SEND -> {
+                val sharedText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                val spotifyUrl = extractSpotifyPlaylistUrl(sharedText)
+                if (spotifyUrl != null) {
+                    _pendingSpotifyImportUrl.value = spotifyUrl
+                } else if (intent.type?.startsWith("audio/") == true) {
+                    resolveStreamUri(intent)?.let { uri ->
+                        persistUriPermissionIfNeeded(intent, uri)
+                        playerViewModel.playExternalUri(uri)
+                    }
                 }
                 clearExternalIntentPayload(intent)
             }
@@ -422,10 +438,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun extractSpotifyPlaylistUrl(text: String?): String? {
+        if (text.isNullOrBlank()) return null
+        val spotifyWebRegex = Regex("""https?://[^\s]*spotify\.com/(?:intl-[a-zA-Z0-9_-]+/)?(?:embed/)?playlist/[a-zA-Z0-9]+(?:\?[^\s]*)?""")
+        val spotifyUriRegex = Regex("""spotify:playlist:[a-zA-Z0-9]+(?:\?[^\s]*)?""")
+        val webMatch = spotifyWebRegex.find(text)
+        if (webMatch != null) return webMatch.value
+        val uriMatch = spotifyUriRegex.find(text)
+        if (uriMatch != null) return uriMatch.value
+        if (text.contains("spotify.com/playlist") || text.contains("spotify:playlist:")) {
+            return text.trim()
+        }
+        return null
+    }
+
     private fun clearExternalIntentPayload(intent: Intent) {
         intent.data = null
         intent.clipData = null
         intent.removeExtra(android.content.Intent.EXTRA_STREAM)
+        intent.removeExtra(android.content.Intent.EXTRA_TEXT)
     }
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -534,6 +565,19 @@ class MainActivity : ComponentActivity() {
 
             if (canShowLoadingIndicator) {
                 LoadingOverlay(syncProgress)
+            }
+
+            val pendingSpotifyImportUrl by _pendingSpotifyImportUrl.collectAsStateWithLifecycle()
+            if (pendingSpotifyImportUrl != null) {
+                val playlistViewModel: PlaylistViewModel = hiltViewModel()
+                ImportSpotifyPlaylistDialog(
+                    visible = true,
+                    playlistViewModel = playlistViewModel,
+                    initialUrl = pendingSpotifyImportUrl,
+                    onDismiss = {
+                        _pendingSpotifyImportUrl.value = null
+                    }
+                )
             }
         }
     }

@@ -44,6 +44,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -111,7 +112,8 @@ fun PlaylistCreationTypeDialog(
     onDismiss: () -> Unit,
     onManualSelected: () -> Unit,
     onDescribeSelected: () -> Unit,
-    onYouTubeSelected: () -> Unit
+    onYouTubeSelected: () -> Unit,
+    onSpotifySelected: (() -> Unit)? = null
 ) {
     if (!visible) return
 
@@ -210,6 +212,24 @@ fun PlaylistCreationTypeDialog(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                 )
+
+                if (onSpotifySelected != null) {
+                    CreationModeCard(
+                        title = stringResource(R.string.presentation_batch_e_creation_mode_spotify),
+                        subtitle = stringResource(R.string.presentation_batch_e_creation_mode_spotify_subtitle),
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Rounded.CloudDownload,
+                                contentDescription = null,
+                                tint = Color(0xFF1DB954)
+                            )
+                        },
+                        onClick = onSpotifySelected,
+                        enabled = true,
+                        containerColor = Color(0xFF1DB954).copy(alpha = 0.14f),
+                        contentColor = Color(0xFF1DB954)
+                    )
+                }
             }
         }
     }
