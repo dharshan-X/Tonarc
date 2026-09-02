@@ -99,6 +99,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -172,6 +173,7 @@ import com.quietrays.tonarc.presentation.components.PlaylistMultiSelectionBottom
 import com.quietrays.tonarc.presentation.components.DescribePlaylistDialog
 import com.quietrays.tonarc.presentation.components.PlaylistCreationTypeDialog
 import com.quietrays.tonarc.presentation.components.ImportYouTubePlaylistDialog
+import com.quietrays.tonarc.presentation.components.ImportSpotifyPlaylistDialog
 import com.quietrays.tonarc.presentation.components.TasteProfileCard
 import com.quietrays.tonarc.presentation.components.subcomps.SelectionActionRow
 import com.quietrays.tonarc.presentation.components.subcomps.SelectionCountPill
@@ -376,6 +378,7 @@ fun LibraryScreen(
     var showPlaylistCreationTypeDialog by remember { mutableStateOf(false) }
     var showDescribePlaylistDialog by remember { mutableStateOf(false) }
     var showImportYouTubePlaylistDialog by remember { mutableStateOf(false) }
+    var showImportSpotifyPlaylistDialog by rememberSaveable { mutableStateOf(false) }
 
     val m3uImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -1473,6 +1476,10 @@ fun LibraryScreen(
         onYouTubeSelected = {
             showPlaylistCreationTypeDialog = false
             showImportYouTubePlaylistDialog = true
+        },
+        onSpotifySelected = {
+            showPlaylistCreationTypeDialog = false
+            showImportSpotifyPlaylistDialog = true
         }
     )
 
@@ -1480,6 +1487,12 @@ fun LibraryScreen(
         visible = showImportYouTubePlaylistDialog,
         playlistViewModel = playlistViewModel,
         onDismiss = { showImportYouTubePlaylistDialog = false }
+    )
+
+    ImportSpotifyPlaylistDialog(
+        visible = showImportSpotifyPlaylistDialog,
+        playlistViewModel = playlistViewModel,
+        onDismiss = { showImportSpotifyPlaylistDialog = false }
     )
 
     val nlpPlaylistPreviewState by playlistViewModel.nlpPlaylistPreviewState.collectAsStateWithLifecycle()

@@ -313,7 +313,7 @@ class SpotifyMatchingEngineTest {
         val track2 = createSpotifyTrack(id = "t2", title = "Track Two", artist = "Artist Two")
         val track3 = createSpotifyTrack(id = "t3", title = "Track Three", artist = "Artist Three")
 
-        val progressUpdates = mutableListOf<MatchProgress>()
+        val progressUpdates = java.util.concurrent.CopyOnWriteArrayList<MatchProgress>()
 
         val results = engine.matchTracks(
             tracks = listOf(track1, track2, track3),

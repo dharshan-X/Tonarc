@@ -103,4 +103,17 @@
     <string name="visualizer_sheet_title">Visualizer Effects</string>
     <string name="visualizer_sheet_subtitle">Select visualizer animation and styling</string>
 
+    <string name="presentation_batch_e_creation_mode_spotify">Import from Spotify</string>
+    <string name="presentation_batch_e_creation_mode_spotify_subtitle">Import public Spotify playlist via link</string>
+    <string name="spotify_import_dialog_title">Import from Spotify</string>
+    <string name="spotify_import_dialog_subtitle">Paste a Spotify playlist link to import songs</string>
+    <string name="spotify_import_url_hint">https://open.spotify.com/playlist/...</string>
+    <string name="spotify_import_fetch_btn">Preview Playlist</string>
+    <string name="spotify_import_save_btn">Import Playlist</string>
+    <string name="spotify_import_save_cloud_checkbox">Save as Cloud Streamable Playlist</string>
+    <string name="spotify_import_save_local_checkbox">Match with Local Library</string>
+    <string name="spotify_import_playlist_name_label">Playlist Name in Library</string>
+    <string name="spotify_import_done_btn">Done</string>
+    <string name="spotify_import_try_again_btn">Try Again</string>
+
 </resources>
