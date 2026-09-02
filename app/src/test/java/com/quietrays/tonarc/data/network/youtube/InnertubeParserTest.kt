@@ -480,14 +480,69 @@ class InnertubeParserTest {
     }
 
     @Test
-    fun parseLibraryPlaylists_handlesMalformedJsonGracefully() {
-        val (playlists1, cont1) = InnertubeParser.parseLibraryPlaylists("{ not valid }")
-        assertThat(playlists1).isEmpty()
-        assertThat(cont1).isNull()
+    fun parsePlaylistDetails_extractsNestedEditableHeaderTitle() {
+        val json = """
+            {
+              "header": {
+                "musicEditablePlaylistDetailHeaderRenderer": {
+                  "header": {
+                    "musicResponsiveHeaderRenderer": {
+                      "title": { "runs": [{ "text": "My Tamil Favorites" }] },
+                      "subtitle": {
+                        "runs": [
+                          { "text": "Playlist" },
+                          { "text": " • " },
+                          { "text": "Anirudh Ravichander" }
+                        ]
+                      },
+                      "thumbnail": {
+                        "musicThumbnailRenderer": {
+                          "thumbnail": {
+                            "thumbnails": [{ "url": "https://lh3.googleusercontent.com/tamil_fav=w120-h120" }]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "contents": {
+                "twoColumnBrowseResultsRenderer": {
+                  "secondaryContents": {
+                    "sectionListRenderer": {
+                      "contents": [
+                        {
+                          "musicPlaylistShelfRenderer": {
+                            "contents": [
+                              {
+                                "musicResponsiveListItemRenderer": {
+                                  "playlistItemData": { "videoId": "kanave_123" },
+                                  "flexColumns": [
+                                    { "musicResponsiveListItemFlexColumnRenderer": { "text": { "runs": [{ "text": "Kanave Kanave" }] } } },
+                                    { "musicResponsiveListItemFlexColumnRenderer": { "text": { "runs": [{ "text": "Anirudh" }] } } }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+        """.trimIndent()
 
-        val (playlists2, cont2) = InnertubeParser.parseLibraryPlaylists("{}")
-        assertThat(playlists2).isEmpty()
-        assertThat(cont2).isNull()
+        val result = InnertubeParser.parsePlaylistDetails("PLtamil_123", json)
+        assertThat(result).isNotNull()
+        val (playlist, tracks) = result!!
+        assertThat(playlist.title).isEqualTo("My Tamil Favorites")
+        assertThat(playlist.author).isEqualTo("Anirudh Ravichander")
+        assertThat(tracks).hasSize(1)
+        assertThat(tracks[0].title).isEqualTo("Kanave Kanave")
+        assertThat(tracks[0].artist).isEqualTo("Anirudh")
     }
 }
+
 

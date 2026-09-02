@@ -223,6 +223,48 @@ class PlaybackStatsRepositoryTest {
         assertThat(summary.topGenres.single().uniqueArtists).isEqualTo(2)
     }
 
+    @Test
+    fun `loadSummary filters out placeholder artists and albums from top lists`() = runTest {
+        val repository = createRepository()
+        val zoneId = ZoneId.systemDefault()
+        val start = LocalDate.of(2026, 4, 10)
+            .atTime(10, 0)
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+        val durationMs = 60_000L
+
+        val eventUnknown = PlaybackStatsRepository.PlaybackEvent(
+            songId = "song-unknown",
+            timestamp = start + durationMs,
+            durationMs = durationMs,
+            startTimestamp = start,
+            endTimestamp = start + durationMs
+        )
+        val eventReal = PlaybackStatsRepository.PlaybackEvent(
+            songId = "song-real",
+            timestamp = start + (2 * durationMs),
+            durationMs = durationMs,
+            startTimestamp = start + durationMs,
+            endTimestamp = start + (2 * durationMs)
+        )
+
+        val unknownSong = song("song-unknown", artist = "<unknown>").copy(album = "Download")
+        val realSong = song("song-real", artist = "The Chainsmokers").copy(album = "Collage")
+
+        val summary = repository.buildSummaryFromEvents(
+            range = StatsTimeRange.DAY,
+            songs = listOf(unknownSong, realSong),
+            allEvents = listOf(eventUnknown, eventReal),
+            nowMillis = start + (3 * durationMs)
+        )
+
+        assertThat(summary.topArtists).hasSize(1)
+        assertThat(summary.topArtists.single().artist).isEqualTo("The Chainsmokers")
+        assertThat(summary.topAlbums).hasSize(1)
+        assertThat(summary.topAlbums.single().album).isEqualTo("Collage")
+    }
+
     private fun createRepository(): PlaybackStatsRepository {
         val uniqueDir = createTempDirectory(
             "playback-stats-test-${Instant.now().toEpochMilli()}-"

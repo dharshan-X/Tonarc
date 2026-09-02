@@ -363,6 +363,7 @@ class PlaybackStatsRepository @Inject constructor(
                     )
                 }
             }
+            .filter { !isPlaceholderName(it.artist) }
             .groupBy { it.artist }
             .map { (artist, artistSongs) ->
                 val flattened = artistSongs.flatMap { it.segments }
@@ -384,17 +385,16 @@ class PlaybackStatsRepository @Inject constructor(
             .take(5)
 
         val topAlbums = segmentsBySong.entries
-            .groupBy { (songId, _) ->
-                val song = songMap[songId]
-                song?.album?.takeIf { it.isNotBlank() } ?: "Unknown Album"
+            .mapNotNull { (songId, segments) ->
+                val song = songMap[songId] ?: return@mapNotNull null
+                val album = song.album.takeIf { it.isNotBlank() && !isPlaceholderName(it) } ?: return@mapNotNull null
+                Pair(album, Pair(song, segments))
             }
-            .map { (album, groupedSongs) ->
-                val flattened = groupedSongs.flatMap { it.value }
-                val uniqueSongCount = groupedSongs.size
-                val firstSong = groupedSongs
-                    .asSequence()
-                    .mapNotNull { songMap[it.key] }
-                    .firstOrNull()
+            .groupBy({ it.first }, { it.second })
+            .map { (album, songSegments) ->
+                val flattened = songSegments.flatMap { it.second }
+                val uniqueSongCount = songSegments.map { it.first.id }.toSet().size
+                val firstSong = songSegments.firstOrNull()?.first
                 AlbumPlaybackSummary(
                     album = album,
                     albumArtUri = firstSong?.albumArtUriString,
@@ -1100,6 +1100,27 @@ class PlaybackStatsRepository @Inject constructor(
         private val MAX_HISTORY_AGE_MS = TimeUnit.DAYS.toMillis(730)
         private const val SEGMENT_JOIN_TOLERANCE_MS = 0L
         private const val MAX_SONG_STATS_COUNT = 100
+
+        private val PLACEHOLDER_NAMES = setOf(
+            "unknown",
+            "<unknown>",
+            "unknown artist",
+            "<unknown artist>",
+            "unknown album",
+            "<unknown album>",
+            "unknown genre",
+            "<unknown genre>",
+            "various artists",
+            "download",
+            "downloads",
+            "youtube music"
+        )
+
+        fun isPlaceholderName(name: String?): Boolean {
+            if (name.isNullOrBlank()) return true
+            val clean = name.trim().lowercase(Locale.ROOT)
+            return clean in PLACEHOLDER_NAMES || clean == "<unknown>" || clean.startsWith("unknown ") || clean.startsWith("<unknown")
+        }
     }
 }
 

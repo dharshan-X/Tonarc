@@ -287,6 +287,120 @@ object InnertubeParser {
         return trimmed.matches(Regex("^\\d{1,2}:\\d{2}(:\\d{2})?$"))
     }
 
+    private fun extractHeaderObject(json: JSONObject): JSONObject? {
+        val directHeader = json.optJSONObject("header")
+        if (directHeader != null) {
+            val editable = directHeader.optJSONObject("musicEditablePlaylistDetailHeaderRenderer")
+            if (editable != null) {
+                val nested = editable.optJSONObject("header")?.optJSONObject("musicResponsiveHeaderRenderer")
+                    ?: editable.optJSONObject("header")?.optJSONObject("musicDetailHeaderRenderer")
+                    ?: editable.optJSONObject("header")?.optJSONObject("musicHeaderRenderer")
+                    ?: editable.optJSONObject("header")?.optJSONObject("musicVisualHeaderRenderer")
+                if (nested != null) return nested
+                return editable
+            }
+            val standard = directHeader.optJSONObject("musicDetailHeaderRenderer")
+                ?: directHeader.optJSONObject("musicResponsiveHeaderRenderer")
+                ?: directHeader.optJSONObject("musicVisualHeaderRenderer")
+                ?: directHeader.optJSONObject("musicHeaderRenderer")
+                ?: directHeader.optJSONObject("musicCustomHeaderRenderer")
+            if (standard != null) return standard
+            return directHeader
+        }
+
+        val tc = json.optJSONObject("contents")?.optJSONObject("twoColumnBrowseResultsRenderer")
+        val tabs = tc?.optJSONArray("tabs") ?: json.optJSONObject("contents")?.optJSONObject("singleColumnBrowseResultsRenderer")?.optJSONArray("tabs")
+        val tabContent = tabs?.optJSONObject(0)?.optJSONObject("tabRenderer")?.optJSONObject("content")?.optJSONObject("sectionListRenderer")
+        val secContents = tabContent?.optJSONArray("contents")
+        if (secContents != null && secContents.length() > 0) {
+            val firstSec = secContents.optJSONObject(0)
+            val secHeader = firstSec?.optJSONObject("musicResponsiveHeaderRenderer")
+                ?: firstSec?.optJSONObject("musicDetailHeaderRenderer")
+                ?: firstSec?.optJSONObject("musicHeaderRenderer")
+            if (secHeader != null) return secHeader
+        }
+
+        return null
+    }
+
+    private fun extractHeaderTitle(hdr: JSONObject?): String? {
+        if (hdr == null) return null
+        val titleObj = hdr.optJSONObject("title")
+        if (titleObj != null) {
+            val runs = titleObj.optJSONArray("runs")
+            if (runs != null && runs.length() > 0) {
+                val combined = (0 until runs.length()).mapNotNull { idx ->
+                    runs.optJSONObject(idx)?.optString("text")
+                }.joinToString("").trim()
+                if (combined.isNotBlank()) return combined
+            }
+            val simpleText = titleObj.optString("simpleText", "").trim()
+            if (simpleText.isNotBlank()) return simpleText
+            val text = titleObj.optString("text", "").trim()
+            if (text.isNotBlank()) return text
+        }
+        val directTitle = hdr.optString("title", "").trim()
+        if (directTitle.isNotBlank()) return directTitle
+        return null
+    }
+
+    private fun extractHeaderAuthor(hdr: JSONObject?): String? {
+        if (hdr == null) return null
+        val subtitleRuns = hdr.optJSONObject("subtitle")?.optJSONArray("runs")
+            ?: hdr.optJSONObject("straplineTextOne")?.optJSONArray("runs")
+            ?: hdr.optJSONObject("secondSubtitle")?.optJSONArray("runs")
+        if (subtitleRuns != null && subtitleRuns.length() > 0) {
+            val candidateAuthors = mutableListOf<String>()
+            for (r in 0 until subtitleRuns.length()) {
+                val runObj = subtitleRuns.optJSONObject(r) ?: continue
+                val txt = runObj.optString("text", "").trim()
+                if (txt.isBlank() || isBulletOrSeparator(txt) || isTypeOrMetadataBadge(txt) || isDuration(txt)) continue
+                candidateAuthors.add(txt)
+            }
+            if (candidateAuthors.isNotEmpty()) {
+                return candidateAuthors.joinToString(", ")
+            }
+        }
+        val simpleSubtitle = hdr.optJSONObject("subtitle")?.optString("simpleText", "")?.trim()
+        if (!simpleSubtitle.isNullOrBlank() && !isTypeOrMetadataBadge(simpleSubtitle) && !isDuration(simpleSubtitle)) {
+            return simpleSubtitle
+        }
+        return null
+    }
+
+    private fun extractHeaderYear(hdr: JSONObject?): Int? {
+        if (hdr == null) return null
+        val subtitleRuns = hdr.optJSONObject("subtitle")?.optJSONArray("runs")
+            ?: hdr.optJSONObject("straplineTextOne")?.optJSONArray("runs")
+            ?: hdr.optJSONObject("secondSubtitle")?.optJSONArray("runs")
+        if (subtitleRuns != null && subtitleRuns.length() > 0) {
+            for (r in 0 until subtitleRuns.length()) {
+                val runObj = subtitleRuns.optJSONObject(r) ?: continue
+                val txt = runObj.optString("text", "").trim()
+                if (txt.length == 4 && txt.all { it.isDigit() }) {
+                    return txt.toIntOrNull()
+                }
+            }
+        }
+        return null
+    }
+
+    private fun extractHeaderThumbnail(hdr: JSONObject?): String? {
+        if (hdr == null) return null
+        val thumbs = hdr.optJSONObject("thumbnail")?.optJSONObject("croppedSquareThumbnailRenderer")
+            ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+            ?: hdr.optJSONObject("thumbnail")?.optJSONObject("musicThumbnailRenderer")
+            ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+            ?: hdr.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+            ?: hdr.optJSONObject("thumbnails")?.optJSONArray("thumbnails")
+            ?: hdr.optJSONArray("thumbnails")
+        if (thumbs != null && thumbs.length() > 0) {
+            val url = thumbs.optJSONObject(thumbs.length() - 1)?.optString("url")
+            return upgradeThumbnailUrl(url)
+        }
+        return null
+    }
+
     private fun parseResponsiveListItem(
         item: JSONObject,
         songs: MutableList<InnertubeTrack>,
@@ -533,38 +647,10 @@ object InnertubeParser {
     fun parsePlaylistDetails(playlistId: String, jsonString: String): Pair<InnertubePlaylist, List<InnertubeTrack>>? {
         try {
             val json = JSONObject(jsonString)
-            var title = "Playlist"
-            var author = "YouTube Music"
-            var coverUri: String? = null
-
-            val hdr = json.optJSONObject("header")?.optJSONObject("musicDetailHeaderRenderer")
-                ?: json.optJSONObject("header")?.optJSONObject("musicResponsiveHeaderRenderer")
-                ?: json.optJSONObject("header")?.optJSONObject("musicEditablePlaylistDetailHeaderRenderer")
-
-            if (hdr != null) {
-                title = hdr.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: title
-                val subtitleRuns = hdr.optJSONObject("subtitle")?.optJSONArray("runs")
-                    ?: hdr.optJSONObject("straplineTextOne")?.optJSONArray("runs")
-                if (subtitleRuns != null && subtitleRuns.length() > 0) {
-                    val candidateAuthors = mutableListOf<String>()
-                    for (r in 0 until subtitleRuns.length()) {
-                        val runObj = subtitleRuns.optJSONObject(r) ?: continue
-                        val txt = runObj.optString("text", "").trim()
-                        if (txt.isBlank() || isBulletOrSeparator(txt) || isTypeOrMetadataBadge(txt) || isDuration(txt)) continue
-                        candidateAuthors.add(txt)
-                    }
-                    if (candidateAuthors.isNotEmpty()) {
-                        author = candidateAuthors.joinToString(", ")
-                    }
-                }
-                val thumbs = hdr.optJSONObject("thumbnail")?.optJSONObject("croppedSquareThumbnailRenderer")
-                    ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
-                    ?: hdr.optJSONObject("thumbnail")?.optJSONObject("musicThumbnailRenderer")
-                    ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
-                if (thumbs != null && thumbs.length() > 0) {
-                    coverUri = upgradeThumbnailUrl(thumbs.optJSONObject(thumbs.length() - 1)?.optString("url"))
-                }
-            }
+            val hdr = extractHeaderObject(json)
+            val title = extractHeaderTitle(hdr) ?: "Playlist"
+            val author = extractHeaderAuthor(hdr) ?: "YouTube Music"
+            val coverUri = extractHeaderThumbnail(hdr)
 
             val tracks = mutableListOf<InnertubeTrack>()
             val tc = json.optJSONObject("contents")?.optJSONObject("twoColumnBrowseResultsRenderer")
@@ -789,43 +875,11 @@ object InnertubeParser {
     fun parseAlbumDetails(browseId: String, jsonString: String): Pair<InnertubeAlbum, List<InnertubeTrack>>? {
         try {
             val json = JSONObject(jsonString)
-            var title = "Album"
-            var artist = "YouTube Music"
-            var coverUri: String? = null
-            var year: Int? = null
-
-            val hdr = json.optJSONObject("header")?.optJSONObject("musicDetailHeaderRenderer")
-                ?: json.optJSONObject("header")?.optJSONObject("musicResponsiveHeaderRenderer")
-
-            if (hdr != null) {
-                title = hdr.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: title
-                val subtitleRuns = hdr.optJSONObject("subtitle")?.optJSONArray("runs")
-                    ?: hdr.optJSONObject("straplineTextOne")?.optJSONArray("runs")
-                if (subtitleRuns != null && subtitleRuns.length() > 0) {
-                    val candidateArtists = mutableListOf<String>()
-                    for (r in 0 until subtitleRuns.length()) {
-                        val runObj = subtitleRuns.optJSONObject(r) ?: continue
-                        val txt = runObj.optString("text", "").trim()
-                        if (txt.isBlank() || isBulletOrSeparator(txt)) continue
-
-                        if (txt.length == 4 && txt.all { it.isDigit() }) {
-                            year = txt.toIntOrNull()
-                        } else if (!isTypeOrMetadataBadge(txt) && !isDuration(txt)) {
-                            candidateArtists.add(txt)
-                        }
-                    }
-                    if (candidateArtists.isNotEmpty()) {
-                        artist = candidateArtists.joinToString(", ")
-                    }
-                }
-                val thumbs = hdr.optJSONObject("thumbnail")?.optJSONObject("croppedSquareThumbnailRenderer")
-                    ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
-                    ?: hdr.optJSONObject("thumbnail")?.optJSONObject("musicThumbnailRenderer")
-                    ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
-                if (thumbs != null && thumbs.length() > 0) {
-                    coverUri = upgradeThumbnailUrl(thumbs.optJSONObject(thumbs.length() - 1)?.optString("url"))
-                }
-            }
+            val hdr = extractHeaderObject(json)
+            val title = extractHeaderTitle(hdr) ?: "Album"
+            val artist = extractHeaderAuthor(hdr) ?: "YouTube Music"
+            val year = extractHeaderYear(hdr)
+            val coverUri = extractHeaderThumbnail(hdr)
 
             val tracks = mutableListOf<InnertubeTrack>()
             val tc = json.optJSONObject("contents")?.optJSONObject("twoColumnBrowseResultsRenderer")

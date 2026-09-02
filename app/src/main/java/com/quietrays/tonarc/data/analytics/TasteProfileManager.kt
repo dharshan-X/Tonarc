@@ -108,7 +108,7 @@ class TasteProfileManager @Inject constructor(
             val artistName = song.displayArtist.takeIf { it.isNotBlank() }
                 ?: song.artist.takeIf { it.isNotBlank() }
                 ?: continue
-            if (artistName.equals("unknown", ignoreCase = true) || artistName.equals("unknown artist", ignoreCase = true)) {
+            if (isPlaceholderName(artistName)) {
                 continue
             }
             artistPlays[artistName] = (artistPlays[artistName] ?: 0) + eng.playCount.coerceAtLeast(0)
@@ -261,4 +261,25 @@ class TasteProfileManager @Inject constructor(
         val subtitle: String,
         val emoji: String
     )
+
+    companion object {
+        private val PLACEHOLDER_NAMES = setOf(
+            "unknown",
+            "<unknown>",
+            "unknown artist",
+            "<unknown artist>",
+            "unknown album",
+            "<unknown album>",
+            "various artists",
+            "download",
+            "downloads",
+            "youtube music"
+        )
+
+        fun isPlaceholderName(name: String?): Boolean {
+            if (name.isNullOrBlank()) return true
+            val clean = name.trim().lowercase()
+            return clean in PLACEHOLDER_NAMES || clean == "<unknown>" || clean.startsWith("unknown ") || clean.startsWith("<unknown")
+        }
+    }
 }
