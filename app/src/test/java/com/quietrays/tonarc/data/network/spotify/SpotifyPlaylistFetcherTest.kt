@@ -1,6 +1,10 @@
 package com.quietrays.tonarc.data.network.spotify
 
 import com.google.common.truth.Truth.assertThat
+import com.quietrays.tonarc.data.preferences.UserPreferencesRepository
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -16,6 +20,8 @@ class SpotifyPlaylistFetcherTest {
 
     private lateinit var interceptor: TestInterceptor
     private lateinit var okHttpClient: OkHttpClient
+    private lateinit var userPreferencesRepository: UserPreferencesRepository
+    private val cookiesFlow = MutableStateFlow<String?>(null)
     private lateinit var fetcher: SpotifyPlaylistFetcher
 
     private class TestInterceptor : Interceptor {
@@ -55,11 +61,15 @@ class SpotifyPlaylistFetcherTest {
 
     @Before
     fun setUp() {
+        cookiesFlow.value = null
+        userPreferencesRepository = mockk(relaxed = true)
+        every { userPreferencesRepository.spotifyAuthCookiesFlow } returns cookiesFlow
+
         interceptor = TestInterceptor()
         okHttpClient = OkHttpClient.Builder()
             .addInterceptor(interceptor)
             .build()
-        fetcher = SpotifyPlaylistFetcher(okHttpClient)
+        fetcher = SpotifyPlaylistFetcher(okHttpClient, userPreferencesRepository)
     }
 
     @Test
@@ -122,6 +132,130 @@ class SpotifyPlaylistFetcherTest {
         val token2 = fetcher.getAnonymousToken()
         assertThat(token2).isEqualTo("mock_token_abc_123")
         assertThat(interceptor.recordedRequests.size).isEqualTo(1)
+    }
+
+    @Test
+    fun getAccessToken_withCookies_attachesCookieHeader() = runBlocking {
+        cookiesFlow.value = "sp_dc=mock_dc_cookie_value; sp_key=xyz"
+        interceptor.responseProvider = { request ->
+            if (request.url.toString().contains("get_access_token")) {
+                createJsonResponse(
+                    request,
+                    200,
+                    """
+                    {
+                      "accessToken": "auth_token_456",
+                      "accessTokenExpirationTimestampMs": ${System.currentTimeMillis() + 3600000}
+                    }
+                    """.trimIndent()
+                )
+            } else {
+                createJsonResponse(request, 404, "{}")
+            }
+        }
+
+        val token = fetcher.getAccessToken()
+        assertThat(token).isEqualTo("auth_token_456")
+        assertThat(interceptor.recordedRequests).hasSize(1)
+        val tokenReq = interceptor.recordedRequests[0]
+        assertThat(tokenReq.header("Cookie")).isEqualTo("sp_dc=mock_dc_cookie_value; sp_key=xyz")
+    }
+
+    @Test
+    fun getAccessToken_reFetchesWhenCookiesChangeOrForceRefresh() = runBlocking {
+        interceptor.responseProvider = { request ->
+            createJsonResponse(
+                request,
+                200,
+                """
+                {
+                  "accessToken": "token_count_${interceptor.recordedRequests.size}",
+                  "accessTokenExpirationTimestampMs": ${System.currentTimeMillis() + 3600000}
+                }
+                """.trimIndent()
+            )
+        }
+
+        // 1. Initial call without cookies
+        val token1 = fetcher.getAccessToken()
+        assertThat(token1).isEqualTo("token_count_1")
+        assertThat(interceptor.recordedRequests).hasSize(1)
+
+        // 2. Cookie added -> should invalidate cache and fetch fresh token with Cookie header
+        cookiesFlow.value = "sp_dc=new_cookie"
+        val token2 = fetcher.getAccessToken()
+        assertThat(token2).isEqualTo("token_count_2")
+        assertThat(interceptor.recordedRequests).hasSize(2)
+        assertThat(interceptor.recordedRequests[1].header("Cookie")).isEqualTo("sp_dc=new_cookie")
+
+        // 3. Same cookies -> should hit cache
+        val token3 = fetcher.getAccessToken()
+        assertThat(token3).isEqualTo("token_count_2")
+        assertThat(interceptor.recordedRequests).hasSize(2)
+
+        // 4. Force refresh -> should bypass cache
+        val token4 = fetcher.getAccessToken(forceRefresh = true)
+        assertThat(token4).isEqualTo("token_count_3")
+        assertThat(interceptor.recordedRequests).hasSize(3)
+    }
+
+    @Test
+    fun fetchCurrentUserProfile_success_returnsIdAndDisplayName() = runBlocking {
+        interceptor.responseProvider = { request ->
+            if (request.url.toString() == "https://api.spotify.com/v1/me") {
+                createJsonResponse(
+                    request,
+                    200,
+                    """
+                    {
+                      "id": "spotify_user_123",
+                      "display_name": "Antigravity Music",
+                      "email": "user@example.com"
+                    }
+                    """.trimIndent()
+                )
+            } else {
+                createJsonResponse(request, 404, "{}")
+            }
+        }
+
+        val profile = fetcher.fetchCurrentUserProfile("valid_bearer_token")
+        assertThat(profile).isEqualTo(Pair("spotify_user_123", "Antigravity Music"))
+        assertThat(interceptor.recordedRequests).hasSize(1)
+        assertThat(interceptor.recordedRequests[0].header("Authorization")).isEqualTo("Bearer valid_bearer_token")
+    }
+
+    @Test
+    fun fetchCurrentUserProfile_fallbackToIdWhenDisplayNameBlank() = runBlocking {
+        interceptor.responseProvider = { request ->
+            if (request.url.toString() == "https://api.spotify.com/v1/me") {
+                createJsonResponse(
+                    request,
+                    200,
+                    """
+                    {
+                      "id": "spotify_user_no_name",
+                      "display_name": "   "
+                    }
+                    """.trimIndent()
+                )
+            } else {
+                createJsonResponse(request, 404, "{}")
+            }
+        }
+
+        val profile = fetcher.fetchCurrentUserProfile("valid_token")
+        assertThat(profile).isEqualTo(Pair("spotify_user_no_name", "spotify_user_no_name"))
+    }
+
+    @Test
+    fun fetchCurrentUserProfile_failureReturnsNull() = runBlocking {
+        interceptor.responseProvider = { request ->
+            createJsonResponse(request, 401, """{"error": {"status": 401, "message": "The access token expired"}}""")
+        }
+
+        val profile = fetcher.fetchCurrentUserProfile("expired_token")
+        assertThat(profile).isNull()
     }
 
     @Test
@@ -434,4 +568,134 @@ class SpotifyPlaylistFetcherTest {
         val result = fetcher.fetchPlaylist("non_existent_id")
         assertThat(result.isFailure).isTrue()
     }
+
+    @Test
+    fun fetchPlaylist_throwsSpotifyPrivatePlaylistException_on404_whenUnauthenticated() = runBlocking {
+        cookiesFlow.value = null
+        interceptor.responseProvider = { request ->
+            val url = request.url.toString()
+            when {
+                url.contains("get_access_token") -> {
+                    createJsonResponse(
+                        request,
+                        200,
+                        """{"accessToken": "valid_token", "accessTokenExpirationTimestampMs": ${System.currentTimeMillis() + 3600000}}"""
+                    )
+                }
+                url.contains("/v1/playlists/private_playlist_404") -> {
+                    createJsonResponse(request, 404, """{"error": {"status": 404, "message": "Not found"}}""")
+                }
+                url.contains("/embed/playlist/private_playlist_404") -> {
+                    createHtmlResponse(request, 404, "<html><body>404 Not Found</body></html>")
+                }
+                else -> createJsonResponse(request, 404, "{}")
+            }
+        }
+
+        val result = fetcher.fetchPlaylist("private_playlist_404")
+        assertThat(result.isFailure).isTrue()
+        val exception = result.exceptionOrNull()
+        assertThat(exception).isInstanceOf(SpotifyPrivatePlaylistException::class.java)
+        val privateException = exception as SpotifyPrivatePlaylistException
+        assertThat(privateException.playlistId).isEqualTo("private_playlist_404")
+        assertThat(privateException.isUserLoggedIn).isFalse()
+        assertThat(privateException.message).contains("Log in with your Spotify account")
+    }
+
+    @Test
+    fun fetchPlaylist_throwsSpotifyPrivatePlaylistException_on403_whenAuthenticated() = runBlocking {
+        cookiesFlow.value = "sp_dc=authenticated_user_cookie"
+        interceptor.responseProvider = { request ->
+            val url = request.url.toString()
+            when {
+                url.contains("get_access_token") -> {
+                    createJsonResponse(
+                        request,
+                        200,
+                        """{"accessToken": "valid_token", "accessTokenExpirationTimestampMs": ${System.currentTimeMillis() + 3600000}}"""
+                    )
+                }
+                url.contains("/v1/playlists/private_playlist_403") -> {
+                    createJsonResponse(request, 403, """{"error": {"status": 403, "message": "Forbidden"}}""")
+                }
+                url.contains("/embed/playlist/private_playlist_403") -> {
+                    createHtmlResponse(request, 403, "<html><body>Forbidden</body></html>")
+                }
+                else -> createJsonResponse(request, 404, "{}")
+            }
+        }
+
+        val result = fetcher.fetchPlaylist("private_playlist_403")
+        assertThat(result.isFailure).isTrue()
+        val exception = result.exceptionOrNull()
+        assertThat(exception).isInstanceOf(SpotifyPrivatePlaylistException::class.java)
+        val privateException = exception as SpotifyPrivatePlaylistException
+        assertThat(privateException.playlistId).isEqualTo("private_playlist_403")
+        assertThat(privateException.isUserLoggedIn).isTrue()
+        assertThat(privateException.message).contains("not accessible by the logged-in Spotify account")
+    }
+
+    @Test
+    fun fetchPlaylist_usesEmbed_evenIfWebApi404_whenEmbedReturnsValidTracks() = runBlocking {
+        interceptor.responseProvider = { request ->
+            val url = request.url.toString()
+            when {
+                url.contains("get_access_token") -> {
+                    createJsonResponse(
+                        request,
+                        200,
+                        """{"accessToken": "valid_token", "accessTokenExpirationTimestampMs": ${System.currentTimeMillis() + 3600000}}"""
+                    )
+                }
+                url.contains("/v1/playlists/web_api_404_embed_works") -> {
+                    createJsonResponse(request, 404, "{}")
+                }
+                url.contains("/embed/playlist/web_api_404_embed_works") -> {
+                    val embedHtml = """
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                        <script id="__NEXT_DATA__" type="application/json">
+                        {
+                          "props": {
+                            "pageProps": {
+                              "state": {
+                                "data": {
+                                  "entity": {
+                                    "id": "web_api_404_embed_works",
+                                    "title": "Embed Worked",
+                                    "trackList": [
+                                      {
+                                        "id": "trk_1",
+                                        "title": "Embed Track",
+                                        "subtitle": "Embed Artist",
+                                        "duration": 180000
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                        </script>
+                        </head>
+                        <body></body>
+                        </html>
+                    """.trimIndent()
+                    createHtmlResponse(request, 200, embedHtml)
+                }
+                else -> createJsonResponse(request, 404, "{}")
+            }
+        }
+
+        val result = fetcher.fetchPlaylist("web_api_404_embed_works")
+        assertThat(result.isSuccess).isTrue()
+        val playlist = result.getOrThrow()
+        assertThat(playlist.id).isEqualTo("web_api_404_embed_works")
+        assertThat(playlist.title).isEqualTo("Embed Worked")
+        assertThat(playlist.tracks).hasSize(1)
+        assertThat(playlist.tracks[0].title).isEqualTo("Embed Track")
+    }
 }
+

@@ -1,6 +1,8 @@
 package com.quietrays.tonarc.data.network.spotify
 
+import com.quietrays.tonarc.data.preferences.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -21,7 +23,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class SpotifyPlaylistFetcher @Inject constructor(
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) {
 
     companion object {
@@ -31,6 +34,7 @@ class SpotifyPlaylistFetcher @Inject constructor(
         private const val TOKEN_URL =
             "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
         private const val WEB_API_BASE_URL = "https://api.spotify.com/v1/playlists/"
+        private const val ME_URL = "https://api.spotify.com/v1/me"
         private const val EMBED_BASE_URL = "https://open.spotify.com/embed/playlist/"
         private const val OEMBED_BASE_URL = "https://open.spotify.com/oembed?url=https://open.spotify.com/playlist/"
 
@@ -51,6 +55,15 @@ class SpotifyPlaylistFetcher @Inject constructor(
 
     @Volatile
     private var tokenExpirationTimestampMs: Long = 0L
+
+    @Volatile
+    private var cachedCookies: String? = null
+
+    private sealed interface WebApiPlaylistResult {
+        data class Success(val playlist: SpotifyPlaylist) : WebApiPlaylistResult
+        data class ForbiddenOrNotFound(val statusCode: Int) : WebApiPlaylistResult
+        data class OtherError(val statusCode: Int) : WebApiPlaylistResult
+    }
 
     /**
      * Extracts a Spotify playlist ID from various URL and URI representations, or returns
@@ -87,27 +100,41 @@ class SpotifyPlaylistFetcher @Inject constructor(
     }
 
     /**
-     * Obtains an anonymous Spotify access token from the Web Player endpoint,
-     * caching the token in memory until its expiration.
+     * Obtains an access token from the Spotify Web Player endpoint, attaching authenticated
+     * session cookies if present in preferences. Caches the token in memory until expiration,
+     * unless [forceRefresh] is true or the user's cookies have changed.
      */
-    suspend fun getAnonymousToken(): String? = withContext(Dispatchers.IO) {
+    suspend fun getAccessToken(forceRefresh: Boolean = false): String? = withContext(Dispatchers.IO) {
+        val savedCookies = userPreferencesRepository.spotifyAuthCookiesFlow.first()?.takeIf { it.isNotBlank() }
         val now = System.currentTimeMillis()
         val currentToken = cachedAccessToken
-        if (currentToken != null && now < (tokenExpirationTimestampMs - EXPIRATION_BUFFER_MS)) {
+        val cookiesChanged = savedCookies != cachedCookies
+
+        if (!forceRefresh && !cookiesChanged && currentToken != null && now < (tokenExpirationTimestampMs - EXPIRATION_BUFFER_MS)) {
             return@withContext currentToken
         }
 
         try {
-            val request = Request.Builder()
+            val requestBuilder = Request.Builder()
                 .url(TOKEN_URL)
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "application/json")
                 .get()
-                .build()
+
+            if (!savedCookies.isNullOrBlank()) {
+                requestBuilder.header("Cookie", savedCookies)
+            }
+
+            val request = requestBuilder.build()
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    Timber.tag(TAG).w("Failed to fetch anonymous token: HTTP %d", response.code)
+                    Timber.tag(TAG).w("Failed to fetch access token: HTTP %d", response.code)
+                    if (forceRefresh || cookiesChanged) {
+                        cachedAccessToken = null
+                        tokenExpirationTimestampMs = 0L
+                        cachedCookies = null
+                    }
                     return@withContext null
                 }
                 val bodyString = response.body.string()
@@ -118,10 +145,51 @@ class SpotifyPlaylistFetcher @Inject constructor(
 
                 cachedAccessToken = token
                 tokenExpirationTimestampMs = if (expMs > 0) expMs else (now + DEFAULT_TOKEN_TTL_MS)
+                cachedCookies = savedCookies
                 token
             }
         } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "Exception while fetching anonymous Spotify token")
+            Timber.tag(TAG).w(e, "Exception while fetching Spotify token")
+            null
+        }
+    }
+
+    /**
+     * Obtains an anonymous or authenticated Spotify access token from the Web Player endpoint.
+     * Backwards-compatible alias for [getAccessToken].
+     */
+    suspend fun getAnonymousToken(): String? = getAccessToken(forceRefresh = false)
+
+    /**
+     * Fetches the current user's profile information from the Spotify Web API.
+     *
+     * Returns a pair of `(id, displayName)`, or null if unauthorized, unauthenticated,
+     * or the request fails.
+     */
+    suspend fun fetchCurrentUserProfile(token: String): Pair<String, String>? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(ME_URL)
+                .header("Authorization", "Bearer $token")
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "application/json")
+                .get()
+                .build()
+
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Timber.tag(TAG).w("Failed to fetch Spotify user profile: HTTP %d", response.code)
+                    return@withContext null
+                }
+                val bodyString = response.body.string()
+                if (bodyString.isBlank()) return@withContext null
+                val json = JSONObject(bodyString)
+                val id = json.optString("id").takeIf { it.isNotBlank() } ?: return@withContext null
+                val displayName = json.optString("display_name").trim().ifBlank { id }
+                Pair(id, displayName)
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Exception while fetching Spotify user profile")
             null
         }
     }
@@ -130,21 +198,34 @@ class SpotifyPlaylistFetcher @Inject constructor(
      * Fetches complete playlist details and track listing for the given [playlistId].
      *
      * Strategy:
-     * 1. Attempt Spotify Web API using anonymous access token with pagination up to [MAX_TRACKS].
-     * 2. If API fails, fall back to scraping embedded Next.js JSON from embed page.
-     * 3. If embed HTML scraper fails, fall back to oEmbed endpoint for basic playlist metadata.
+     * 1. Attempt Spotify Web API using access token with pagination up to [MAX_TRACKS].
+     * 2. If API fails with 404/403 (private or forbidden playlist), checks embed fallback.
+     *    If neither Web API nor Embed returns valid tracks, throws [SpotifyPrivatePlaylistException].
+     * 3. Fall back to scraping embedded Next.js JSON from embed page.
+     * 4. If embed HTML scraper fails, fall back to oEmbed endpoint for basic playlist metadata.
      */
     suspend fun fetchPlaylist(playlistId: String): Result<SpotifyPlaylist> = withContext(Dispatchers.IO) {
         runCatching {
-            val token = getAnonymousToken()
+            var wasForbiddenOrNotFound = false
+            val token = getAccessToken()
             if (token != null) {
-                val apiResult = fetchFromWebApi(playlistId, token)
-                if (apiResult != null) {
-                    return@runCatching apiResult
+                when (val apiResult = fetchFromWebApi(playlistId, token)) {
+                    is WebApiPlaylistResult.Success -> return@runCatching apiResult.playlist
+                    is WebApiPlaylistResult.ForbiddenOrNotFound -> wasForbiddenOrNotFound = true
+                    is WebApiPlaylistResult.OtherError -> { /* continue to fallbacks */ }
                 }
             }
 
             val embedResult = fetchFromEmbed(playlistId)
+            if (embedResult != null && embedResult.tracks.isNotEmpty()) {
+                return@runCatching embedResult
+            }
+
+            if (wasForbiddenOrNotFound) {
+                val isLoggedIn = !userPreferencesRepository.spotifyAuthCookiesFlow.first().isNullOrBlank()
+                throw SpotifyPrivatePlaylistException(playlistId, isUserLoggedIn = isLoggedIn)
+            }
+
             if (embedResult != null) {
                 return@runCatching embedResult
             }
@@ -158,7 +239,7 @@ class SpotifyPlaylistFetcher @Inject constructor(
         }
     }
 
-    private fun fetchFromWebApi(playlistId: String, token: String): SpotifyPlaylist? {
+    private fun fetchFromWebApi(playlistId: String, token: String): WebApiPlaylistResult {
         try {
             val initialUrl = "$WEB_API_BASE_URL$playlistId"
             val request = Request.Builder()
@@ -175,11 +256,15 @@ class SpotifyPlaylistFetcher @Inject constructor(
                     if (response.code == 401) {
                         cachedAccessToken = null
                         tokenExpirationTimestampMs = 0L
+                        cachedCookies = null
                     }
-                    return null
+                    if (response.code == 404 || response.code == 403) {
+                        return WebApiPlaylistResult.ForbiddenOrNotFound(response.code)
+                    }
+                    return WebApiPlaylistResult.OtherError(response.code)
                 }
                 val bodyString = response.body.string()
-                if (bodyString.isBlank()) return null
+                if (bodyString.isBlank()) return WebApiPlaylistResult.OtherError(response.code)
                 val rootJson = JSONObject(bodyString)
 
                 val id = rootJson.optString("id").ifEmpty { playlistId }
@@ -226,19 +311,21 @@ class SpotifyPlaylistFetcher @Inject constructor(
                     }
                 }
 
-                return SpotifyPlaylist(
-                    id = id,
-                    title = title,
-                    description = description,
-                    author = author,
-                    coverUri = coverUri,
-                    trackCount = if (totalTracks > 0) totalTracks else tracksList.size,
-                    tracks = tracksList
+                return WebApiPlaylistResult.Success(
+                    SpotifyPlaylist(
+                        id = id,
+                        title = title,
+                        description = description,
+                        author = author,
+                        coverUri = coverUri,
+                        trackCount = if (totalTracks > 0) totalTracks else tracksList.size,
+                        tracks = tracksList
+                    )
                 )
             }
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Error fetching from Spotify Web API")
-            return null
+            return WebApiPlaylistResult.OtherError(-1)
         }
     }
 
