@@ -108,6 +108,13 @@
             android:theme="@style/Theme.Tonarc"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".presentation.spotify.auth.SpotifyLoginActivity"
+            android:exported="false"
+            android:label="Spotify Login"
+            android:theme="@style/Theme.Tonarc"
+            android:windowSoftInputMode="adjustResize" />
+
 
         <activity
             android:name=".ExternalPlayerActivity"
