@@ -302,7 +302,7 @@ class SpotifyMatchingEngineTest {
     }
 
     @Test
-    fun `matchTracks emits MatchProgress from 1 to total for all tracks`() = runTest {
+    fun `matchTracks emits throttled MatchProgress guaranteeing final track completion`() = runTest {
         val localSong1 = createLocalSong(id = "s1", title = "Track One", artist = "Artist One")
         val localSong2 = createLocalSong(id = "s2", title = "Track Two", artist = "Artist Two")
         val localSong3 = createLocalSong(id = "s3", title = "Track Three", artist = "Artist Three")
@@ -321,13 +321,16 @@ class SpotifyMatchingEngineTest {
         )
 
         assertThat(results).hasSize(3)
-        assertThat(progressUpdates).hasSize(3)
+        assertThat(progressUpdates).isNotEmpty()
 
-        val currentValues = progressUpdates.map { it.current }.sorted()
-        assertThat(currentValues).containsExactly(1, 2, 3).inOrder()
+        // Throttled updates always guarantee final track completion
+        val lastUpdate = progressUpdates.last()
+        assertThat(lastUpdate.current).isEqualTo(3)
+        assertThat(lastUpdate.total).isEqualTo(3)
 
         progressUpdates.forEach {
             assertThat(it.total).isEqualTo(3)
+            assertThat(it.current).isAtMost(3)
         }
     }
 

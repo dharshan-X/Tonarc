@@ -9,6 +9,7 @@ import com.quietrays.tonarc.data.model.Playlist
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.network.spotify.SpotifyPlaylist
 import com.quietrays.tonarc.data.network.spotify.SpotifyPlaylistFetcher
+import com.quietrays.tonarc.data.network.spotify.SpotifyPrivatePlaylistException
 import com.quietrays.tonarc.data.network.spotify.SpotifyTrack
 import com.quietrays.tonarc.data.network.youtube.SyncState
 import com.quietrays.tonarc.data.network.youtube.YouTubeLibrarySyncEngine
@@ -178,6 +179,48 @@ class PlaylistViewModelSpotifyTest {
         val state = viewModel.spotifyImportState.value
         assertTrue(state is SpotifyImportState.Error)
         assertEquals("Network error", (state as SpotifyImportState.Error).message)
+    }
+
+    @Test
+    fun `previewSpotifyPlaylist with private playlist and logged out user emits Error with isPrivatePlaylist true and isUserLoggedIn false`() = runTest {
+        val playlistId = "37i9dQZF1DXcBWIGoYBM5M"
+        every { spotifyPlaylistFetcher.extractPlaylistId("https://open.spotify.com/playlist/$playlistId") } returns playlistId
+        val exception = SpotifyPrivatePlaylistException(
+            playlistId = playlistId,
+            isUserLoggedIn = false
+        )
+        coEvery { spotifyPlaylistFetcher.fetchPlaylist(playlistId) } returns Result.failure(exception)
+
+        viewModel.previewSpotifyPlaylist("https://open.spotify.com/playlist/$playlistId")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.spotifyImportState.value
+        assertTrue(state is SpotifyImportState.Error)
+        val errorState = state as SpotifyImportState.Error
+        assertTrue(errorState.isPrivatePlaylist)
+        assertEquals(false, errorState.isUserLoggedIn)
+        assertEquals(exception.message, errorState.message)
+    }
+
+    @Test
+    fun `previewSpotifyPlaylist with private playlist and logged in user emits Error with isPrivatePlaylist true and isUserLoggedIn true`() = runTest {
+        val playlistId = "37i9dQZF1DXcBWIGoYBM5M"
+        every { spotifyPlaylistFetcher.extractPlaylistId("https://open.spotify.com/playlist/$playlistId") } returns playlistId
+        val exception = SpotifyPrivatePlaylistException(
+            playlistId = playlistId,
+            isUserLoggedIn = true
+        )
+        coEvery { spotifyPlaylistFetcher.fetchPlaylist(playlistId) } returns Result.failure(exception)
+
+        viewModel.previewSpotifyPlaylist("https://open.spotify.com/playlist/$playlistId")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.spotifyImportState.value
+        assertTrue(state is SpotifyImportState.Error)
+        val errorState = state as SpotifyImportState.Error
+        assertTrue(errorState.isPrivatePlaylist)
+        assertEquals(true, errorState.isUserLoggedIn)
+        assertEquals(exception.message, errorState.message)
     }
 
     @Test

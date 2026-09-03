@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.text.Normalizer
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
@@ -51,6 +52,7 @@ class SpotifyMatchingEngine @Inject constructor(
         private const val CLOUD_DURATION_TOLERANCE_MS = 15_000L
         private const val LOCAL_MATCH_THRESHOLD = 0.65f
         private const val CLOUD_MATCH_THRESHOLD = 0.50f
+        private const val PROGRESS_THROTTLE_MS = 60L
     }
 
     private data class IndexedLocalSong(
@@ -99,6 +101,7 @@ class SpotifyMatchingEngine @Inject constructor(
 
         val cloudSemaphore = Semaphore(MAX_CONCURRENT_CLOUD_SEARCHES)
         val progressCounter = AtomicInteger(0)
+        val lastProgressEmitTimestamp = AtomicLong(0L)
         val total = tracks.size
 
         coroutineScope {
@@ -135,13 +138,18 @@ class SpotifyMatchingEngine @Inject constructor(
                     )
 
                     val current = progressCounter.incrementAndGet()
-                    onProgress?.invoke(
-                        MatchProgress(
-                            current = current,
-                            total = total,
-                            currentTrackTitle = track.title
+                    val now = System.currentTimeMillis()
+                    val lastEmit = lastProgressEmitTimestamp.get()
+                    if (current == total || now - lastEmit >= PROGRESS_THROTTLE_MS) {
+                        lastProgressEmitTimestamp.set(now)
+                        onProgress?.invoke(
+                            MatchProgress(
+                                current = current,
+                                total = total,
+                                currentTrackTitle = track.title
+                            )
                         )
-                    )
+                    }
 
                     finalResult
                 }

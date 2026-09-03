@@ -2,13 +2,18 @@ package com.quietrays.tonarc.presentation.components
 
 import android.content.ClipboardManager
 import android.content.Context
-import androidx.compose.animation.animateContentSize
+import android.content.Intent
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,6 +25,8 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -39,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -59,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.quietrays.tonarc.R
+import com.quietrays.tonarc.presentation.spotify.auth.SpotifyLoginActivity
 import com.quietrays.tonarc.presentation.viewmodel.PlaylistViewModel
 import com.quietrays.tonarc.presentation.viewmodel.SpotifyImportState
 import com.quietrays.tonarc.ui.theme.RoundedSans
@@ -103,16 +112,18 @@ fun ImportSpotifyPlaylistDialog(
         }
     }
 
-    val dialogShape = AbsoluteSmoothCornerShape(
-        cornerRadiusTL = 24.dp,
-        smoothnessAsPercentTL = 60,
-        cornerRadiusTR = 24.dp,
-        smoothnessAsPercentTR = 60,
-        cornerRadiusBL = 36.dp,
-        smoothnessAsPercentBL = 60,
-        cornerRadiusBR = 36.dp,
-        smoothnessAsPercentBR = 60
-    )
+    val dialogShape = remember {
+        AbsoluteSmoothCornerShape(
+            cornerRadiusTL = 24.dp,
+            smoothnessAsPercentTL = 60,
+            cornerRadiusTR = 24.dp,
+            smoothnessAsPercentTR = 60,
+            cornerRadiusBL = 36.dp,
+            smoothnessAsPercentBL = 60,
+            cornerRadiusBR = 36.dp,
+            smoothnessAsPercentBR = 60
+        )
+    }
 
     Dialog(
         onDismissRequest = {
@@ -129,8 +140,7 @@ fun ImportSpotifyPlaylistDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(22.dp)
-                    .animateContentSize(),
+                    .padding(22.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Header
@@ -363,6 +373,7 @@ fun ImportSpotifyPlaylistDialog(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = 96.dp)
                                 .padding(vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
@@ -371,9 +382,14 @@ fun ImportSpotifyPlaylistDialog(
                             } else {
                                 0f
                             }
+                            val animatedProgress by animateFloatAsState(
+                                targetValue = progress,
+                                animationSpec = tween(180, easing = LinearOutSlowInEasing),
+                                label = "spotify_progress"
+                            )
 
                             LinearProgressIndicator(
-                                progress = { progress },
+                                progress = { animatedProgress },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(8.dp)
@@ -431,12 +447,100 @@ fun ImportSpotifyPlaylistDialog(
                     }
 
                     is SpotifyImportState.Error -> {
-                        Text(
-                            text = state.message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
+                        if (state.isPrivatePlaylist) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color(0xFFF59E0B).copy(alpha = 0.08f),
+                                border = BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = Color(0xFFF59E0B).copy(alpha = 0.16f)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Lock,
+                                                contentDescription = null,
+                                                tint = Color(0xFFD97706),
+                                                modifier = Modifier
+                                                    .padding(6.dp)
+                                                    .size(18.dp)
+                                            )
+                                        }
+                                        Text(
+                                            text = "Private Playlist",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+
+                                    if (!state.isUserLoggedIn) {
+                                        Text(
+                                            text = state.message,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        Button(
+                                            onClick = {
+                                                context.startActivity(Intent(context, SpotifyLoginActivity::class.java))
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.MusicNote,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Log in with Spotify",
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = "💡 Or in Spotify app: tap ••• on playlist -> select 'Make Public'",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(10.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Text(
+                                            text = "This private playlist cannot be accessed by your connected Spotify account. Ensure you have access permissions.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = state.message,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
                     }
 
                     else -> {}

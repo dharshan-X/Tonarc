@@ -23,6 +23,7 @@ import com.quietrays.tonarc.data.database.YouTubePlaylistEntity
 import com.quietrays.tonarc.data.database.YouTubeSongEntity
 import com.quietrays.tonarc.data.network.spotify.SpotifyPlaylist
 import com.quietrays.tonarc.data.network.spotify.SpotifyPlaylistFetcher
+import com.quietrays.tonarc.data.network.spotify.SpotifyPrivatePlaylistException
 import com.quietrays.tonarc.data.network.youtube.SyncState
 import com.quietrays.tonarc.data.network.youtube.YouTubeLibrarySyncEngine
 import com.quietrays.tonarc.data.spotify.SpotifyMatchingEngine
@@ -1464,11 +1465,27 @@ class PlaylistViewModel @Inject constructor(
                         _spotifyImportState.value = SpotifyImportState.Preview(playlist)
                     },
                     onFailure = { error ->
-                        _spotifyImportState.value = SpotifyImportState.Error(error.message ?: "Failed to load Spotify playlist")
+                        if (error is SpotifyPrivatePlaylistException) {
+                            _spotifyImportState.value = SpotifyImportState.Error(
+                                message = error.message ?: "This Spotify playlist is private or unlisted.",
+                                isPrivatePlaylist = true,
+                                isUserLoggedIn = error.isUserLoggedIn
+                            )
+                        } else {
+                            _spotifyImportState.value = SpotifyImportState.Error(error.message ?: "Failed to load Spotify playlist")
+                        }
                     }
                 )
             } catch (e: Exception) {
-                _spotifyImportState.value = SpotifyImportState.Error(e.message ?: "Failed to load Spotify playlist")
+                if (e is SpotifyPrivatePlaylistException) {
+                    _spotifyImportState.value = SpotifyImportState.Error(
+                        message = e.message ?: "This Spotify playlist is private or unlisted.",
+                        isPrivatePlaylist = true,
+                        isUserLoggedIn = e.isUserLoggedIn
+                    )
+                } else {
+                    _spotifyImportState.value = SpotifyImportState.Error(e.message ?: "Failed to load Spotify playlist")
+                }
             }
         }
     }
@@ -1582,5 +1599,9 @@ sealed interface SpotifyImportState {
     data class Preview(val playlist: SpotifyPlaylist) : SpotifyImportState
     data class Matching(val current: Int, val total: Int, val currentTrackTitle: String) : SpotifyImportState
     data class Success(val playlistTitle: String, val matchedCount: Int, val totalCount: Int, val playlistId: String) : SpotifyImportState
-    data class Error(val message: String) : SpotifyImportState
+    data class Error(
+        val message: String,
+        val isPrivatePlaylist: Boolean = false,
+        val isUserLoggedIn: Boolean = false
+    ) : SpotifyImportState
 }
