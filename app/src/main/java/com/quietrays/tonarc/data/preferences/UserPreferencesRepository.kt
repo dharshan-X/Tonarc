@@ -212,6 +212,8 @@ constructor(
         val EXTERNAL_LYRICS_ENABLED = booleanPreferencesKey("external_lyrics_enabled")
         val YOUTUBE_AUTH_COOKIES = stringPreferencesKey("youtube_auth_cookies")
         val YOUTUBE_VISITOR_DATA = stringPreferencesKey("youtube_visitor_data")
+        val SPOTIFY_AUTH_COOKIES = stringPreferencesKey("spotify_auth_cookies")
+        val SPOTIFY_USER_NAME = stringPreferencesKey("spotify_user_name")
         val EXTERNAL_ARTIST_IMAGES_ENABLED = booleanPreferencesKey("external_artist_images_enabled")
 
         val ALBUM_ART_QUALITY = stringPreferencesKey("album_art_quality")
@@ -1658,6 +1660,54 @@ constructor(
             } else {
                 preferences[PreferencesKeys.YOUTUBE_VISITOR_DATA] = visitorData
             }
+        }
+    }
+
+    val spotifyAuthCookiesFlow: Flow<String?> =
+        dataStore.data.map { preferences ->
+            preferences[PreferencesKeys.SPOTIFY_AUTH_COOKIES]?.takeIf { it.isNotBlank() }
+        }
+
+    val spotifyUserNameFlow: Flow<String?> =
+        dataStore.data.map { preferences ->
+            preferences[PreferencesKeys.SPOTIFY_USER_NAME]?.takeIf { it.isNotBlank() }
+        }
+
+    suspend fun setSpotifyAuthCookies(cookies: String?, userName: String? = null) {
+        dataStore.edit { preferences ->
+            if (cookies.isNullOrBlank()) {
+                preferences.remove(PreferencesKeys.SPOTIFY_AUTH_COOKIES)
+            } else {
+                preferences[PreferencesKeys.SPOTIFY_AUTH_COOKIES] = cookies
+            }
+            if (userName != null) {
+                if (userName.isBlank()) {
+                    preferences.remove(PreferencesKeys.SPOTIFY_USER_NAME)
+                } else {
+                    preferences[PreferencesKeys.SPOTIFY_USER_NAME] = userName
+                }
+            }
+        }
+    }
+
+    suspend fun setSpotifyUserName(userName: String?) {
+        dataStore.edit { preferences ->
+            if (userName.isNullOrBlank()) {
+                preferences.remove(PreferencesKeys.SPOTIFY_USER_NAME)
+            } else {
+                preferences[PreferencesKeys.SPOTIFY_USER_NAME] = userName
+            }
+        }
+    }
+
+    suspend fun saveSpotifyCookies(cookies: String, userName: String? = null) {
+        setSpotifyAuthCookies(cookies, userName)
+    }
+
+    suspend fun clearSpotifyAuth() {
+        dataStore.edit { preferences ->
+            preferences.remove(PreferencesKeys.SPOTIFY_AUTH_COOKIES)
+            preferences.remove(PreferencesKeys.SPOTIFY_USER_NAME)
         }
     }
 

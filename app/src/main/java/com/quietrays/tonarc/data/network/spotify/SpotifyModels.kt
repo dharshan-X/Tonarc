@@ -19,3 +19,14 @@ data class SpotifyPlaylist(
     val trackCount: Int = 0,
     val tracks: List<SpotifyTrack> = emptyList()
 )
+
+class SpotifyPrivatePlaylistException(
+    val playlistId: String,
+    val isUserLoggedIn: Boolean
+) : java.io.IOException(
+    if (isUserLoggedIn) {
+        "This playlist is private or unlisted and not accessible by the logged-in Spotify account."
+    } else {
+        "This Spotify playlist is private or unlisted. Log in with your Spotify account or make the playlist public in Spotify."
+    }
+)

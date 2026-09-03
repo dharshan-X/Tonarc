@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
@@ -149,6 +150,50 @@ class UserPreferencesRepositoryTest {
                 artists,
                 repository.favoriteArtistsFlow.first()
             )
+        } finally {
+            tempDir.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `spotify auth cookies and username persist and clear properly`() = runTest {
+        val tempDir = Files.createTempDirectory("user-preferences-repository-test")
+        try {
+            val repository = UserPreferencesRepository(
+                dataStore = PreferenceDataStoreFactory.create(
+                    scope = backgroundScope,
+                    produceFile = { tempDir.resolve("settings.preferences_pb").toFile() }
+                ),
+                json = Json
+            )
+
+            assertNull(repository.spotifyAuthCookiesFlow.first())
+            assertNull(repository.spotifyUserNameFlow.first())
+
+            // Set cookies and username together
+            repository.setSpotifyAuthCookies("sp_dc=test_cookie_123", "SpotifyUser")
+            assertEquals("sp_dc=test_cookie_123", repository.spotifyAuthCookiesFlow.first())
+            assertEquals("SpotifyUser", repository.spotifyUserNameFlow.first())
+
+            // Update only username
+            repository.setSpotifyUserName("UpdatedUser")
+            assertEquals("sp_dc=test_cookie_123", repository.spotifyAuthCookiesFlow.first())
+            assertEquals("UpdatedUser", repository.spotifyUserNameFlow.first())
+
+            // Clear username with null
+            repository.setSpotifyUserName(null)
+            assertEquals("sp_dc=test_cookie_123", repository.spotifyAuthCookiesFlow.first())
+            assertNull(repository.spotifyUserNameFlow.first())
+
+            // Save cookies with new username
+            repository.saveSpotifyCookies("sp_dc=new_cookie", "NewUser")
+            assertEquals("sp_dc=new_cookie", repository.spotifyAuthCookiesFlow.first())
+            assertEquals("NewUser", repository.spotifyUserNameFlow.first())
+
+            // Clear auth completely
+            repository.clearSpotifyAuth()
+            assertNull(repository.spotifyAuthCookiesFlow.first())
+            assertNull(repository.spotifyUserNameFlow.first())
         } finally {
             tempDir.toFile().deleteRecursively()
         }
