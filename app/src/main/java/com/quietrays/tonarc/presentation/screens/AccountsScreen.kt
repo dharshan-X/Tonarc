@@ -44,6 +44,7 @@ import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -100,6 +101,7 @@ import com.quietrays.tonarc.presentation.components.CollapsibleCommonTopBar
 import com.quietrays.tonarc.presentation.components.MiniPlayerHeight
 import com.quietrays.tonarc.presentation.jellyfin.auth.JellyfinLoginActivity
 import com.quietrays.tonarc.presentation.navidrome.auth.NavidromeLoginActivity
+import com.quietrays.tonarc.presentation.spotify.auth.SpotifyLoginActivity
 import com.quietrays.tonarc.presentation.viewmodel.AccountsViewModel
 import com.quietrays.tonarc.presentation.viewmodel.ExternalAccountUiModel
 import com.quietrays.tonarc.presentation.viewmodel.ExternalServiceAccount
@@ -205,6 +207,9 @@ fun AccountsScreen(
             }
             ExternalServiceAccount.YOUTUBE_MUSIC -> {
                 showYouTubeConnectChoiceDialog = true
+            }
+            ExternalServiceAccount.SPOTIFY -> {
+                context.startActivity(Intent(context, SpotifyLoginActivity::class.java))
             }
             else -> {
                 openService(
@@ -694,6 +699,14 @@ private fun servicePalette(service: ExternalServiceAccount): ServicePalette {
             primaryActionContainer = Color(0xFFFFEBEE),
             primaryActionTint = Color(0xFFC62828)
         )
+        ExternalServiceAccount.SPOTIFY -> ServicePalette(
+            iconContainer = Color(0xFF1DB954),
+            iconTint = Color.White,
+            statusContainer = Color(0xFF1DB954).copy(alpha = 0.15f),
+            statusTint = Color(0xFF1DB954),
+            primaryActionContainer = Color(0xFF1DB954).copy(alpha = 0.15f),
+            primaryActionTint = Color(0xFF1DB954)
+        )
     }
 }
 
@@ -703,6 +716,7 @@ private fun accountIcon(service: ExternalServiceAccount): ImageVector {
         ExternalServiceAccount.JELLYFIN -> Icons.Rounded.CloudQueue
         ExternalServiceAccount.YOUTUBE_MUSIC -> Icons.Rounded.CloudQueue
         ExternalServiceAccount.LISTENBRAINZ -> Icons.Rounded.GraphicEq
+        ExternalServiceAccount.SPOTIFY -> Icons.Rounded.MusicNote
     }
 }
 
@@ -754,6 +768,7 @@ private fun serviceDisplayName(service: ExternalServiceAccount): String {
         ExternalServiceAccount.JELLYFIN -> stringResource(R.string.auth_jellyfin_title)
         ExternalServiceAccount.YOUTUBE_MUSIC -> "YouTube Music"
         ExternalServiceAccount.LISTENBRAINZ -> stringResource(R.string.accounts_listenbrainz_title)
+        ExternalServiceAccount.SPOTIFY -> "Spotify"
     }
 }
 
@@ -802,6 +817,12 @@ private fun openService(
                 intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://listenbrainz.org"))
             )
         }
+        ExternalServiceAccount.SPOTIFY -> {
+            safeStartActivity(
+                context = context,
+                intent = Intent(context, SpotifyLoginActivity::class.java)
+            )
+        }
     }
 }
 
@@ -842,6 +863,10 @@ private fun ConnectServiceButton(
     service: ExternalServiceAccount,
     onConnect: (ExternalServiceAccount) -> Unit
 ) {
+    if (service == ExternalServiceAccount.SPOTIFY) {
+        SpotifyDisconnectedCard(onConnect = { onConnect(service) })
+        return
+    }
     val connectTemplate = stringResource(R.string.presentation_batch_b_accounts_connect_service)
     FilledTonalButton(
         onClick = { onConnect(service) },
@@ -873,11 +898,76 @@ private fun ConnectServiceButton(
                 contentDescription = null,
                 modifier = Modifier.size(18.dp)
             )
+            ExternalServiceAccount.SPOTIFY -> Icon(
+                imageVector = Icons.Rounded.MusicNote,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
         }
         Spacer(modifier = Modifier.size(8.dp))
         Text(
             text = connectTemplate.format(serviceDisplayName(service))
         )
+    }
+}
+
+@Composable
+private fun SpotifyDisconnectedCard(
+    onConnect: () -> Unit
+) {
+    Card(
+        shape = AbsoluteSmoothCornerShape(20.dp, 60),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = AbsoluteSmoothCornerShape(14.dp, 60),
+                color = Color(0xFF1DB954)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Spotify",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Import private playlists and liked songs",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            FilledTonalButton(
+                onClick = onConnect,
+                shape = AbsoluteSmoothCornerShape(14.dp, 60),
+                colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                    containerColor = Color(0xFF1DB954).copy(alpha = 0.15f),
+                    contentColor = Color(0xFF1DB954)
+                )
+            ) {
+                Text(
+                    text = stringResource(R.string.accounts_listenbrainz_connect),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }
 

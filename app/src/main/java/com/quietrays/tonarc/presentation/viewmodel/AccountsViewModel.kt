@@ -35,7 +35,8 @@ enum class ExternalServiceAccount {
     NAVIDROME,
     JELLYFIN,
     YOUTUBE_MUSIC,
-    LISTENBRAINZ
+    LISTENBRAINZ,
+    SPOTIFY
 }
 
 data class ExternalAccountUiModel(
@@ -113,6 +114,13 @@ class AccountsViewModel @Inject constructor(
         connected to playlistCount
     }
 
+    private val spotifyStateFlow = combine(
+        userPreferencesRepository.spotifyAuthCookiesFlow.map { !it.isNullOrBlank() },
+        userPreferencesRepository.spotifyUserNameFlow
+    ) { connected, userName ->
+        connected to (userName ?: "Spotify User")
+    }
+
     /**
      * Re-fetched on a fixed cadence, but only while something downstream collects [uiState],
      * so the polling stops as soon as the Accounts screen goes away.
@@ -183,9 +191,10 @@ class AccountsViewModel @Inject constructor(
                 youTubeStateFlow
             )
         ) { it.toList() },
+        spotifyStateFlow,
         listenBrainzStateFlow,
         loggingOutServices
-    ) { states, listenBrainz, activeLogouts ->
+    ) { states, (spotifyConnected, spotifyUserName), listenBrainz, activeLogouts ->
         val (navidromeConnected, navidromePlaylistCount) = states[0]
         val (jellyfinConnected, jellyfinPlaylistCount) = states[1]
         val (youTubeConnected, youTubePlaylistCount) = states[2]
@@ -240,6 +249,17 @@ class AccountsViewModel @Inject constructor(
                     )
                 )
             }
+            if (spotifyConnected) {
+                add(
+                    ExternalAccountUiModel(
+                        service = ExternalServiceAccount.SPOTIFY,
+                        title = "Spotify",
+                        accountLabel = spotifyUserName,
+                        syncedContentLabel = "Private Playlists & Liked Songs Active",
+                        isLoggingOut = ExternalServiceAccount.SPOTIFY in activeLogouts
+                    )
+                )
+            }
             if (listenBrainz != null) {
                 add(
                     ExternalAccountUiModel(
@@ -267,6 +287,7 @@ class AccountsViewModel @Inject constructor(
             if (!navidromeConnected) add(ExternalServiceAccount.NAVIDROME)
             if (!jellyfinConnected) add(ExternalServiceAccount.JELLYFIN)
             if (!youTubeConnected) add(ExternalServiceAccount.YOUTUBE_MUSIC)
+            if (!spotifyConnected) add(ExternalServiceAccount.SPOTIFY)
             if (listenBrainz == null) add(ExternalServiceAccount.LISTENBRAINZ)
         }
 
@@ -292,6 +313,7 @@ class AccountsViewModel @Inject constructor(
                             userPreferencesRepository.setYouTubeVisitorData(null)
                         }
                         ExternalServiceAccount.LISTENBRAINZ -> listenBrainzRepository.disconnect()
+                        ExternalServiceAccount.SPOTIFY -> userPreferencesRepository.clearSpotifyAuth()
                     }
                 }
             } finally {
