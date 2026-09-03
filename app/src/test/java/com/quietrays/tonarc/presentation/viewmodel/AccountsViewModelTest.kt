@@ -139,4 +139,38 @@ class AccountsViewModelTest {
 
         coVerify(exactly = 1) { userPreferencesRepository.clearSpotifyAuth() }
     }
+
+    @Test
+    fun `connectSpotify with valid raw token saves formatted sp_dc cookie and returns true`() = runTest {
+        val result = viewModel.connectSpotify("AQB...test_raw_token_more_than_20_chars")
+        assertTrue(result)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            userPreferencesRepository.setSpotifyAuthCookies("sp_dc=AQB...test_raw_token_more_than_20_chars")
+        }
+    }
+
+    @Test
+    fun `connectSpotify with full cookie header extracts sp_dc and returns true`() = runTest {
+        val result = viewModel.connectSpotify("sp_dc=AQB_cookie_val_12345; Path=/; Domain=.spotify.com")
+        assertTrue(result)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            userPreferencesRepository.setSpotifyAuthCookies("sp_dc=AQB_cookie_val_12345")
+        }
+    }
+
+    @Test
+    fun `connectSpotify with invalid or blank input returns false`() = runTest {
+        assertFalse(viewModel.connectSpotify(""))
+        assertFalse(viewModel.connectSpotify("   "))
+        assertFalse(viewModel.connectSpotify("short"))
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) {
+            userPreferencesRepository.setSpotifyAuthCookies(any())
+        }
+    }
 }

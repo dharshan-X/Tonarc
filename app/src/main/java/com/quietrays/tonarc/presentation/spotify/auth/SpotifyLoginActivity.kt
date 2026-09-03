@@ -2,12 +2,19 @@ package com.quietrays.tonarc.presentation.spotify.auth
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import android.webkit.CookieManager
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -25,9 +32,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -54,13 +65,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.quietrays.tonarc.ui.theme.TonarcTheme
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
+
+private const val SPOTIFY_LOGIN_URL = "https://accounts.spotify.com/en/login?continue=https%3A%2F%2Fopen.spotify.com%2F"
+private const val DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 @AndroidEntryPoint
 class SpotifyLoginActivity : ComponentActivity() {
@@ -74,10 +90,17 @@ class SpotifyLoginActivity : ComponentActivity() {
 
         setContent {
             TonarcTheme {
+                val context = LocalContext.current
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 var isLoading by remember { mutableStateOf(true) }
+                var pageError by remember { mutableStateOf<String?>(null) }
                 var showPasteDialog by remember { mutableStateOf(false) }
+                var webViewInstance by remember { mutableStateOf<WebView?>(null) }
                 val snackbarHostState = remember { SnackbarHostState() }
+
+                BackHandler(enabled = webViewInstance?.canGoBack() == true) {
+                    webViewInstance?.goBack()
+                }
 
                 LaunchedEffect(uiState) {
                     when (val state = uiState) {
@@ -116,6 +139,27 @@ class SpotifyLoginActivity : ComponentActivity() {
                                 }
                             },
                             actions = {
+                                IconButton(onClick = {
+                                    pageError = null
+                                    webViewInstance?.reload()
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Refresh,
+                                        contentDescription = "Refresh"
+                                    )
+                                }
+                                IconButton(onClick = {
+                                    runCatching {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse(SPOTIFY_LOGIN_URL))
+                                        )
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                                        contentDescription = "Open in External Browser"
+                                    )
+                                }
                                 IconButton(onClick = { showPasteDialog = true }) {
                                     Icon(
                                         imageVector = Icons.Rounded.ContentPaste,
@@ -178,7 +222,9 @@ class SpotifyLoginActivity : ComponentActivity() {
                             .padding(innerPadding)
                     ) {
                         SpotifyLoginWebView(
+                            onWebViewReady = { webViewInstance = it },
                             onPageLoadingChanged = { loading -> isLoading = loading },
+                            onErrorChanged = { pageError = it },
                             onCookiesDetected = { cookies ->
                                 viewModel.onCookiesCaptured(cookies)
                             }
@@ -186,6 +232,66 @@ class SpotifyLoginActivity : ComponentActivity() {
 
                         if (isLoading || uiState is SpotifyLoginUiState.LoggingIn) {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+
+                        pageError?.let { error ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp)
+                                    .align(Alignment.Center),
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(20.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.WarningAmber,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(40.dp)
+                                    )
+                                    Text(
+                                        text = "Could not load Spotify Login",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        FilledTonalButton(
+                                            onClick = {
+                                                pageError = null
+                                                webViewInstance?.loadUrl(SPOTIFY_LOGIN_URL)
+                                            }
+                                        ) {
+                                            Text("Retry")
+                                        }
+                                        OutlinedButton(
+                                            onClick = {
+                                                runCatching {
+                                                    context.startActivity(
+                                                        Intent(Intent.ACTION_VIEW, Uri.parse(SPOTIFY_LOGIN_URL))
+                                                    )
+                                                }
+                                            }
+                                        ) {
+                                            Text("Open in Browser")
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -279,26 +385,48 @@ fun SpotifyCookieInputDialog(
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun SpotifyLoginWebView(
+    onWebViewReady: (WebView) -> Unit,
     onPageLoadingChanged: (Boolean) -> Unit,
+    onErrorChanged: (String?) -> Unit,
     onCookiesDetected: (String) -> Unit
 ) {
     AndroidView(
         factory = { ctx ->
             WebView(ctx).apply {
+                val cookieManager = CookieManager.getInstance()
+                cookieManager.setAcceptCookie(true)
+                cookieManager.setAcceptThirdPartyCookies(this, true)
+
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
                     databaseEnabled = true
-                    mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                    userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    useWideViewPort = true
+                    loadWithOverviewMode = true
+                    cacheMode = WebSettings.LOAD_DEFAULT
+                    userAgentString = DESKTOP_USER_AGENT
+                }
+
+                webChromeClient = object : WebChromeClient() {
+                    override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                        if (newProgress >= 100) {
+                            onPageLoadingChanged(false)
+                        }
+                    }
                 }
 
                 webViewClient = object : WebViewClient() {
+                    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                        super.onPageStarted(view, url, favicon)
+                        onPageLoadingChanged(true)
+                        onErrorChanged(null)
+                    }
+
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         onPageLoadingChanged(false)
 
-                        val cookieManager = CookieManager.getInstance()
                         val dotSpotifyCookies = cookieManager.getCookie(".spotify.com") ?: ""
                         val accountsCookies = cookieManager.getCookie("https://accounts.spotify.com") ?: ""
                         val openCookies = cookieManager.getCookie("https://open.spotify.com") ?: ""
@@ -321,9 +449,31 @@ private fun SpotifyLoginWebView(
                             onCookiesDetected(combinedCookies)
                         }
                     }
+
+                    override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                        super.onReceivedError(view, request, error)
+                        if (request?.isForMainFrame == true) {
+                            onPageLoadingChanged(false)
+                            val desc = error?.description?.toString() ?: "Error loading page"
+                            Timber.w("Spotify login WebView main-frame error: $desc")
+                            onErrorChanged(desc)
+                        }
+                    }
+
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                        val uri = request?.url ?: return false
+                        val urlStr = uri.toString()
+                        if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
+                            return false
+                        }
+                        // Intercept intent:// or spotify:// or market:// schemes so webview does not error
+                        Timber.d("Intercepted external scheme in Spotify login: $urlStr")
+                        return true
+                    }
                 }
 
-                loadUrl("https://accounts.spotify.com/en/login")
+                onWebViewReady(this)
+                loadUrl(SPOTIFY_LOGIN_URL)
             }
         },
         modifier = Modifier.fillMaxSize()

@@ -1,8 +1,10 @@
 package com.quietrays.tonarc.presentation.components
 
+import android.app.Activity
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import timber.log.Timber
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -494,7 +496,13 @@ fun ImportSpotifyPlaylistDialog(
 
                                         Button(
                                             onClick = {
-                                                context.startActivity(Intent(context, SpotifyLoginActivity::class.java))
+                                                val intent = Intent(context, SpotifyLoginActivity::class.java).apply {
+                                                    if (context !is Activity) {
+                                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                    }
+                                                }
+                                                runCatching { context.startActivity(intent) }
+                                                    .onFailure { Timber.e(it, "Failed to start SpotifyLoginActivity from dialog") }
                                             },
                                             colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
                                             shape = RoundedCornerShape(12.dp),

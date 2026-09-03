@@ -45,6 +45,12 @@
     <string name="accounts_youtube_connect_browser">Sign in via Web Browser</string>
     <string name="accounts_youtube_connect_token">Directly Paste Token / Cookie</string>
     <string name="accounts_youtube_update_token">Update Token / Cookies</string>
+    <string name="accounts_spotify_connect_choice_title">Connect Spotify</string>
+    <string name="accounts_spotify_connect_choice_body">Choose how you want to connect your Spotify account:</string>
+    <string name="accounts_spotify_connect_browser">Sign in via Web Browser</string>
+    <string name="accounts_spotify_connect_token">Paste Cookie / Token</string>
+    <string name="accounts_spotify_token_success">Spotify credentials saved successfully.</string>
+    <string name="accounts_spotify_token_invalid">Invalid Spotify cookie. sp_dc cookie not found.</string>
     <string name="import_file">Import</string>
     <string name="search">Search</string>
 

@@ -2,10 +2,13 @@
 
 package com.quietrays.tonarc.presentation.screens
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import com.quietrays.tonarc.presentation.spotify.auth.SpotifyCookieInputDialog
+import timber.log.Timber
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -128,6 +131,8 @@ fun AccountsScreen(
     var showListenBrainzDialog by remember { mutableStateOf(false) }
     var showYouTubeConnectChoiceDialog by remember { mutableStateOf(false) }
     var showYouTubeTokenDialog by remember { mutableStateOf(false) }
+    var showSpotifyConnectChoiceDialog by remember { mutableStateOf(false) }
+    var showSpotifyCookieDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(listenBrainzConnectState) {
         if (listenBrainzConnectState == ListenBrainzConnectState.Success) {
@@ -209,7 +214,7 @@ fun AccountsScreen(
                 showYouTubeConnectChoiceDialog = true
             }
             ExternalServiceAccount.SPOTIFY -> {
-                context.startActivity(Intent(context, SpotifyLoginActivity::class.java))
+                showSpotifyConnectChoiceDialog = true
             }
             else -> {
                 openService(
@@ -409,6 +414,65 @@ fun AccountsScreen(
                         showYouTubeTokenDialog = false
                     } else {
                         Toast.makeText(context, context.getString(R.string.accounts_youtube_token_invalid), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        }
+
+        if (showSpotifyConnectChoiceDialog) {
+            AlertDialog(
+                onDismissRequest = { showSpotifyConnectChoiceDialog = false },
+                title = { Text(stringResource(R.string.accounts_spotify_connect_choice_title)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = stringResource(R.string.accounts_spotify_connect_choice_body),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        FilledTonalButton(
+                            onClick = {
+                                showSpotifyConnectChoiceDialog = false
+                                safeStartActivity(
+                                    context = context,
+                                    intent = Intent(context, SpotifyLoginActivity::class.java)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.accounts_spotify_connect_browser))
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                showSpotifyConnectChoiceDialog = false
+                                showSpotifyCookieDialog = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Rounded.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(stringResource(R.string.accounts_spotify_connect_token))
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showSpotifyConnectChoiceDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        if (showSpotifyCookieDialog) {
+            SpotifyCookieInputDialog(
+                onDismiss = { showSpotifyCookieDialog = false },
+                onSubmit = { cookieInput ->
+                    val success = viewModel.connectSpotify(cookieInput)
+                    if (success) {
+                        Toast.makeText(context, context.getString(R.string.accounts_spotify_token_success), Toast.LENGTH_SHORT).show()
+                        showSpotifyCookieDialog = false
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.accounts_spotify_token_invalid), Toast.LENGTH_SHORT).show()
                     }
                 }
             )
@@ -830,8 +894,12 @@ private fun safeStartActivity(
     context: Context,
     intent: Intent
 ) {
+    if (context !is Activity) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
     runCatching { context.startActivity(intent) }
-        .onFailure {
+        .onFailure { e ->
+            Timber.e(e, "Failed to start activity: ${intent.component?.className}")
             Toast.makeText(context, context.getString(R.string.accounts_unable_open_screen), Toast.LENGTH_SHORT).show()
         }
 }

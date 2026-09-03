@@ -339,6 +339,26 @@ class AccountsViewModel @Inject constructor(
         return true
     }
 
+    fun connectSpotify(rawCookieOrToken: String): Boolean {
+        val trimmed = rawCookieOrToken.trim()
+        if (trimmed.isBlank()) return false
+
+        val spDc = when {
+            trimmed.contains("sp_dc=") -> trimmed.substringAfter("sp_dc=").substringBefore(";").trim()
+            trimmed.startsWith("sp_dc") -> trimmed.substringAfter("=").substringBefore(";").trim()
+            !trimmed.contains(";") && !trimmed.contains("=") && trimmed.length >= 20 -> trimmed
+            else -> null
+        }
+
+        if (spDc.isNullOrBlank()) return false
+
+        val formattedCookie = "sp_dc=$spDc"
+        viewModelScope.launch {
+            userPreferencesRepository.setSpotifyAuthCookies(formattedCookie)
+        }
+        return true
+    }
+
     fun connectListenBrainz(token: String, serverUrl: String) {
         if (_listenBrainzConnectState.value == ListenBrainzConnectState.Connecting) return
         viewModelScope.launch {
