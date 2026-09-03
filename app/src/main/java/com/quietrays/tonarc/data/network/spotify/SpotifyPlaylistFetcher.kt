@@ -10,6 +10,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
+import java.nio.ByteBuffer
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -31,6 +34,7 @@ class SpotifyPlaylistFetcher @Inject constructor(
         private const val TAG = "SpotifyPlaylistFetcher"
         private const val USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        private const val API_TOKEN_URL = "https://open.spotify.com/api/token"
         private const val TOKEN_URL =
             "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
         private const val WEB_API_BASE_URL = "https://api.spotify.com/v1/playlists/"
@@ -100,6 +104,42 @@ class SpotifyPlaylistFetcher @Inject constructor(
     }
 
     /**
+     * Generates a dynamic Spotify TOTP code used by Spotify's Web Player to authenticate requests
+     * against `https://open.spotify.com/api/token`.
+     */
+    private fun generateSpotifyTotp(timestampMs: Long = System.currentTimeMillis()): Pair<String, Int> {
+        return try {
+            val rawSecret = ",7/*F(\"rLJ2oxaKL^f+E1xvP@N"
+            val version = 61
+            val transformed = buildString {
+                for ((i, c) in rawSecret.withIndex()) {
+                    append(c.code xor ((i % 33) + 9))
+                }
+            }
+            val hexStr = transformed.toByteArray(Charsets.UTF_8).joinToString("") { "%02x".format(it) }
+            val secretBytes = ByteArray(hexStr.length / 2) { idx ->
+                hexStr.substring(idx * 2, idx * 2 + 2).toInt(16).toByte()
+            }
+            val counter = timestampMs / 1000 / 30
+            val counterBytes = ByteBuffer.allocate(8).putLong(counter).array()
+            val mac = Mac.getInstance("HmacSHA1")
+            mac.init(SecretKeySpec(secretBytes, "HmacSHA1"))
+            val hmac = mac.doFinal(counterBytes)
+            val offset = (hmac[hmac.size - 1].toInt() and 0x0f)
+            val binary = ((hmac[offset].toInt() and 0x7f) shl 24) or
+                    ((hmac[offset + 1].toInt() and 0xff) shl 16) or
+                    ((hmac[offset + 2].toInt() and 0xff) shl 8) or
+                    (hmac[offset + 3].toInt() and 0xff)
+            val code = binary % 1000000
+            val totp = "%06d".format(code)
+            Pair(totp, version)
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Failed to generate Spotify TOTP")
+            Pair("000000", 61)
+        }
+    }
+
+    /**
      * Obtains an access token from the Spotify Web Player endpoint, attaching authenticated
      * session cookies if present in preferences. Caches the token in memory until expiration,
      * unless [forceRefresh] is true or the user's cookies have changed.
@@ -114,44 +154,61 @@ class SpotifyPlaylistFetcher @Inject constructor(
             return@withContext currentToken
         }
 
-        try {
-            val requestBuilder = Request.Builder()
-                .url(TOKEN_URL)
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "application/json")
-                .get()
+        // Try modern /api/token with TOTP first, then fallback to legacy TOKEN_URL
+        val (totp, version) = generateSpotifyTotp(now)
+        val modernUrl = "$API_TOKEN_URL?reason=init&productType=web_player&totp=$totp&totpServer=unavailable&totpVer=$version"
+        val candidateUrls = listOf(modernUrl, TOKEN_URL)
 
-            if (!savedCookies.isNullOrBlank()) {
-                requestBuilder.header("Cookie", savedCookies)
-            }
+        for (url in candidateUrls) {
+            try {
+                val requestBuilder = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", USER_AGENT)
+                    .header("Referer", "https://open.spotify.com/")
+                    .header("Origin", "https://open.spotify.com")
+                    .header("Accept", "application/json")
+                    .get()
 
-            val request = requestBuilder.build()
-
-            okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Timber.tag(TAG).w("Failed to fetch access token: HTTP %d", response.code)
-                    if (forceRefresh || cookiesChanged) {
-                        cachedAccessToken = null
-                        tokenExpirationTimestampMs = 0L
-                        cachedCookies = null
-                    }
-                    return@withContext null
+                if (!savedCookies.isNullOrBlank()) {
+                    requestBuilder.header("Cookie", savedCookies)
                 }
-                val bodyString = response.body.string()
-                if (bodyString.isBlank()) return@withContext null
-                val json = JSONObject(bodyString)
-                val token = json.optString("accessToken").takeIf { it.isNotBlank() } ?: return@withContext null
-                val expMs = json.optLong("accessTokenExpirationTimestampMs", 0L)
 
-                cachedAccessToken = token
-                tokenExpirationTimestampMs = if (expMs > 0) expMs else (now + DEFAULT_TOKEN_TTL_MS)
-                cachedCookies = savedCookies
-                token
+                val request = requestBuilder.build()
+
+                val token = okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Timber.tag(TAG).w("Token request failed for %s: HTTP %d", url, response.code)
+                        null
+                    } else {
+                        val bodyString = response.body.string()
+                        if (bodyString.isNotBlank()) {
+                            val json = JSONObject(bodyString)
+                            val tokenStr = json.optString("accessToken").takeIf { it.isNotBlank() }
+                            val expMs = json.optLong("accessTokenExpirationTimestampMs", 0L)
+                            if (tokenStr != null) {
+                                cachedAccessToken = tokenStr
+                                tokenExpirationTimestampMs = if (expMs > 0) expMs else (now + DEFAULT_TOKEN_TTL_MS)
+                                cachedCookies = savedCookies
+                                tokenStr
+                            } else null
+                        } else null
+                    }
+                }
+
+                if (token != null) {
+                    return@withContext token
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Exception fetching token from %s", url)
             }
-        } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "Exception while fetching Spotify token")
-            null
         }
+
+        if (forceRefresh || cookiesChanged) {
+            cachedAccessToken = null
+            tokenExpirationTimestampMs = 0L
+            cachedCookies = null
+        }
+        null
     }
 
     /**

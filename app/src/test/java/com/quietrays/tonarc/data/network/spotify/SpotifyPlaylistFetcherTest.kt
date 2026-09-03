@@ -104,7 +104,7 @@ class SpotifyPlaylistFetcherTest {
     @Test
     fun getAnonymousToken_fetchesAndCachesToken() = runBlocking {
         interceptor.responseProvider = { request ->
-            if (request.url.toString().contains("get_access_token")) {
+            if (request.url.toString().contains("token")) {
                 createJsonResponse(
                     request,
                     200,
@@ -138,7 +138,7 @@ class SpotifyPlaylistFetcherTest {
     fun getAccessToken_withCookies_attachesCookieHeader() = runBlocking {
         cookiesFlow.value = "sp_dc=mock_dc_cookie_value; sp_key=xyz"
         interceptor.responseProvider = { request ->
-            if (request.url.toString().contains("get_access_token")) {
+            if (request.url.toString().contains("token")) {
                 createJsonResponse(
                     request,
                     200,
@@ -263,7 +263,7 @@ class SpotifyPlaylistFetcherTest {
         interceptor.responseProvider = { request ->
             val url = request.url.toString()
             when {
-                url.contains("get_access_token") -> {
+                url.contains("token") -> {
                     createJsonResponse(
                         request,
                         200,
@@ -382,7 +382,7 @@ class SpotifyPlaylistFetcherTest {
         interceptor.responseProvider = { request ->
             val url = request.url.toString()
             when {
-                url.contains("get_access_token") -> {
+                url.contains("token") -> {
                     createJsonResponse(
                         request,
                         200,
@@ -454,7 +454,7 @@ class SpotifyPlaylistFetcherTest {
         interceptor.responseProvider = { request ->
             val url = request.url.toString()
             when {
-                url.contains("get_access_token") -> createJsonResponse(request, 500, "{}")
+                url.contains("token") -> createJsonResponse(request, 500, "{}")
                 url.contains("/embed/playlist/embed_playlist_id") -> {
                     val embedHtml = """
                         <!DOCTYPE html>
@@ -530,7 +530,7 @@ class SpotifyPlaylistFetcherTest {
         interceptor.responseProvider = { request ->
             val url = request.url.toString()
             when {
-                url.contains("get_access_token") -> createJsonResponse(request, 500, "{}")
+                url.contains("token") -> createJsonResponse(request, 500, "{}")
                 url.contains("/embed/playlist/oembed_playlist_id") -> {
                     createHtmlResponse(request, 200, "<html><body>No Next Data Here</body></html>")
                 }
@@ -575,7 +575,7 @@ class SpotifyPlaylistFetcherTest {
         interceptor.responseProvider = { request ->
             val url = request.url.toString()
             when {
-                url.contains("get_access_token") -> {
+                url.contains("token") -> {
                     createJsonResponse(
                         request,
                         200,
@@ -608,7 +608,7 @@ class SpotifyPlaylistFetcherTest {
         interceptor.responseProvider = { request ->
             val url = request.url.toString()
             when {
-                url.contains("get_access_token") -> {
+                url.contains("token") -> {
                     createJsonResponse(
                         request,
                         200,
@@ -640,7 +640,7 @@ class SpotifyPlaylistFetcherTest {
         interceptor.responseProvider = { request ->
             val url = request.url.toString()
             when {
-                url.contains("get_access_token") -> {
+                url.contains("token") -> {
                     createJsonResponse(
                         request,
                         200,
