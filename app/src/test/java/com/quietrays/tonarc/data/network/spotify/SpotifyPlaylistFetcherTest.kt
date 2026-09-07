@@ -722,5 +722,124 @@ class SpotifyPlaylistFetcherTest {
         assertThat(playlist.tracks).hasSize(1)
         assertThat(playlist.tracks[0].title).isEqualTo("Embed Track")
     }
+
+    @Test
+    fun fetchPlaylist_pathfinderSuccess_parsesPlaylistAndTracks() = runBlocking {
+        interceptor.responseProvider = { request ->
+            val url = request.url.toString()
+            when {
+                url.contains("token") -> {
+                    createJsonResponse(
+                        request,
+                        200,
+                        """
+                        {
+                          "accessToken": "valid_token",
+                          "accessTokenExpirationTimestampMs": ${System.currentTimeMillis() + 3600000}
+                        }
+                        """.trimIndent()
+                    )
+                }
+                url.contains("pathfinder/v1/query") -> {
+                    val pathfinderJson = """
+                        {
+                          "data": {
+                            "playlistV2": {
+                              "__typename": "Playlist",
+                              "name": "Pathfinder Top Hits",
+                              "description": "Top Hits from Pathfinder GraphQL",
+                              "ownerV2": {
+                                "data": {
+                                  "name": "Spotify Pathfinder"
+                                }
+                              },
+                              "images": {
+                                "items": [
+                                  {
+                                    "sources": [
+                                      { "url": "https://i.scdn.co/image/pathfinder_cover.jpg" }
+                                    ]
+                                  }
+                                ]
+                              },
+                              "content": {
+                                "totalCount": 2,
+                                "items": [
+                                  {
+                                    "itemV2": {
+                                      "data": {
+                                        "__typename": "Track",
+                                        "name": "Ain't In LA",
+                                        "uri": "spotify:track:02HyFYmpzt02VJ8k0CqxKj",
+                                        "trackDuration": { "totalMilliseconds": 184927 },
+                                        "albumOfTrack": {
+                                          "name": "Ain't In LA Single",
+                                          "coverArt": {
+                                            "sources": [
+                                              { "url": "https://i.scdn.co/image/track1_cover.jpg" }
+                                            ]
+                                          }
+                                        },
+                                        "artists": {
+                                          "items": [
+                                            { "profile": { "name": "ADÉLA" } }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "itemV2": {
+                                      "data": {
+                                        "__typename": "Track",
+                                        "name": "BbY WOW",
+                                        "uri": "spotify:track:03XYZmpzt02VJ8k0CqxKj",
+                                        "trackDuration": { "totalMilliseconds": 210000 },
+                                        "albumOfTrack": {
+                                          "name": "BbY WOW Album",
+                                          "coverArt": {
+                                            "sources": [
+                                              { "url": "https://i.scdn.co/image/track2_cover.jpg" }
+                                            ]
+                                          }
+                                        },
+                                        "artists": {
+                                          "items": [
+                                            { "profile": { "name": "Artist Two" } }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        }
+                    """.trimIndent()
+                    createJsonResponse(request, 200, pathfinderJson)
+                }
+                else -> createJsonResponse(request, 404, "{}")
+            }
+        }
+
+        val result = fetcher.fetchPlaylist("37i9dQZF1DXcBWIGoYBM5M")
+        assertThat(result.isSuccess).isTrue()
+        val playlist = result.getOrThrow()
+        assertThat(playlist.title).isEqualTo("Pathfinder Top Hits")
+        assertThat(playlist.description).isEqualTo("Top Hits from Pathfinder GraphQL")
+        assertThat(playlist.author).isEqualTo("Spotify Pathfinder")
+        assertThat(playlist.coverUri).isEqualTo("https://i.scdn.co/image/pathfinder_cover.jpg")
+        assertThat(playlist.tracks).hasSize(2)
+        assertThat(playlist.tracks[0].id).isEqualTo("02HyFYmpzt02VJ8k0CqxKj")
+        assertThat(playlist.tracks[0].title).isEqualTo("Ain't In LA")
+        assertThat(playlist.tracks[0].artist).isEqualTo("ADÉLA")
+        assertThat(playlist.tracks[0].album).isEqualTo("Ain't In LA Single")
+        assertThat(playlist.tracks[0].durationMs).isEqualTo(184927L)
+        assertThat(playlist.tracks[0].coverUri).isEqualTo("https://i.scdn.co/image/track1_cover.jpg")
+        assertThat(playlist.tracks[1].id).isEqualTo("03XYZmpzt02VJ8k0CqxKj")
+        assertThat(playlist.tracks[1].title).isEqualTo("BbY WOW")
+        assertThat(playlist.tracks[1].artist).isEqualTo("Artist Two")
+    }
 }
 

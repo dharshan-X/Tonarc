@@ -4,8 +4,10 @@ import com.quietrays.tonarc.data.preferences.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -38,6 +40,9 @@ class SpotifyPlaylistFetcher @Inject constructor(
         private const val SERVER_TIME_URL = "https://open.spotify.com/api/server-time"
         private const val TOKEN_URL =
             "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
+        private const val PATHFINDER_URL = "https://api-partner.spotify.com/pathfinder/v1/query"
+        private const val FETCH_PLAYLIST_OPERATION = "fetchPlaylist"
+        private const val FETCH_PLAYLIST_HASH = "86dde7b9d9356e2369414647cf6950cfed96e778e129cfdfc99aea6c1613b3b0"
         private const val WEB_API_BASE_URL = "https://api.spotify.com/v1/playlists/"
         private const val ME_URL = "https://api.spotify.com/v1/me"
         private const val EMBED_BASE_URL = "https://open.spotify.com/embed/playlist/"
@@ -351,6 +356,14 @@ class SpotifyPlaylistFetcher @Inject constructor(
             var wasForbiddenOrNotFound = false
             val token = getAccessToken()
             if (token != null) {
+                // 1. Try modern Pathfinder GraphQL (active Spotify Web Player endpoint)
+                when (val pfResult = fetchFromPathfinder(playlistId, token)) {
+                    is WebApiPlaylistResult.Success -> return@runCatching pfResult.playlist
+                    is WebApiPlaylistResult.ForbiddenOrNotFound -> wasForbiddenOrNotFound = true
+                    is WebApiPlaylistResult.OtherError -> { /* continue to fallbacks */ }
+                }
+
+                // 2. Try Spotify Web API endpoint fallback
                 when (val apiResult = fetchFromWebApi(playlistId, token)) {
                     is WebApiPlaylistResult.Success -> return@runCatching apiResult.playlist
                     is WebApiPlaylistResult.ForbiddenOrNotFound -> wasForbiddenOrNotFound = true
@@ -378,6 +391,169 @@ class SpotifyPlaylistFetcher @Inject constructor(
             }
 
             throw IOException("Failed to fetch Spotify playlist '$playlistId' via Web API and Embed fallbacks")
+        }
+    }
+
+    private fun fetchFromPathfinder(playlistId: String, token: String): WebApiPlaylistResult {
+        try {
+            val uri = if (playlistId.startsWith("spotify:playlist:")) playlistId else "spotify:playlist:$playlistId"
+            var offset = 0
+            val limit = 100
+            val tracksList = mutableListOf<SpotifyTrack>()
+            var totalCount = 0
+            var title = "Spotify Playlist"
+            var description: String? = null
+            var author: String? = null
+            var coverUri: String? = null
+
+            while (tracksList.size < MAX_TRACKS) {
+                val variables = JSONObject().apply {
+                    put("uri", uri)
+                    put("offset", offset)
+                    put("limit", limit)
+                    put("enableWatchFeedEntrypoint", false)
+                }
+                val extensions = JSONObject().apply {
+                    put("persistedQuery", JSONObject().apply {
+                        put("version", 1)
+                        put("sha256Hash", FETCH_PLAYLIST_HASH)
+                    })
+                }
+                val payload = JSONObject().apply {
+                    put("variables", variables)
+                    put("operationName", FETCH_PLAYLIST_OPERATION)
+                    put("extensions", extensions)
+                }
+
+                val request = Request.Builder()
+                    .url(PATHFINDER_URL)
+                    .header("Authorization", "Bearer $token")
+                    .header("Content-Type", "application/json")
+                    .header("User-Agent", USER_AGENT)
+                    .header("Referer", "https://open.spotify.com/")
+                    .header("Origin", "https://open.spotify.com")
+                    .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
+                    .build()
+
+                val (pageTracks, total, isFinished) = okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Timber.tag(TAG).w("Pathfinder query failed: HTTP %d", response.code)
+                        if (response.code == 401) {
+                            cachedAccessToken = null
+                            tokenExpirationTimestampMs = 0L
+                            cachedCookies = null
+                        }
+                        if (response.code == 404 || response.code == 403) {
+                            return WebApiPlaylistResult.ForbiddenOrNotFound(response.code)
+                        }
+                        return@use Triple(null, 0, true)
+                    }
+                    val bodyString = response.body.string()
+                    if (bodyString.isBlank()) return@use Triple(null, 0, true)
+                    val root = JSONObject(bodyString)
+                    val data = root.optJSONObject("data") ?: return@use Triple(null, 0, true)
+                    val pl = data.optJSONObject("playlistV2") ?: return@use Triple(null, 0, true)
+                    val typename = pl.optString("__typename")
+
+                    if (typename == "GenericError" || typename == "NotFound") {
+                        val message = pl.optString("message")
+                        if (message.contains("404") || message.contains("403") || message.contains("FORBIDDEN") || message.contains("NOT_FOUND")) {
+                            return WebApiPlaylistResult.ForbiddenOrNotFound(403)
+                        }
+                        return@use Triple(null, 0, true)
+                    }
+
+                    if (offset == 0) {
+                        title = pl.optString("name").takeIf { it.isNotBlank() } ?: title
+                        description = pl.optString("description").takeIf { it.isNotBlank() }
+                        author = pl.optJSONObject("ownerV2")?.optJSONObject("data")?.optString("name")
+                            ?: pl.optJSONObject("ownerV2")?.optJSONObject("data")?.optString("username")
+                        coverUri = pl.optJSONObject("images")?.optJSONArray("items")
+                            ?.optJSONObject(0)?.optJSONArray("sources")
+                            ?.optJSONObject(0)?.optString("url")
+                    }
+
+                    val content = pl.optJSONObject("content")
+                    val total = content?.optInt("totalCount", 0) ?: 0
+                    val items = content?.optJSONArray("items")
+                    val list = mutableListOf<SpotifyTrack>()
+
+                    if (items != null) {
+                        for (i in 0 until items.length()) {
+                            val item = items.optJSONObject(i) ?: continue
+                            val itemV2 = item.optJSONObject("itemV2") ?: continue
+                            val trackData = itemV2.optJSONObject("data") ?: continue
+                            if (trackData.optString("__typename") != "Track") continue
+
+                            val trackName = trackData.optString("name").takeIf { it.isNotBlank() } ?: continue
+                            val trackUri = trackData.optString("uri")
+                            val trackId = trackUri.removePrefix("spotify:track:").ifBlank { continue }
+                            val durationMs = trackData.optJSONObject("trackDuration")?.optLong("totalMilliseconds", 0L) ?: 0L
+
+                            val albumObj = trackData.optJSONObject("albumOfTrack")
+                            val albumName = albumObj?.optString("name")?.takeIf { it.isNotBlank() }
+                            val trackCover = albumObj?.optJSONObject("coverArt")?.optJSONArray("sources")
+                                ?.optJSONObject(0)?.optString("url") ?: coverUri
+
+                            val artistsArray = trackData.optJSONObject("artists")?.optJSONArray("items")
+                            val artists = mutableListOf<String>()
+                            if (artistsArray != null) {
+                                for (a in 0 until artistsArray.length()) {
+                                    val aName = artistsArray.optJSONObject(a)?.optJSONObject("profile")?.optString("name")
+                                    if (!aName.isNullOrBlank()) {
+                                        artists.add(aName)
+                                    }
+                                }
+                            }
+                            val mainArtist = artists.firstOrNull() ?: "Unknown Artist"
+
+                            list.add(
+                                SpotifyTrack(
+                                    id = trackId,
+                                    title = trackName,
+                                    artist = mainArtist,
+                                    artists = if (artists.isNotEmpty()) artists else listOf(mainArtist),
+                                    album = albumName,
+                                    durationMs = durationMs,
+                                    coverUri = trackCover
+                                )
+                            )
+                        }
+                    }
+
+                    Triple(list, total, list.isEmpty() || list.size < limit)
+                }
+
+                if (pageTracks == null) {
+                    break
+                }
+
+                totalCount = total
+                tracksList.addAll(pageTracks)
+
+                if (isFinished || tracksList.size >= totalCount || tracksList.size >= MAX_TRACKS) {
+                    break
+                }
+                offset = tracksList.size
+            }
+
+            if (tracksList.isNotEmpty()) {
+                return WebApiPlaylistResult.Success(
+                    SpotifyPlaylist(
+                        id = playlistId,
+                        title = title,
+                        description = description,
+                        author = author,
+                        coverUri = coverUri,
+                        trackCount = if (totalCount > 0) totalCount else tracksList.size,
+                        tracks = tracksList
+                    )
+                )
+            }
+            return WebApiPlaylistResult.OtherError(-1)
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Error fetching from Spotify Pathfinder API")
+            return WebApiPlaylistResult.OtherError(-1)
         }
     }
 
@@ -511,15 +687,21 @@ class SpotifyPlaylistFetcher @Inject constructor(
         }
     }
 
-    private fun fetchFromEmbed(playlistId: String): SpotifyPlaylist? {
+    private suspend fun fetchFromEmbed(playlistId: String): SpotifyPlaylist? {
         try {
             val url = "$EMBED_BASE_URL$playlistId"
-            val request = Request.Builder()
+            val savedCookies = userPreferencesRepository.spotifyAuthCookiesFlow.first()?.takeIf { it.isNotBlank() }
+            val requestBuilder = Request.Builder()
                 .url(url)
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .get()
-                .build()
+
+            if (!savedCookies.isNullOrBlank()) {
+                requestBuilder.header("Cookie", savedCookies)
+            }
+
+            val request = requestBuilder.build()
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {

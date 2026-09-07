@@ -227,7 +227,7 @@ class SpotifyLoginActivity : ComponentActivity() {
                             onPageLoadingChanged = { loading -> isLoading = loading },
                             onErrorChanged = { pageError = it },
                             onCookiesDetected = { cookies ->
-                                if (uiState !is SpotifyLoginUiState.Error && uiState !is SpotifyLoginUiState.LoggingIn && uiState !is SpotifyLoginUiState.Success) {
+                                if (uiState !is SpotifyLoginUiState.LoggingIn && uiState !is SpotifyLoginUiState.Success) {
                                     viewModel.onCookiesCaptured(cookies)
                                 }
                             }

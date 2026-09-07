@@ -51,8 +51,9 @@ class SpotifyLoginViewModelTest {
         assertTrue(state is SpotifyLoginUiState.Success)
         assertEquals("Test User", (state as SpotifyLoginUiState.Success).accountName)
 
-        coVerify(exactly = 1) { mockUserPreferencesRepository.setSpotifyAuthCookies(cookies) }
-        coVerify(exactly = 1) { mockUserPreferencesRepository.setSpotifyAuthCookies(cookies, userName = "Test User") }
+        val expectedCookies = "sp_dc=valid_sp_dc_123"
+        coVerify(exactly = 1) { mockUserPreferencesRepository.setSpotifyAuthCookies(expectedCookies) }
+        coVerify(exactly = 1) { mockUserPreferencesRepository.setSpotifyAuthCookies(expectedCookies, userName = "Test User") }
     }
 
     @Test

@@ -44,10 +44,12 @@ class SpotifyLoginViewModel @Inject constructor(
             return
         }
 
+        val formattedCookie = "sp_dc=$spDc"
+
         viewModelScope.launch {
             _uiState.value = SpotifyLoginUiState.LoggingIn
             try {
-                userPreferencesRepository.setSpotifyAuthCookies(cookies)
+                userPreferencesRepository.setSpotifyAuthCookies(formattedCookie)
 
                 val token = spotifyPlaylistFetcher.getAccessToken(forceRefresh = true)
                     ?: throw IOException("Failed to obtain Spotify access token")
@@ -55,7 +57,7 @@ class SpotifyLoginViewModel @Inject constructor(
                 val profile = spotifyPlaylistFetcher.fetchCurrentUserProfile(token)
                 val accountName = profile?.second?.takeIf { it.isNotBlank() } ?: "Spotify Account"
 
-                userPreferencesRepository.setSpotifyAuthCookies(cookies, userName = profile?.second)
+                userPreferencesRepository.setSpotifyAuthCookies(formattedCookie, userName = profile?.second)
                 _uiState.value = SpotifyLoginUiState.Success(accountName)
             } catch (e: Exception) {
                 Timber.e(e, "Failed to authenticate Spotify session")
