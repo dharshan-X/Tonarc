@@ -2,7 +2,9 @@ package com.quietrays.tonarc.presentation.visualizer
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import kotlin.math.PI
 import kotlin.math.cos
@@ -111,14 +113,18 @@ fun rememberVisualizerFrame(
     isPlaying: Boolean,
     currentPositionMs: Long
 ): State<VisualizerFrameData> {
+    val currentPositionState by rememberUpdatedState(currentPositionMs)
+    val isPlayingState by rememberUpdatedState(isPlaying)
+
     return produceState(
         initialValue = VisualizerFrameData(),
         key1 = isPlaying
     ) {
         var lastNanos = 0L
         var currentData = VisualizerFrameData()
+        var idleFramesRemaining = 30
 
-        while (true) {
+        while (isPlayingState || idleFramesRemaining > 0) {
             withFrameNanos { frameNanos ->
                 val deltaSec = if (lastNanos == 0L) {
                     0.016f
@@ -127,10 +133,17 @@ fun rememberVisualizerFrame(
                 }
                 lastNanos = frameNanos
 
+                val playing = isPlayingState
+                if (!playing) {
+                    idleFramesRemaining--
+                } else {
+                    idleFramesRemaining = 30
+                }
+
                 currentData = AudioVisualizerEngine.computeFrame(
                     previousFrame = currentData,
-                    isPlaying = isPlaying,
-                    currentPositionMs = currentPositionMs,
+                    isPlaying = playing,
+                    currentPositionMs = currentPositionState,
                     deltaTimeSec = deltaSec
                 )
                 value = currentData

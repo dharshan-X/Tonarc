@@ -102,6 +102,31 @@ class SpotifyPlaylistFetcherTest {
     }
 
     @Test
+    fun deriveSecretBytes_correctlyDerivesUtf8BytesOfDecimalString() {
+        val secret61 = SpotifyPlaylistFetcher.TOTP_SECRETS.first { it.version == 61 }
+        val derivedBytes = SpotifyPlaylistFetcher.deriveSecretBytes(secret61.rawSecret)
+        val derivedString = String(derivedBytes, Charsets.UTF_8)
+        assertThat(derivedString).isEqualTo("376136387538459893883312310911992847112448894410210511297108")
+    }
+
+    @Test
+    fun generateSpotifyTotp_matchesKnownTestVectors() {
+        val testTimestamp = 1700000000000L // counter = 56666666
+
+        val secret61 = SpotifyPlaylistFetcher.TOTP_SECRETS.first { it.version == 61 }
+        val totp61 = SpotifyPlaylistFetcher.generateSpotifyTotp(testTimestamp, secret61)
+        assertThat(totp61).isEqualTo("371599")
+
+        val secret60 = SpotifyPlaylistFetcher.TOTP_SECRETS.first { it.version == 60 }
+        val totp60 = SpotifyPlaylistFetcher.generateSpotifyTotp(testTimestamp, secret60)
+        assertThat(totp60).isEqualTo("834657")
+
+        val secret59 = SpotifyPlaylistFetcher.TOTP_SECRETS.first { it.version == 59 }
+        val totp59 = SpotifyPlaylistFetcher.generateSpotifyTotp(testTimestamp, secret59)
+        assertThat(totp59).isEqualTo("419531")
+    }
+
+    @Test
     fun getAnonymousToken_fetchesAndCachesToken() = runBlocking {
         interceptor.responseProvider = { request ->
             if (request.url.toString().contains("token")) {

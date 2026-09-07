@@ -91,7 +91,7 @@ import kotlinx.collections.immutable.toImmutableList
 fun GenreDetailScreen(
     navController: NavHostController,
     genreId: String,
-    decodedGenreId: String = java.net.URLDecoder.decode(genreId, "UTF-8"),
+    decodedGenreId: String = runCatching { java.net.URLDecoder.decode(genreId, "UTF-8") }.getOrDefault(genreId),
     playerViewModel: PlayerViewModel,
     viewModel: GenreDetailViewModel = hiltViewModel(),
     playlistViewModel: com.quietrays.tonarc.presentation.viewmodel.PlaylistViewModel = hiltViewModel()

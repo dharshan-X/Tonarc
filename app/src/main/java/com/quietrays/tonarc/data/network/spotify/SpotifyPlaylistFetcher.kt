@@ -33,8 +33,9 @@ class SpotifyPlaylistFetcher @Inject constructor(
     companion object {
         private const val TAG = "SpotifyPlaylistFetcher"
         private const val USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         private const val API_TOKEN_URL = "https://open.spotify.com/api/token"
+        private const val SERVER_TIME_URL = "https://open.spotify.com/api/server-time"
         private const val TOKEN_URL =
             "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
         private const val WEB_API_BASE_URL = "https://api.spotify.com/v1/playlists/"
@@ -52,6 +53,57 @@ class SpotifyPlaylistFetcher @Inject constructor(
         private val RAW_ID_REGEX = Regex("""^[a-zA-Z0-9]{22}$""")
         private val NEXT_DATA_REGEX =
             Regex("""<script\s+id="__NEXT_DATA__"\s+type="application/json">([^<]+)</script>""")
+
+        data class SpotifyTotpSecret(val rawSecret: String, val version: Int)
+
+        val TOTP_SECRETS = listOf(
+            SpotifyTotpSecret(",7/*F(\"rLJ2oxaKL^f+E1xvP@N", 61),
+            SpotifyTotpSecret("OmE{ZA.J^\":0FG\\Uz?[@WW", 60),
+            SpotifyTotpSecret("{iOFn;4}<1PFYKPV?5{%u14]M>/V0hDH", 59)
+        )
+
+        /**
+         * Derives HMAC secret key bytes matching Spotify's web-player client implementation:
+         * Each character code is XORed with (index % 33) + 9, formatted as a decimal string,
+         * concatenated, and encoded into UTF-8 bytes.
+         */
+        fun deriveSecretBytes(rawSecret: String): ByteArray {
+            val r = StringBuilder()
+            for (idx in rawSecret.indices) {
+                val charCode = rawSecret[idx].code
+                val xorVal = charCode xor ((idx % 33) + 9)
+                r.append(xorVal)
+            }
+            return r.toString().toByteArray(Charsets.UTF_8)
+        }
+
+        /**
+         * Generates a dynamic Spotify TOTP code used by Spotify's Web Player to authenticate requests
+         * against `https://open.spotify.com/api/token`.
+         */
+        fun generateSpotifyTotp(
+            timestampMs: Long = System.currentTimeMillis(),
+            secretConfig: SpotifyTotpSecret = TOTP_SECRETS.first()
+        ): String {
+            return try {
+                val secretBytes = deriveSecretBytes(secretConfig.rawSecret)
+                val counter = timestampMs / 1000 / 30
+                val counterBytes = ByteBuffer.allocate(8).putLong(counter).array()
+                val mac = Mac.getInstance("HmacSHA1")
+                mac.init(SecretKeySpec(secretBytes, "HmacSHA1"))
+                val hmac = mac.doFinal(counterBytes)
+                val offset = (hmac[hmac.size - 1].toInt() and 0x0f)
+                val binary = ((hmac[offset].toInt() and 0x7f) shl 24) or
+                        ((hmac[offset + 1].toInt() and 0xff) shl 16) or
+                        ((hmac[offset + 2].toInt() and 0xff) shl 8) or
+                        (hmac[offset + 3].toInt() and 0xff)
+                val code = binary % 1000000
+                "%06d".format(code)
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Failed to generate Spotify TOTP")
+                "000000"
+            }
+        }
     }
 
     @Volatile
@@ -103,39 +155,27 @@ class SpotifyPlaylistFetcher @Inject constructor(
         return null
     }
 
-    /**
-     * Generates a dynamic Spotify TOTP code used by Spotify's Web Player to authenticate requests
-     * against `https://open.spotify.com/api/token`.
-     */
-    private fun generateSpotifyTotp(timestampMs: Long = System.currentTimeMillis()): Pair<String, Int> {
+    private fun fetchServerTimeSeconds(): Long? {
         return try {
-            val rawSecret = ",7/*F(\"rLJ2oxaKL^f+E1xvP@N"
-            val version = 61
-            val transformed = buildString {
-                for ((i, c) in rawSecret.withIndex()) {
-                    append(c.code xor ((i % 33) + 9))
-                }
+            val request = Request.Builder()
+                .url(SERVER_TIME_URL)
+                .header("User-Agent", USER_AGENT)
+                .header("Referer", "https://open.spotify.com/")
+                .header("Origin", "https://open.spotify.com")
+                .header("Accept", "application/json")
+                .get()
+                .build()
+            okHttpClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val bodyString = response.body.string()
+                    val json = JSONObject(bodyString)
+                    val serverTime = json.optLong("serverTime", 0L)
+                    if (serverTime > 0) serverTime else null
+                } else null
             }
-            val hexStr = transformed.toByteArray(Charsets.UTF_8).joinToString("") { "%02x".format(it) }
-            val secretBytes = ByteArray(hexStr.length / 2) { idx ->
-                hexStr.substring(idx * 2, idx * 2 + 2).toInt(16).toByte()
-            }
-            val counter = timestampMs / 1000 / 30
-            val counterBytes = ByteBuffer.allocate(8).putLong(counter).array()
-            val mac = Mac.getInstance("HmacSHA1")
-            mac.init(SecretKeySpec(secretBytes, "HmacSHA1"))
-            val hmac = mac.doFinal(counterBytes)
-            val offset = (hmac[hmac.size - 1].toInt() and 0x0f)
-            val binary = ((hmac[offset].toInt() and 0x7f) shl 24) or
-                    ((hmac[offset + 1].toInt() and 0xff) shl 16) or
-                    ((hmac[offset + 2].toInt() and 0xff) shl 8) or
-                    (hmac[offset + 3].toInt() and 0xff)
-            val code = binary % 1000000
-            val totp = "%06d".format(code)
-            Pair(totp, version)
         } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "Failed to generate Spotify TOTP")
-            Pair("000000", 61)
+            Timber.tag(TAG).d(e, "Could not fetch Spotify server time, using local clock")
+            null
         }
     }
 
@@ -154,15 +194,20 @@ class SpotifyPlaylistFetcher @Inject constructor(
             return@withContext currentToken
         }
 
-        // Try modern /api/token with TOTP first, then fallback to legacy TOKEN_URL
-        val (totp, version) = generateSpotifyTotp(now)
-        val modernUrl = "$API_TOKEN_URL?reason=init&productType=web_player&totp=$totp&totpServer=unavailable&totpVer=$version"
-        val candidateUrls = listOf(modernUrl, TOKEN_URL)
+        var serverTimeSec: Long? = null
 
-        for (url in candidateUrls) {
+        for (secretConfig in TOTP_SECRETS) {
+            val totpLocal = generateSpotifyTotp(now, secretConfig)
+            val totpServer = if (serverTimeSec != null) {
+                generateSpotifyTotp(serverTimeSec * 1000, secretConfig)
+            } else {
+                "unavailable"
+            }
+            val modernUrl = "$API_TOKEN_URL?reason=init&productType=web_player&totp=$totpLocal&totpServer=$totpServer&totpVer=${secretConfig.version}"
+
             try {
                 val requestBuilder = Request.Builder()
-                    .url(url)
+                    .url(modernUrl)
                     .header("User-Agent", USER_AGENT)
                     .header("Referer", "https://open.spotify.com/")
                     .header("Origin", "https://open.spotify.com")
@@ -177,7 +222,10 @@ class SpotifyPlaylistFetcher @Inject constructor(
 
                 val token = okHttpClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
-                        Timber.tag(TAG).w("Token request failed for %s: HTTP %d", url, response.code)
+                        Timber.tag(TAG).w("Token request failed for version %d (%s): HTTP %d", secretConfig.version, modernUrl, response.code)
+                        if (response.code == 401 && !savedCookies.isNullOrBlank()) {
+                            Timber.tag(TAG).w("Spotify session cookie rejected as unauthorized (HTTP 401)")
+                        }
                         null
                     } else {
                         val bodyString = response.body.string()
@@ -199,8 +247,45 @@ class SpotifyPlaylistFetcher @Inject constructor(
                     return@withContext token
                 }
             } catch (e: Exception) {
-                Timber.tag(TAG).w(e, "Exception fetching token from %s", url)
+                Timber.tag(TAG).w(e, "Exception fetching token with version %d from %s", secretConfig.version, modernUrl)
             }
+        }
+
+        // Fallback to legacy TOKEN_URL if modern /api/token fails for all versions
+        try {
+            val requestBuilder = Request.Builder()
+                .url(TOKEN_URL)
+                .header("User-Agent", USER_AGENT)
+                .header("Referer", "https://open.spotify.com/")
+                .header("Origin", "https://open.spotify.com")
+                .header("Accept", "application/json")
+                .get()
+
+            if (!savedCookies.isNullOrBlank()) {
+                requestBuilder.header("Cookie", savedCookies)
+            }
+
+            val token = okHttpClient.newCall(requestBuilder.build()).execute().use { response ->
+                if (response.isSuccessful) {
+                    val bodyString = response.body.string()
+                    if (bodyString.isNotBlank()) {
+                        val json = JSONObject(bodyString)
+                        val tokenStr = json.optString("accessToken").takeIf { it.isNotBlank() }
+                        val expMs = json.optLong("accessTokenExpirationTimestampMs", 0L)
+                        if (tokenStr != null) {
+                            cachedAccessToken = tokenStr
+                            tokenExpirationTimestampMs = if (expMs > 0) expMs else (now + DEFAULT_TOKEN_TTL_MS)
+                            cachedCookies = savedCookies
+                            tokenStr
+                        } else null
+                    } else null
+                } else null
+            }
+            if (token != null) {
+                return@withContext token
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Exception fetching token from legacy TOKEN_URL %s", TOKEN_URL)
         }
 
         if (forceRefresh || cookiesChanged) {

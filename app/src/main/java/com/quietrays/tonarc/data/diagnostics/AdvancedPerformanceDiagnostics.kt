@@ -170,6 +170,8 @@ object AdvancedPerformanceDiagnostics {
         )
     }
 
+    private val asyncTraceCookie = java.util.concurrent.atomic.AtomicInteger(0)
+
     fun <T> trace(sectionName: String, block: () -> T): T {
         if (!enabled) return block()
         Trace.beginSection(sectionName.take(MAX_TRACE_SECTION_CHARS))
@@ -182,11 +184,13 @@ object AdvancedPerformanceDiagnostics {
 
     suspend fun <T> traceSuspend(sectionName: String, block: suspend () -> T): T {
         if (!enabled) return block()
-        Trace.beginSection(sectionName.take(MAX_TRACE_SECTION_CHARS))
+        val tag = sectionName.take(MAX_TRACE_SECTION_CHARS)
+        val cookie = asyncTraceCookie.incrementAndGet()
+        Trace.beginAsyncSection(tag, cookie)
         return try {
             block()
         } finally {
-            Trace.endSection()
+            Trace.endAsyncSection(tag, cookie)
         }
     }
 

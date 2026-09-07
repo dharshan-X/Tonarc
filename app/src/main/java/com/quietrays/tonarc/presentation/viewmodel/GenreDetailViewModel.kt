@@ -132,7 +132,7 @@ class GenreDetailViewModel @Inject constructor(
 
     init {
         savedStateHandle.get<String>("genreId")?.let { genreId ->
-            val decodedGenreId = java.net.URLDecoder.decode(genreId, "UTF-8")
+            val decodedGenreId = runCatching { java.net.URLDecoder.decode(genreId, "UTF-8") }.getOrDefault(genreId)
             loadGenreDetails(decodedGenreId)
             loadYouTubeGenreContent(decodedGenreId)
         } ?: run {

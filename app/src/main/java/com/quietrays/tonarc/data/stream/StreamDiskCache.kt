@@ -40,6 +40,7 @@ class StreamDiskCache @Inject constructor(
     private val cacheDir: File by lazy {
         File(context.cacheDir, CACHE_DIR_NAME).apply {
             if (!exists()) mkdirs()
+            listFiles { file -> file.extension == "tmp" }?.forEach { it.delete() }
         }
     }
 

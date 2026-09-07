@@ -403,29 +403,70 @@ abstract class CloudStreamProxy<K : Any>(
                             contentLength?.let { call.response.header("Content-Length", it) }
                             contentRange?.let { call.response.header("Content-Range", it) }
 
-                            val isFullStream = (upstream.code == 200) || (rangeValidation.normalizedHeader == null || rangeValidation.normalizedHeader == "bytes=0-")
+                            val isFullStream = when (upstream.code) {
+                                200 -> true
+                                206 -> {
+                                    val cr = contentRange?.trim()
+                                    if (cr != null && cr.startsWith("bytes ", ignoreCase = true)) {
+                                        val rangePart = cr.substring(6).trim()
+                                        val parts = rangePart.split('/')
+                                        if (parts.size == 2) {
+                                            val byteRange = parts[0].split('-')
+                                            val totalLength = parts[1].toLongOrNull()
+                                            if (byteRange.size == 2 && totalLength != null && totalLength > 0L) {
+                                                val start = byteRange[0].toLongOrNull()
+                                                val end = byteRange[1].toLongOrNull()
+                                                start == 0L && end != null && (end + 1 == totalLength)
+                                            } else false
+                                        } else false
+                                    } else false
+                                }
+                                else -> false
+                            }
                             val tempCacheFile = if (isFullStream && diskCache != null) diskCache.createTempFile(cacheKey) else null
                             val cacheOutputStream = tempCacheFile?.let { java.io.FileOutputStream(it) }
+                            var totalBytesCached = 0L
+                            var streamCompletedSuccessfully = false
 
-                            call.respondBytesWriter(contentType = responseContentType) {
-                                withContext(Dispatchers.IO) {
-                                    try {
-                                        body.byteStream().use { input ->
-                                            val buffer = ByteArray(64 * 1024)
-                                            var bytesRead: Int
-                                            while (input.read(buffer).also { bytesRead = it } != -1) {
-                                                writeFully(buffer, 0, bytesRead)
-                                                flush()
-                                                cacheOutputStream?.write(buffer, 0, bytesRead)
+                            try {
+                                call.respondBytesWriter(contentType = responseContentType) {
+                                    withContext(Dispatchers.IO) {
+                                        try {
+                                            body.byteStream().use { input ->
+                                                val buffer = ByteArray(64 * 1024)
+                                                var bytesRead: Int
+                                                while (input.read(buffer).also { bytesRead = it } != -1) {
+                                                    writeFully(buffer, 0, bytesRead)
+                                                    flush()
+                                                    if (cacheOutputStream != null) {
+                                                        cacheOutputStream.write(buffer, 0, bytesRead)
+                                                        totalBytesCached += bytesRead
+                                                    }
+                                                }
+                                            }
+                                            cacheOutputStream?.flush()
+                                            val expectedLength: Long? = contentLength?.toLongOrNull()
+                                                ?: contentRange?.substringAfter('/')?.trim()?.toLongOrNull()
+                                            if (expectedLength == null || expectedLength <= 0L || totalBytesCached == expectedLength) {
+                                                streamCompletedSuccessfully = true
+                                            } else {
+                                                Timber.w("$proxyTag stream cache incomplete: got $totalBytesCached bytes, expected $expectedLength")
+                                            }
+                                        } finally {
+                                            cacheOutputStream?.close()
+                                            if (tempCacheFile != null) {
+                                                if (streamCompletedSuccessfully) {
+                                                    diskCache?.commitTempFile(tempCacheFile, cacheKey)
+                                                } else {
+                                                    tempCacheFile.delete()
+                                                }
                                             }
                                         }
-                                        cacheOutputStream?.flush()
-                                    } finally {
-                                        cacheOutputStream?.close()
                                     }
-                                    if (tempCacheFile != null) {
-                                        diskCache?.commitTempFile(tempCacheFile, cacheKey)
-                                    }
+                                }
+                            } finally {
+                                if (tempCacheFile != null && !streamCompletedSuccessfully) {
+                                    tempCacheFile.delete()
                                 }
                             }
                         }

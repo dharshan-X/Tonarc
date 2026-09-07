@@ -114,6 +114,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -803,7 +804,7 @@ fun LibraryScreen(
                                 }
                             ) {
                                 Text(
-                                    text = stringResource(tabId.titleRes).uppercase(Locale.getDefault()),
+                                    text = stringResource(tabId.titleRes).uppercase(LocalConfiguration.current.locales[0]),
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = if (currentTabIndex == index) FontWeight.Bold else FontWeight.Medium
                                 )

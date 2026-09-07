@@ -1,6 +1,6 @@
 package com.quietrays.tonarc.presentation.viewmodel
 
-import android.content.Context
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.OneTimeWorkRequestBuilder
@@ -18,7 +18,6 @@ import com.quietrays.tonarc.data.recommendation.PersonalizedRanker
 import com.quietrays.tonarc.data.repository.MusicRepository
 import com.quietrays.tonarc.data.worker.RecommendationWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,7 +60,7 @@ data class RecommendationStatsUiState(
 
 @HiltViewModel
 class RecommendationStatsViewModel internal constructor(
-    private val context: Context,
+    private val application: Application,
     private val engagementDao: EngagementDao,
     private val itemCooccurrenceDao: ItemCooccurrenceDao,
     private val adaptiveWeightTuner: AdaptiveWeightTuner,
@@ -74,7 +73,7 @@ class RecommendationStatsViewModel internal constructor(
 
     @Inject
     constructor(
-        @ApplicationContext context: Context,
+        application: Application,
         engagementDao: EngagementDao,
         itemCooccurrenceDao: ItemCooccurrenceDao,
         adaptiveWeightTuner: AdaptiveWeightTuner,
@@ -83,7 +82,7 @@ class RecommendationStatsViewModel internal constructor(
         youTubeDao: YouTubeDao,
         offlineTrackDao: OfflineTrackDao
     ) : this(
-        context = context,
+        application = application,
         engagementDao = engagementDao,
         itemCooccurrenceDao = itemCooccurrenceDao,
         adaptiveWeightTuner = adaptiveWeightTuner,
@@ -334,7 +333,7 @@ class RecommendationStatsViewModel internal constructor(
 
     fun triggerWorkerNow() {
         val request = OneTimeWorkRequestBuilder<RecommendationWorker>().build()
-        WorkManager.getInstance(context).enqueue(request)
+        WorkManager.getInstance(application).enqueue(request)
         _uiState.update { it.copy(message = "RecommendationWorker triggered in background") }
     }
 

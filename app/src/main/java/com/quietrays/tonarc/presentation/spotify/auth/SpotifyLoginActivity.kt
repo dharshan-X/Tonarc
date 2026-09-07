@@ -141,6 +141,7 @@ class SpotifyLoginActivity : ComponentActivity() {
                             actions = {
                                 IconButton(onClick = {
                                     pageError = null
+                                    viewModel.clearError()
                                     webViewInstance?.reload()
                                 }) {
                                     Icon(
@@ -226,7 +227,9 @@ class SpotifyLoginActivity : ComponentActivity() {
                             onPageLoadingChanged = { loading -> isLoading = loading },
                             onErrorChanged = { pageError = it },
                             onCookiesDetected = { cookies ->
-                                viewModel.onCookiesCaptured(cookies)
+                                if (uiState !is SpotifyLoginUiState.Error && uiState !is SpotifyLoginUiState.LoggingIn && uiState !is SpotifyLoginUiState.Success) {
+                                    viewModel.onCookiesCaptured(cookies)
+                                }
                             }
                         )
 
@@ -273,6 +276,7 @@ class SpotifyLoginActivity : ComponentActivity() {
                                         FilledTonalButton(
                                             onClick = {
                                                 pageError = null
+                                                viewModel.clearError()
                                                 webViewInstance?.loadUrl(SPOTIFY_LOGIN_URL)
                                             }
                                         ) {
@@ -382,6 +386,32 @@ fun SpotifyCookieInputDialog(
     )
 }
 
+private const val SPOTIFY_LAYOUT_FIX_JS = """
+    (function() {
+        var css = 'html, body, #__next { height: 100% !important; min-height: 100% !important; } ' +
+                  'main { position: relative !important; height: auto !important; min-height: 100% !important; overflow: visible !important; }';
+        var s = document.getElementById('tonarc-spotify-fix');
+        if (!s) {
+            s = document.createElement('style');
+            s.id = 'tonarc-spotify-fix';
+            s.textContent = css;
+            (document.head || document.documentElement).appendChild(s);
+        }
+        if (!window._tonarcObserver && window.MutationObserver) {
+            window._tonarcObserver = new MutationObserver(function() {
+                var el = document.getElementById('tonarc-spotify-fix');
+                if (!el) {
+                    var s2 = document.createElement('style');
+                    s2.id = 'tonarc-spotify-fix';
+                    s2.textContent = css;
+                    (document.head || document.documentElement).appendChild(s2);
+                }
+            });
+            window._tonarcObserver.observe(document.documentElement, { childList: true, subtree: true });
+        }
+    })();
+"""
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun SpotifyLoginWebView(
@@ -401,32 +431,32 @@ private fun SpotifyLoginWebView(
                     javaScriptEnabled = true
                     domStorageEnabled = true
                     databaseEnabled = true
-                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                     useWideViewPort = true
                     loadWithOverviewMode = true
                     cacheMode = WebSettings.LOAD_DEFAULT
                     userAgentString = DESKTOP_USER_AGENT
+                    javaScriptCanOpenWindowsAutomatically = true
                 }
 
                 webChromeClient = object : WebChromeClient() {
                     override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                        if (newProgress > 40) {
+                            view?.evaluateJavascript(SPOTIFY_LAYOUT_FIX_JS, null)
+                        }
                         if (newProgress >= 100) {
                             onPageLoadingChanged(false)
                         }
                     }
+
+                    override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                        Timber.d("SpotifyWebView Console [${consoleMessage?.messageLevel()}]: ${consoleMessage?.message()}")
+                        return true
+                    }
                 }
 
                 webViewClient = object : WebViewClient() {
-                    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                        super.onPageStarted(view, url, favicon)
-                        onPageLoadingChanged(true)
-                        onErrorChanged(null)
-                    }
-
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                        onPageLoadingChanged(false)
-
+                    private fun tryCaptureCookies(url: String?) {
                         val dotSpotifyCookies = cookieManager.getCookie(".spotify.com") ?: ""
                         val accountsCookies = cookieManager.getCookie("https://accounts.spotify.com") ?: ""
                         val openCookies = cookieManager.getCookie("https://open.spotify.com") ?: ""
@@ -448,6 +478,26 @@ private fun SpotifyLoginWebView(
                             Timber.d("Spotify login cookies captured successfully! Keys: ${allCookieMap.keys}")
                             onCookiesDetected(combinedCookies)
                         }
+                    }
+
+                    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                        super.onPageStarted(view, url, favicon)
+                        onPageLoadingChanged(true)
+                        onErrorChanged(null)
+                        tryCaptureCookies(url)
+                    }
+
+                    override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+                        super.doUpdateVisitedHistory(view, url, isReload)
+                        view?.evaluateJavascript(SPOTIFY_LAYOUT_FIX_JS, null)
+                        tryCaptureCookies(url)
+                    }
+
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        onPageLoadingChanged(false)
+                        view?.evaluateJavascript(SPOTIFY_LAYOUT_FIX_JS, null)
+                        tryCaptureCookies(url)
                     }
 
                     override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {

@@ -59,6 +59,7 @@ class SpotifyLoginViewModel @Inject constructor(
                 _uiState.value = SpotifyLoginUiState.Success(accountName)
             } catch (e: Exception) {
                 Timber.e(e, "Failed to authenticate Spotify session")
+                userPreferencesRepository.clearSpotifyAuth()
                 _uiState.value = SpotifyLoginUiState.Error(e.message ?: "Authentication failed")
             }
         }

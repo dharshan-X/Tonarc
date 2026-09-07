@@ -39,7 +39,9 @@
     <string name="presentation_batch_e_more_options_for_song">Другие действия для %1$s</string>
     <plurals name="presentation_batch_e_n_songs_selected">
         <item quantity="one">Выбран %d трек</item>
-        <item quantity="other">Выбрано %d треков</item>
+        <item quantity="few">Выбрано %d трека</item>
+        <item quantity="many">Выбрано %d треков</item>
+        <item quantity="other">Выбрано %d трека</item>
     </plurals>
     <string name="presentation_batch_e_new_playlist_hint">Нажмите кнопку «Новый плейлист», чтобы начать.</string>
     <string name="presentation_batch_e_next_up">Далее</string>
@@ -53,8 +55,10 @@
     <string name="presentation_batch_e_queue_source_fallback">Очередь</string>
     <string name="presentation_batch_e_queue_subtitle_empty">Очередь пока пуста.</string>
     <plurals name="presentation_batch_e_queue_tracks_lined_up">
-        <item quantity="one">Добавлен 1 трек.</item>
-        <item quantity="other">Добавлено %d треков.</item>
+        <item quantity="one">Добавлен %d трек.</item>
+        <item quantity="few">Добавлено %d трека.</item>
+        <item quantity="many">Добавлено %d треков.</item>
+        <item quantity="other">Добавлено %d трека.</item>
     </plurals>
     <string name="presentation_batch_e_removed">удалён</string>
     <string name="presentation_batch_e_reset_presets_message">Это восстановит порядок и видимость пресетов по умолчанию. Продолжить?</string>

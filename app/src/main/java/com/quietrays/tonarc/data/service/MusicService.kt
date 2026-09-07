@@ -811,7 +811,8 @@ class MusicService : MediaSessionService() {
                 PlayerActions.FAVORITE,
                 PlayerActions.PLAY_FROM_QUEUE,
                 PlayerActions.SHUFFLE,
-                PlayerActions.REPEAT -> true
+                PlayerActions.REPEAT,
+                ACTION_SLEEP_TIMER_EXPIRED -> true
                 else -> false
             }
         if (needsTemporaryForeground && !startedTemporaryForegroundInOnCreate) {

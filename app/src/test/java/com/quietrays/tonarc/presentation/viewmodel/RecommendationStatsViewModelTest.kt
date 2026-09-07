@@ -1,6 +1,6 @@
 package com.quietrays.tonarc.presentation.viewmodel
 
-import android.content.Context
+import android.app.Application
 import com.quietrays.tonarc.MainCoroutineExtension
 import com.quietrays.tonarc.data.database.EngagementDao
 import com.quietrays.tonarc.data.database.ItemCooccurrenceDao
@@ -33,7 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 @ExtendWith(MainCoroutineExtension::class)
 class RecommendationStatsViewModelTest {
 
-    private val mockContext = mockk<Context>(relaxed = true)
+    private val mockApplication = mockk<Application>(relaxed = true)
     private val mockEngagementDao = mockk<EngagementDao>(relaxed = true)
     private val mockCooccurrenceDao = mockk<ItemCooccurrenceDao>(relaxed = true)
     private val mockMusicRepository = mockk<MusicRepository>(relaxed = true)
@@ -74,7 +74,7 @@ class RecommendationStatsViewModelTest {
 
     private fun createViewModel(dispatcher: kotlinx.coroutines.CoroutineDispatcher): RecommendationStatsViewModel {
         return RecommendationStatsViewModel(
-            context = mockContext,
+            application = mockApplication,
             engagementDao = mockEngagementDao,
             itemCooccurrenceDao = mockCooccurrenceDao,
             adaptiveWeightTuner = weightTuner,

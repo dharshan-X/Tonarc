@@ -123,6 +123,14 @@ class SleepTimerStateHolder @Inject constructor(
 
         val pendingIntent = sleepTimerPendingIntent()
 
+        val args = Bundle().apply {
+            putInt(MusicNotificationProvider.EXTRA_SLEEP_TIMER_MINUTES, durationMinutes)
+        }
+        mediaControllerProvider?.invoke()?.sendCustomCommand(
+            SessionCommand(MusicNotificationProvider.CUSTOM_COMMAND_SET_SLEEP_TIMER_DURATION, Bundle.EMPTY),
+            args
+        )
+
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (alarmManager.canScheduleExactAlarms()) {
@@ -204,6 +212,14 @@ class SleepTimerStateHolder @Inject constructor(
             _isEndOfTrackTimerActive.value = true
             EotStateHolder.setEotTargetSong(currentSongId)
 
+            val args = Bundle().apply {
+                putBoolean(MusicNotificationProvider.EXTRA_END_OF_TRACK_ENABLED, true)
+            }
+            mediaControllerProvider?.invoke()?.sendCustomCommand(
+                SessionCommand(MusicNotificationProvider.CUSTOM_COMMAND_SET_SLEEP_TIMER_END_OF_TRACK, Bundle.EMPTY),
+                args
+            )
+
             sleepTimerJob?.cancel()
             _sleepTimerEndTimeMillis.value = null
 
@@ -229,6 +245,7 @@ class SleepTimerStateHolder @Inject constructor(
                                 newSongTitle
                             )
                         )
+                        mediaControllerProvider?.invoke()?.pause()
                         cancelSleepTimer(suppressDefaultToast = true)
 
                         eotSongMonitorJob?.cancel()
@@ -242,6 +259,13 @@ class SleepTimerStateHolder @Inject constructor(
             }
         } else {
             eotSongMonitorJob?.cancel()
+            val args = Bundle().apply {
+                putBoolean(MusicNotificationProvider.EXTRA_END_OF_TRACK_ENABLED, false)
+            }
+            mediaControllerProvider?.invoke()?.sendCustomCommand(
+                SessionCommand(MusicNotificationProvider.CUSTOM_COMMAND_SET_SLEEP_TIMER_END_OF_TRACK, Bundle.EMPTY),
+                args
+            )
             if (_isEndOfTrackTimerActive.value && EotStateHolder.eotTargetSongId.value != null) {
                 cancelSleepTimer()
             }
@@ -254,6 +278,11 @@ class SleepTimerStateHolder @Inject constructor(
     fun cancelSleepTimer(overrideToastMessage: String? = null, suppressDefaultToast: Boolean = false) {
         val scope = this.scope ?: return
         val wasAnythingActive = _activeTimerValueDisplay.value != null
+
+        mediaControllerProvider?.invoke()?.sendCustomCommand(
+            SessionCommand(MusicNotificationProvider.CUSTOM_COMMAND_CANCEL_SLEEP_TIMER, Bundle.EMPTY),
+            Bundle.EMPTY
+        )
 
         val pendingIntent = sleepTimerPendingIntent()
         alarmManager.cancel(pendingIntent)

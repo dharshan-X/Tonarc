@@ -462,7 +462,7 @@ fun AppNavigation(
             ) { backStackEntry ->
                 val artistName = backStackEntry.arguments?.getString("artistName")
                 if (artistName != null) {
-                    val decodedArtistName = java.net.URLDecoder.decode(artistName, "UTF-8")
+                    val decodedArtistName = runCatching { java.net.URLDecoder.decode(artistName, "UTF-8") }.getOrDefault(artistName)
                     ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
                         FavoriteArtistSongsScreen(
                             artistName = decodedArtistName,
