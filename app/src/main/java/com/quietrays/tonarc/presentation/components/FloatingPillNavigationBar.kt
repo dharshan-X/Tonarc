@@ -33,6 +33,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -49,6 +55,9 @@ private val FloatingPillSlotWidth = 66.dp
 private val FloatingPillHorizontalPadding = 5.dp
 private val FloatingPillIndicatorHeight = 42.dp
 private val FloatingPillIndicatorWidth = 58.dp
+
+internal fun resolveFloatingPillContainerHeight(systemNavBarInset: Dp): Dp =
+    FloatingPillContentHeight + FloatingPillBottomMargin + systemNavBarInset
 
 internal fun calculatePillActiveOffset(
     selectedIndex: Int,
@@ -91,6 +100,7 @@ fun FloatingPillNavigationBar(
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
     val latestOnSearchIconDoubleTap by rememberUpdatedState(onSearchIconDoubleTap)
     val scope = rememberCoroutineScope()
+    val hapticFeedback = LocalHapticFeedback.current
     var lastSearchTapTimestamp by remember { mutableLongStateOf(0L) }
 
     Surface(
@@ -146,9 +156,14 @@ fun FloatingPillNavigationBar(
                             .width(FloatingPillSlotWidth)
                             .fillMaxHeight()
                             .clip(CircleShape)
+                            .semantics {
+                                role = Role.Tab
+                                this.selected = isSelected
+                            }
                             .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = ripple(bounded = true, radius = 24.dp)
+                                interactionSource = remember(item.screen.route) { MutableInteractionSource() },
+                                indication = ripple(bounded = true, radius = 24.dp),
+                                role = Role.Tab
                             ) {
                                 val itemRoute = item.screen.route
                                 val isSearchTab = itemRoute == Screen.Search.route
@@ -160,6 +175,7 @@ fun FloatingPillNavigationBar(
                                     lastSearchTapTimestamp = now
 
                                     if (!isAlreadySelected) {
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         if (!navController.navigateToTopLevelSafely(itemRoute)) {
                                             lastSearchTapTimestamp = 0L
                                             return@clickable
@@ -179,6 +195,7 @@ fun FloatingPillNavigationBar(
                                     }
                                 } else if (!isAlreadySelected) {
                                     lastSearchTapTimestamp = 0L
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     navController.navigateToTopLevelSafely(itemRoute)
                                 }
                             },

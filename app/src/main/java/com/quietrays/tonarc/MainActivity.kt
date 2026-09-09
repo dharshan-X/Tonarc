@@ -117,8 +117,8 @@ import com.quietrays.tonarc.presentation.components.CrashReportDialog
 import com.quietrays.tonarc.presentation.components.DismissUndoBar
 import com.quietrays.tonarc.presentation.components.DrawerDestination
 import com.quietrays.tonarc.presentation.components.FloatingPillBottomMargin
-import com.quietrays.tonarc.presentation.components.FloatingPillContentHeight
 import com.quietrays.tonarc.presentation.components.FloatingPillNavigationBar
+import com.quietrays.tonarc.presentation.components.resolveFloatingPillContainerHeight
 import com.quietrays.tonarc.presentation.components.MiniPlayerBottomSpacer
 import com.quietrays.tonarc.presentation.components.MiniPlayerHeight
 import com.quietrays.tonarc.presentation.components.PlayerInternalNavigationBar
@@ -695,7 +695,7 @@ class MainActivity : ComponentActivity() {
                 if (useNavigationRail) {
                     0.dp
                 } else if (navBarStyle == NavBarStyle.FLOATING_PILL) {
-                    FloatingPillContentHeight + FloatingPillBottomMargin + systemNavBarInset
+                    resolveFloatingPillContainerHeight(systemNavBarInset)
                 } else {
                     resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
                 }

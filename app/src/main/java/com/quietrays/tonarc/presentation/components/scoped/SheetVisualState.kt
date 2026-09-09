@@ -12,8 +12,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import com.quietrays.tonarc.data.preferences.NavBarStyle
-import com.quietrays.tonarc.presentation.components.FloatingPillBottomMargin
-import com.quietrays.tonarc.presentation.components.FloatingPillContentHeight
+import com.quietrays.tonarc.presentation.components.resolveFloatingPillContainerHeight
 import com.quietrays.tonarc.presentation.viewmodel.PlayerSheetState
 
 private const val PREDICTIVE_BACK_SWIPE_EDGE_LEFT = 0
@@ -249,7 +248,7 @@ internal fun rememberSheetVisualState(
 }
 
 internal fun resolveFloatingPillOccupiedHeight(systemNavBarInset: Dp): Dp =
-    FloatingPillContentHeight + FloatingPillBottomMargin + systemNavBarInset + 8.dp
+    resolveFloatingPillContainerHeight(systemNavBarInset) + 8.dp
 
 internal fun resolveNavBarOccupiedHeightForStyle(navBarStyle: String, systemNavBarInset: Dp): Dp {
     return when (navBarStyle) {

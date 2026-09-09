@@ -57,4 +57,12 @@ class FloatingPillNavigationBarTest {
         assertEquals(0, resolveActiveTabIndex("home", emptyList<String>()))
         assertEquals(0, resolveActiveTabIndex(null, emptyList<String>()))
     }
+
+    @Test
+    fun resolveFloatingPillContainerHeight_returnsCorrectHeight() {
+        val systemInset = 24.dp
+        val expected = FloatingPillContentHeight + FloatingPillBottomMargin + systemInset
+        assertEquals(expected, resolveFloatingPillContainerHeight(systemInset))
+        assertEquals(86.dp, resolveFloatingPillContainerHeight(systemInset))
+    }
 }
