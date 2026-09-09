@@ -112,6 +112,7 @@
     <string name="setcat_navbar_style_desc">Choose the appearance for the navigation bar.</string>
     <string name="setcat_navbar_style_default">Default</string>
     <string name="setcat_navbar_style_full_width">Full Width</string>
+    <string name="setcat_navbar_style_floating_pill">Floating Pill</string>
     <string name="setcat_compact_mode_title">Compact mode</string>
     <string name="setcat_compact_mode_subtitle">Show only icons and reduce the navbar height.</string>
     <string name="setcat_navbar_corner_title">NavBar Corner Radius</string>
