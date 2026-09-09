@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import com.quietrays.tonarc.data.preferences.NavBarStyle
+import com.quietrays.tonarc.presentation.components.FloatingPillBottomMargin
+import com.quietrays.tonarc.presentation.components.FloatingPillContentHeight
 import com.quietrays.tonarc.presentation.viewmodel.PlayerSheetState
 
 private const val PREDICTIVE_BACK_SWIPE_EDGE_LEFT = 0
@@ -107,6 +109,8 @@ internal fun rememberSheetVisualState(
                 navBarCornerRadiusDp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 32.dp
+            } else if (navBarStyle == NavBarStyle.FLOATING_PILL) {
+                32.dp
             } else {
                 navBarCornerRadiusDp
             }
@@ -149,6 +153,8 @@ internal fun rememberSheetVisualState(
             } else if (navBarStyle == NavBarStyle.DEFAULT) {
                 10.dp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
+                32.dp
+            } else if (navBarStyle == NavBarStyle.FLOATING_PILL) {
                 32.dp
             } else {
                 navBarCornerRadiusDp
@@ -241,3 +247,14 @@ internal fun rememberSheetVisualState(
         currentHorizontalPaddingEndPxProvider = currentHorizontalPaddingEndPxProvider
     )
 }
+
+internal fun resolveFloatingPillOccupiedHeight(systemNavBarInset: Dp): Dp =
+    FloatingPillContentHeight + FloatingPillBottomMargin + systemNavBarInset + 8.dp
+
+internal fun resolveNavBarOccupiedHeightForStyle(navBarStyle: String, systemNavBarInset: Dp): Dp {
+    return when (navBarStyle) {
+        NavBarStyle.FLOATING_PILL -> resolveFloatingPillOccupiedHeight(systemNavBarInset)
+        else -> 90.dp + systemNavBarInset
+    }
+}
+
