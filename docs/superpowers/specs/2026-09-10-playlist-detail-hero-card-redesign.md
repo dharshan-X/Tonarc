@@ -22,7 +22,7 @@ The playlist detail screen is built on a **Full-Page Unified Scroll Architecture
 
 ```
 +-------------------------------------------------------------+
-|  [≡ NavigationIcon]                     [👤 ExpressiveAvatar]| <- Hero Top Bar
+|                                                             | <- Clean Hero Top (No Menu/Profile Btns)
 |                                                             |
 |                   [ ARTWORK / ILLUSTRATION ]                | <- Ambient glow
 |                   [ WITH DROP SHADOW       ]                |
