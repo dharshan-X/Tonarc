@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tonarc - Expressive Playlist Detail with Pastel Badge Tiles</title>
+  <title>Tonarc - Full Page Scroll Material 3 Expressive Playlist</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Playball&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
@@ -26,7 +26,6 @@
       --app-font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
 
-    /* Terracotta Theme */
     body.theme-coral {
       --md-sys-color-primary: #ffb59d;
       --md-sys-color-on-primary: #5c1b00;
@@ -41,7 +40,6 @@
       --md-sys-color-outline-variant: #53433e;
     }
 
-    /* Light Mode */
     body.theme-light {
       --md-sys-color-primary: #6750a4;
       --md-sys-color-on-primary: #ffffff;
@@ -125,7 +123,6 @@
       color: #5d5a66;
     }
 
-    /* Control Toolbar */
     .controls-panel {
       display: flex;
       flex-wrap: wrap;
@@ -184,7 +181,6 @@
       color: #ffffff;
     }
 
-    /* Preview Canvas */
     .preview-canvas {
       display: flex;
       gap: 32px;
@@ -226,7 +222,7 @@
       box-shadow: 0 30px 80px rgba(0,0,0,0.18), 0 0 0 10px #ffffff, 0 0 0 12px #dedce3;
     }
 
-    /* Status Bar */
+    /* Status Bar (Pinned at top) */
     .status-bar {
       height: 44px;
       padding: 14px 26px 0 26px;
@@ -236,23 +232,79 @@
       font-size: 13px;
       font-weight: 700;
       color: #ffffff;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
       z-index: 50;
       pointer-events: none;
     }
 
-    /* Dark Hero Section with Curved Bottom (38.dp) */
+    /* Pinned Compact Collapsed App Bar (fades in on scroll) */
+    .collapsed-top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 88px;
+      padding-top: 40px;
+      padding-left: 18px;
+      padding-right: 18px;
+      background: var(--md-sys-color-surface-container);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, background 0.3s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    .collapsed-top-bar.scrolled {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .collapsed-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--md-sys-color-on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    /* FULL PAGE SCROLL CONTAINER: The entire page scrolls as one! */
+    .full-page-scroll {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .full-page-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* 1. Dark Hero Section (inside scroll stream!) */
     .hero-section {
       background: #16151a;
-      height: 350px;
+      height: 380px;
       border-bottom-left-radius: 38px;
       border-bottom-right-radius: 38px;
       position: relative;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 6px 18px 24px 18px;
-      z-index: 2;
-      overflow: hidden;
+      padding: 44px 18px 24px 18px;
+      flex-shrink: 0;
       box-shadow: 0 12px 32px rgba(0,0,0,0.6);
     }
 
@@ -298,10 +350,10 @@
     /* Center Artwork with Glow */
     .hero-art-display {
       position: absolute;
-      top: 36px;
+      top: 50px;
       left: 0;
       right: 0;
-      bottom: 76px;
+      bottom: 80px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -310,8 +362,8 @@
 
     .art-glow {
       position: absolute;
-      width: 150px;
-      height: 150px;
+      width: 160px;
+      height: 160px;
       border-radius: 50%;
       background: var(--md-sys-color-primary);
       filter: blur(46px);
@@ -355,7 +407,7 @@
     /* Overlapping Seam Play FAB (56.dp) */
     .seam-fab-anchor {
       position: absolute;
-      top: 322px; /* 350px - (56px / 2) */
+      top: 352px; /* 380px - (56px / 2) */
       right: 24px;
       z-index: 20;
     }
@@ -389,23 +441,20 @@
       fill: currentColor;
     }
 
-    /* Bottom Sheet Container */
-    .sheet-surface {
-      flex: 1;
+    /* 2. Track List Area (flows down the page naturally) */
+    .sheet-flow-content {
+      padding: 30px 18px 60px 18px;
+      background: var(--md-sys-color-surface);
       display: flex;
       flex-direction: column;
-      padding: 30px 18px 24px 18px;
-      overflow: hidden;
-      background: var(--md-sys-color-surface);
+      gap: 12px;
       transition: background 0.3s;
     }
 
-    /* Header Row */
     .section-header-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
       padding: 0 4px;
     }
 
@@ -426,26 +475,17 @@
       padding: 4px 8px;
     }
 
-    /* Track List Grouped Card Container (Matching Reference) */
+    /* Rounded Card Grouping the List Tiles */
     .tiles-grouped-card {
-      flex: 1;
       background: var(--md-sys-color-surface-container);
       border-radius: 26px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
       box-shadow: 0 4px 16px rgba(0,0,0,0.25);
       border: 1px solid var(--md-sys-color-surface-container-high);
       display: flex;
       flex-direction: column;
     }
 
-    .tiles-grouped-card::-webkit-scrollbar {
-      display: none;
-    }
-
-    /* Individual List Tile Matching Reference (/tmp/orca-paste-...png) */
+    /* List Tiles Matching Reference */
     .pastel-list-tile {
       display: flex;
       align-items: center;
@@ -494,43 +534,14 @@
       height: 21px;
     }
 
-    /* Pastel Tonal Schemes matching reference */
-    .badge-blue {
-      background: #7fc4fd;
-      color: #0d47a1;
-    }
+    .badge-blue { background: #7fc4fd; color: #0d47a1; }
+    .badge-lime { background: #dce775; color: #556b2f; }
+    .badge-purple { background: #b39ddb; color: #4a148c; }
+    .badge-orange { background: #ffcc80; color: #e65100; }
+    .badge-chartreuse { background: #d4e157; color: #33691e; }
+    .badge-mint { background: #a5d6a7; color: #1b5e20; }
+    .badge-sage { background: #c5e1a5; color: #2e7d32; }
 
-    .badge-lime {
-      background: #dce775;
-      color: #556b2f;
-    }
-
-    .badge-purple {
-      background: #b39ddb;
-      color: #4a148c;
-    }
-
-    .badge-orange {
-      background: #ffcc80;
-      color: #e65100;
-    }
-
-    .badge-chartreuse {
-      background: #d4e157;
-      color: #33691e;
-    }
-
-    .badge-mint {
-      background: #a5d6a7;
-      color: #1b5e20;
-    }
-
-    .badge-sage {
-      background: #c5e1a5;
-      color: #2e7d32;
-    }
-
-    /* Equalizer wave when playing */
     .mini-wave-box {
       position: absolute;
       inset: 0;
@@ -558,7 +569,6 @@
       100% { transform: scaleY(1.2); }
     }
 
-    /* Content Area */
     .tile-body {
       flex: 1;
       min-width: 0;
@@ -590,7 +600,6 @@
       text-overflow: ellipsis;
     }
 
-    /* Trailing Meta */
     .tile-trailing {
       display: flex;
       align-items: center;
@@ -616,7 +625,7 @@
       cursor: pointer;
     }
 
-    /* Reference Images Columns */
+    /* Reference Box */
     .ref-col-box {
       width: 360px;
       height: 820px;
@@ -647,10 +656,10 @@
   <div class="header-area">
     <div class="badge-pill">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-      <span>Material 3 Expressive • Pastel Badge List Tiles</span>
+      <span>Material 3 Expressive • Full-Page Smooth Scroll</span>
     </div>
-    <h1>Playlist Detail Screen with Pastel Badge Tiles</h1>
-    <p>Combining the dark rounded hero card with the rounded container list tiles and pastel circular badges.</p>
+    <h1>Full Page Scroll Architecture</h1>
+    <p>The entire screen scrolls as one seamless document (LazyColumn in Jetpack Compose), allowing the hero section to collapse smoothly as the track list scrolls.</p>
 
     <!-- Toolbar -->
     <div class="controls-panel">
@@ -664,7 +673,7 @@
 
       <!-- View Selector -->
       <div class="view-toggle-bar">
-        <button class="view-btn active" id="btnUnified" onclick="setView('unified')">Unified Screen</button>
+        <button class="view-btn active" id="btnUnified" onclick="setView('unified')">Full Page Scroll</button>
         <button class="view-btn" id="btnRefTile" onclick="setView('refTile')">Compare List Tile</button>
         <button class="view-btn" id="btnRefHero" onclick="setView('refHero')">Compare Hero Card</button>
       </div>
@@ -676,11 +685,11 @@
 
     <!-- Phone Container -->
     <div class="device-col" id="mainCol">
-      <span class="device-title" id="mainTitle">Unified Expressive Design</span>
+      <span class="device-title" id="mainTitle">Full-Page Scrollable Experience</span>
 
       <div class="phone-container" id="phoneShell">
 
-        <!-- Status Bar -->
+        <!-- Pinned Status Bar -->
         <div class="status-bar">
           <span>9:41</span>
           <div style="display:flex; gap: 6px; align-items: center;">
@@ -690,182 +699,198 @@
           </div>
         </div>
 
-        <!-- 1. Dark Rounded Hero Card -->
-        <div class="hero-section">
-          
-          <div class="hero-app-bar">
-            <button class="nav-icon-btn" title="Navigation Menu">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
-            </button>
-
-            <button class="user-avatar-btn" title="Account / Options">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            </button>
-          </div>
-
-          <!-- Hero Artwork Showcase -->
-          <div class="hero-art-display">
-            <div class="art-glow"></div>
-            <svg class="hero-svg-art" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <ellipse cx="95" cy="135" rx="60" ry="24" transform="rotate(-24 95 135)" stroke="#908f96" stroke-width="6" stroke-linecap="round" opacity="0.9" />
-              <path d="M74 168 C76 155, 86 138, 92 120 C96 108, 90 92, 86 80 C84 74, 88 70, 92 72 C96 74, 102 88, 106 100 C108 92, 108 80, 110 74 C112 68, 118 69, 119 75 C121 82, 118 96, 120 106 C124 96, 126 84, 129 80 C132 76, 137 77, 137 83 C137 92, 130 106, 131 118 C132 126, 140 134, 138 144 C134 160, 110 176, 92 178 Z" fill="#ffffff" />
-              <path d="M48 116 C60 140, 118 158, 145 138" stroke="#a5a4ab" stroke-width="6" stroke-linecap="round" />
-              <circle cx="142" cy="52" r="19" fill="#ffffff" />
-              <circle cx="136" cy="46" r="4.5" fill="#16151a" />
-              <circle cx="148" cy="50" r="3.5" fill="#16151a" />
-              <circle cx="139" cy="58" r="4" fill="#16151a" />
-              <ellipse cx="142" cy="52" rx="27" ry="7" transform="rotate(-28 142 52)" stroke="#a5a4ab" stroke-width="4.5" />
-              <path d="M68 138 L70 133 L75 131 L70 129 L68 124 L66 129 L61 131 L66 133 Z" fill="#8e8d96" />
-              <path d="M154 94 L156 89 L161 87 L156 85 L154 80 L152 85 L147 87 L152 89 Z" fill="#8e8d96" />
-            </svg>
-          </div>
-
-          <div class="hero-typography">
-            <div class="hero-tag">Trending Playlist</div>
-            <div class="hero-title">Music Cover</div>
-          </div>
-
-        </div>
-
-        <!-- 2. Overlapping Seam Play FAB (56.dp) -->
-        <div class="seam-fab-anchor">
-          <button class="play-fab" id="fabPlay" onclick="togglePlayback()" title="Play All">
-            <svg id="fabSvg" viewBox="0 0 24 24"><polygon points="7 4 19 12 7 20 7 4"></polygon></svg>
+        <!-- Collapsed Top Bar (Fades in when scrolled) -->
+        <div class="collapsed-top-bar" id="collapsedBar">
+          <button class="nav-icon-btn" title="Back">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+          <span class="collapsed-title">Music Cover</span>
+          <button class="user-avatar-btn" title="Account">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           </button>
         </div>
 
-        <!-- 3. Bottom Section with Rounded Grouped Card -->
-        <div class="sheet-surface">
+        <!-- WHOLE PAGE SCROLL STREAM -->
+        <div class="full-page-scroll" id="pageScroll" onscroll="handlePageScroll(this)">
 
-          <div class="section-header-bar">
-            <span class="m3-headline">Top 10</span>
-            <button class="see-all-btn">See All</button>
+          <!-- 1. Dark Rounded Hero Card in Scroll Stream -->
+          <div class="hero-section">
+            
+            <div class="hero-app-bar">
+              <button class="nav-icon-btn" title="Navigation Menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+              </button>
+
+              <button class="user-avatar-btn" title="Account / Options">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </button>
+            </div>
+
+            <!-- Hero Artwork Showcase -->
+            <div class="hero-art-display">
+              <div class="art-glow"></div>
+              <svg class="hero-svg-art" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="95" cy="135" rx="60" ry="24" transform="rotate(-24 95 135)" stroke="#908f96" stroke-width="6" stroke-linecap="round" opacity="0.9" />
+                <path d="M74 168 C76 155, 86 138, 92 120 C96 108, 90 92, 86 80 C84 74, 88 70, 92 72 C96 74, 102 88, 106 100 C108 92, 108 80, 110 74 C112 68, 118 69, 119 75 C121 82, 118 96, 120 106 C124 96, 126 84, 129 80 C132 76, 137 77, 137 83 C137 92, 130 106, 131 118 C132 126, 140 134, 138 144 C134 160, 110 176, 92 178 Z" fill="#ffffff" />
+                <path d="M48 116 C60 140, 118 158, 145 138" stroke="#a5a4ab" stroke-width="6" stroke-linecap="round" />
+                <circle cx="142" cy="52" r="19" fill="#ffffff" />
+                <circle cx="136" cy="46" r="4.5" fill="#16151a" />
+                <circle cx="148" cy="50" r="3.5" fill="#16151a" />
+                <circle cx="139" cy="58" r="4" fill="#16151a" />
+                <ellipse cx="142" cy="52" rx="27" ry="7" transform="rotate(-28 142 52)" stroke="#a5a4ab" stroke-width="4.5" />
+                <path d="M68 138 L70 133 L75 131 L70 129 L68 124 L66 129 L61 131 L66 133 Z" fill="#8e8d96" />
+                <path d="M154 94 L156 89 L161 87 L156 85 L154 80 L152 85 L147 87 L152 89 Z" fill="#8e8d96" />
+              </svg>
+            </div>
+
+            <div class="hero-typography">
+              <div class="hero-tag">Trending Playlist</div>
+              <div class="hero-title">Music Cover</div>
+            </div>
+
+            <!-- Overlapping Seam Play FAB (56.dp) -->
+            <div class="seam-fab-anchor">
+              <button class="play-fab" id="fabPlay" onclick="togglePlayback()" title="Play All">
+                <svg id="fabSvg" viewBox="0 0 24 24"><polygon points="7 4 19 12 7 20 7 4"></polygon></svg>
+              </button>
+            </div>
+
           </div>
 
-          <!-- Rounded Card Container enclosing the List Tiles -->
-          <div class="tiles-grouped-card">
+          <!-- 2. Track List Area Scrolling Inline with the Whole Page -->
+          <div class="sheet-flow-content">
 
-            <!-- Tile 1: Blue Pastel Badge (Sound and Haptics style) -->
-            <div class="pastel-list-tile playing" onclick="selectTile(0, this)">
-              <div class="pastel-badge badge-blue">
-                <div class="mini-wave-box">
-                  <div class="mini-bar mb1"></div>
-                  <div class="mini-bar mb2"></div>
-                  <div class="mini-bar mb3"></div>
+            <div class="section-header-bar">
+              <span class="m3-headline">Top 10</span>
+              <button class="see-all-btn">See All</button>
+            </div>
+
+            <!-- Rounded Grouped Card with Pastel Badge Tiles -->
+            <div class="tiles-grouped-card">
+
+              <!-- Tile 1: Blue Pastel Badge (Sound and Haptics) -->
+              <div class="pastel-list-tile playing" onclick="selectTile(0, this)">
+                <div class="pastel-badge badge-blue">
+                  <div class="mini-wave-box">
+                    <div class="mini-bar mb1"></div>
+                    <div class="mini-bar mb2"></div>
+                    <div class="mini-bar mb3"></div>
+                  </div>
+                </div>
+                <div class="tile-body">
+                  <div class="tile-title">Sound and Haptics</div>
+                  <div class="tile-subtitle">Volume and haptic features</div>
+                </div>
+                <div class="tile-trailing">
+                  <span class="tile-duration">4:15</span>
+                  <button class="tile-more-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
+                  </button>
                 </div>
               </div>
-              <div class="tile-body">
-                <div class="tile-title">Sound and Haptics</div>
-                <div class="tile-subtitle">Volume and haptic features</div>
-              </div>
-              <div class="tile-trailing">
-                <span class="tile-duration">4:15</span>
-                <button class="tile-more-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
-                </button>
-              </div>
-            </div>
 
-            <!-- Tile 2: Lime Pastel Badge (Security and Privacy style) -->
-            <div class="pastel-list-tile" onclick="selectTile(1, this)">
-              <div class="pastel-badge badge-lime">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+              <!-- Tile 2: Lime Pastel Badge (Security and Privacy) -->
+              <div class="pastel-list-tile" onclick="selectTile(1, this)">
+                <div class="pastel-badge badge-lime">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                </div>
+                <div class="tile-body">
+                  <div class="tile-title">Security and Privacy</div>
+                  <div class="tile-subtitle">Protect and secure your device</div>
+                </div>
+                <div class="tile-trailing">
+                  <span class="tile-duration">3:20</span>
+                  <button class="tile-more-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
+                  </button>
+                </div>
               </div>
-              <div class="tile-body">
-                <div class="tile-title">Security and Privacy</div>
-                <div class="tile-subtitle">Protect and secure your device</div>
-              </div>
-              <div class="tile-trailing">
-                <span class="tile-duration">3:20</span>
-                <button class="tile-more-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
-                </button>
-              </div>
-            </div>
 
-            <!-- Tile 3: Purple Pastel Badge (Notifications and Alerts style) -->
-            <div class="pastel-list-tile" onclick="selectTile(2, this)">
-              <div class="pastel-badge badge-purple">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+              <!-- Tile 3: Purple Pastel Badge (Notifications and Alerts) -->
+              <div class="pastel-list-tile" onclick="selectTile(2, this)">
+                <div class="pastel-badge badge-purple">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                </div>
+                <div class="tile-body">
+                  <div class="tile-title">Notifications and Alerts</div>
+                  <div class="tile-subtitle">Never miss your priorities</div>
+                </div>
+                <div class="tile-trailing">
+                  <span class="tile-duration">5:05</span>
+                  <button class="tile-more-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
+                  </button>
+                </div>
               </div>
-              <div class="tile-body">
-                <div class="tile-title">Notifications and Alerts</div>
-                <div class="tile-subtitle">Never miss your priorities</div>
-              </div>
-              <div class="tile-trailing">
-                <span class="tile-duration">5:05</span>
-                <button class="tile-more-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
-                </button>
-              </div>
-            </div>
 
-            <!-- Tile 4: Orange Pastel Badge (Input and Actions style) -->
-            <div class="pastel-list-tile" onclick="selectTile(3, this)">
-              <div class="pastel-badge badge-orange">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14z"/></svg>
+              <!-- Tile 4: Orange Pastel Badge (Input and Actions) -->
+              <div class="pastel-list-tile" onclick="selectTile(3, this)">
+                <div class="pastel-badge badge-orange">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14z"/></svg>
+                </div>
+                <div class="tile-body">
+                  <div class="tile-title">Input and Actions</div>
+                  <div class="tile-subtitle">Control your device with ease</div>
+                </div>
+                <div class="tile-trailing">
+                  <span class="tile-duration">4:40</span>
+                  <button class="tile-more-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
+                  </button>
+                </div>
               </div>
-              <div class="tile-body">
-                <div class="tile-title">Input and Actions</div>
-                <div class="tile-subtitle">Control your device with ease</div>
-              </div>
-              <div class="tile-trailing">
-                <span class="tile-duration">4:40</span>
-                <button class="tile-more-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
-                </button>
-              </div>
-            </div>
 
-            <!-- Tile 5: Chartreuse Pastel Badge (Widgets style) -->
-            <div class="pastel-list-tile" onclick="selectTile(4, this)">
-              <div class="pastel-badge badge-chartreuse">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
+              <!-- Tile 5: Chartreuse Pastel Badge (Widgets) -->
+              <div class="pastel-list-tile" onclick="selectTile(4, this)">
+                <div class="pastel-badge badge-chartreuse">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
+                </div>
+                <div class="tile-body">
+                  <div class="tile-title">Widgets</div>
+                  <div class="tile-subtitle">At a glance on your home screen</div>
+                </div>
+                <div class="tile-trailing">
+                  <span class="tile-duration">3:20</span>
+                  <button class="tile-more-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
+                  </button>
+                </div>
               </div>
-              <div class="tile-body">
-                <div class="tile-title">Widgets</div>
-                <div class="tile-subtitle">At a glance on your home screen</div>
-              </div>
-              <div class="tile-trailing">
-                <span class="tile-duration">3:20</span>
-                <button class="tile-more-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
-                </button>
-              </div>
-            </div>
 
-            <!-- Tile 6: Mint Pastel Badge (Display style) -->
-            <div class="pastel-list-tile" onclick="selectTile(5, this)">
-              <div class="pastel-badge badge-mint">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
+              <!-- Tile 6: Mint Pastel Badge (Display) -->
+              <div class="pastel-list-tile" onclick="selectTile(5, this)">
+                <div class="pastel-badge badge-mint">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
+                </div>
+                <div class="tile-body">
+                  <div class="tile-title">Display</div>
+                  <div class="tile-subtitle">Visuals to enhance your experience</div>
+                </div>
+                <div class="tile-trailing">
+                  <span class="tile-duration">4:12</span>
+                  <button class="tile-more-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
+                  </button>
+                </div>
               </div>
-              <div class="tile-body">
-                <div class="tile-title">Display</div>
-                <div class="tile-subtitle">Visuals to enhance your experience</div>
-              </div>
-              <div class="tile-trailing">
-                <span class="tile-duration">4:12</span>
-                <button class="tile-more-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
-                </button>
-              </div>
-            </div>
 
-            <!-- Tile 7: Sage Pastel Badge (Watch style) -->
-            <div class="pastel-list-tile" onclick="selectTile(6, this)">
-              <div class="pastel-badge badge-sage">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 12c0-2.54-1.19-4.81-3.04-6.27L16 2H8l-.96 3.73C5.19 7.19 4 9.45 4 12s1.19 4.81 3.04 6.27L8 22h8l.96-3.73c1.85-1.46 3.04-3.73 3.04-6.27zM6 12c0-3.31 2.69-6 6-6s6 2.69 6 6-2.69 6-6 6-6-2.69-6-6z"/></svg>
+              <!-- Tile 7: Sage Pastel Badge (Watch) -->
+              <div class="pastel-list-tile" onclick="selectTile(6, this)">
+                <div class="pastel-badge badge-sage">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 12c0-2.54-1.19-4.81-3.04-6.27L16 2H8l-.96 3.73C5.19 7.19 4 9.45 4 12s1.19 4.81 3.04 6.27L8 22h8l.96-3.73c1.85-1.46 3.04-3.73 3.04-6.27zM6 12c0-3.31 2.69-6 6-6s6 2.69 6 6-2.69 6-6 6-6-2.69-6-6z"/></svg>
+                </div>
+                <div class="tile-body">
+                  <div class="tile-title">Watch</div>
+                  <div class="tile-subtitle">Integrations with WearOS</div>
+                </div>
+                <div class="tile-trailing">
+                  <span class="tile-duration">2:48</span>
+                  <button class="tile-more-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
+                  </button>
+                </div>
               </div>
-              <div class="tile-body">
-                <div class="tile-title">Watch</div>
-                <div class="tile-subtitle">Integrations with WearOS</div>
-              </div>
-              <div class="tile-trailing">
-                <span class="tile-duration">2:48</span>
-                <button class="tile-more-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2.5"></circle></svg>
-                </button>
-              </div>
+
             </div>
 
           </div>
@@ -873,7 +898,7 @@
         </div>
 
       </div>
-      <span class="hint-label">💡 Interactive: Tap FAB to toggle play/pause; tap any tile to change playing track</span>
+      <span class="hint-label">💡 Interactive: Scroll the entire phone screen up and down to test whole-page scrolling</span>
     </div>
 
     <!-- Reference List Tile Column -->
@@ -915,7 +940,7 @@
         document.getElementById('btnUnified').classList.add('active');
         refTileCol.style.display = 'none';
         refHeroCol.style.display = 'none';
-        mainTitle.textContent = 'Unified Expressive Design';
+        mainTitle.textContent = 'Full-Page Scrollable Experience';
       } else if (view === 'refTile') {
         document.getElementById('btnRefTile').classList.add('active');
         refTileCol.style.display = 'flex';
@@ -926,6 +951,15 @@
         refTileCol.style.display = 'none';
         refHeroCol.style.display = 'flex';
         mainTitle.textContent = 'Rendered Component';
+      }
+    }
+
+    function handlePageScroll(elem) {
+      const collapsedBar = document.getElementById('collapsedBar');
+      if (elem.scrollTop > 220) {
+        collapsedBar.classList.add('scrolled');
+      } else {
+        collapsedBar.classList.remove('scrolled');
       }
     }
 
@@ -964,7 +998,15 @@
       document.getElementById('fabSvg').innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
     }
 
-    if (window.location.hash === '#refTile') {
+    if (window.location.hash === '#scrolled') {
+      setTimeout(() => {
+        const ps = document.getElementById('pageScroll');
+        if (ps) {
+          ps.scrollTop = 320;
+          handlePageScroll(ps);
+        }
+      }, 100);
+    } else if (window.location.hash === '#refTile') {
       setView('refTile');
     } else if (window.location.hash === '#refHero') {
       setView('refHero');
