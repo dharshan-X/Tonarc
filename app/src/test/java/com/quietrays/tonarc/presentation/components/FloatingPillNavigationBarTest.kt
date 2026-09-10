@@ -2,6 +2,7 @@ package com.quietrays.tonarc.presentation.components
 
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FloatingPillNavigationBarTest {
@@ -64,5 +65,33 @@ class FloatingPillNavigationBarTest {
         val expected = FloatingPillContentHeight + FloatingPillBottomMargin + systemInset
         assertEquals(expected, resolveFloatingPillContainerHeight(systemInset))
         assertEquals(86.dp, resolveFloatingPillContainerHeight(systemInset))
+    }
+
+    @Test
+    fun calculatePillFluidScale_whenAtRest_returnsNeutralScale() {
+        val scale = calculatePillFluidScale(headOffset = 81.dp, tailOffset = 81.dp, baseWidth = 64.dp)
+        assertEquals(1.0f, scale.scaleX, 0.001f)
+        assertEquals(1.0f, scale.scaleY, 0.001f)
+    }
+
+    @Test
+    fun calculatePillFluidScale_whenStretchingRight_stretchesHorizontallyAndSquashesVertically() {
+        val scale = calculatePillFluidScale(headOffset = 120.dp, tailOffset = 81.dp, baseWidth = 64.dp)
+        assertTrue(scale.scaleX > 1.0f)
+        assertTrue(scale.scaleY < 1.0f)
+    }
+
+    @Test
+    fun calculatePillFluidScale_whenStretchingLeft_stretchesHorizontallyAndSquashesVertically() {
+        val scale = calculatePillFluidScale(headOffset = 40.dp, tailOffset = 81.dp, baseWidth = 64.dp)
+        assertTrue(scale.scaleX > 1.0f)
+        assertTrue(scale.scaleY < 1.0f)
+    }
+
+    @Test
+    fun calculatePillFluidScale_capsMaxStretchAndSquash() {
+        val scale = calculatePillFluidScale(headOffset = 300.dp, tailOffset = 0.dp, baseWidth = 64.dp)
+        assertEquals(1.35f, scale.scaleX, 0.001f)
+        assertTrue(scale.scaleY >= 0.85f)
     }
 }

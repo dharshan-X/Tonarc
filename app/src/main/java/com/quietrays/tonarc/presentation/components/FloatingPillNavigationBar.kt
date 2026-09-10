@@ -79,6 +79,20 @@ internal fun resolveActiveTabIndex(currentRoute: String?, routes: List<String>):
     return if (index >= 0) index else 0
 }
 
+internal data class PillFluidScale(val scaleX: Float, val scaleY: Float)
+
+internal fun calculatePillFluidScale(headOffset: Dp, tailOffset: Dp, baseWidth: Dp): PillFluidScale {
+    if (baseWidth <= 0.dp) return PillFluidScale(1.0f, 1.0f)
+    val deltaX = kotlin.math.abs(headOffset.value - tailOffset.value)
+    val stretchRatio = (deltaX / baseWidth.value) * 0.45f
+    val rawScaleX = 1.0f + stretchRatio
+    val scaleX = rawScaleX.coerceIn(1.0f, 1.35f)
+    val squashRatio = (scaleX - 1.0f) * 0.35f
+    val scaleY = (1.0f - squashRatio).coerceIn(0.85f, 1.0f)
+    return PillFluidScale(scaleX = scaleX, scaleY = scaleY)
+}
+
+
 @Composable
 fun FloatingPillNavigationBar(
     navController: NavHostController,
