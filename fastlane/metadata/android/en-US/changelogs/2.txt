@@ -1,7 +1,8 @@
-PixelPlayerOSS 0.2.0:
+Tonarc 0.2.0-alpha:
 
-* Material 3 Expressive pass: new motion scheme, wavy progress indicators, shape-morphing animations.
-* Navidrome library selector; album artist grouping for Artists tab and cloud albums.
-* HTTP allowed for local/VPN Navidrome and Jellyfin servers; user-installed CAs trusted.
-* Smaller app, faster startup, smoother lists and sheets.
-* Fixes: local server connections on Android 17, spurious errors when skipping cloud tracks quickly.
+* Modern Floating Pill navigation bar style with smooth sliding indicator and haptic feedback.
+* In-app Spotify account connection and playlist import with local & cloud track matching.
+* Double-tap search tab to quickly focus the search bar.
+* Hardware-accelerated navigation animations with zero stutter.
+* Streamed and cached YouTube Music songs now included in Taste Profile and listening stats.
+* Smoother playlist import dialog with throttled progress and memoized shapes.

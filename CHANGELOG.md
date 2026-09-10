@@ -6,6 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Floating Pill Navigation, Spotify In-App Authentication & Performance
+
+#### 1. Modern Minimalist Floating Pill Navigation Bar
+- Floating Pill Style: Added a sleek, stadium-shaped (`CircleShape`) floating pill navigation bar option selectable under **Settings > Appearance > Navigation Bar Style**.
+- Hardware-Accelerated Sliding Indicator: Sliding capsule indicator powered by `Modifier.graphicsLayer { translationX = ... }` and snappy non-bouncy spring physics (`Spring.DampingRatioNoBouncy`, `Spring.StiffnessMedium`), eliminating recompositions, remeasurements, and layout passes on the UI thread for zero-stutter navigation transitions.
+- Zero-Latency Visual Response: Immediate visual feedback on tab selection decoupled from route backstack resolution, with smooth animated color tint transitions (`animateColorAsState`).
+- Search Double-Tap: Double-tapping the Search tab instantly activates and focuses the search bar for quick music lookups.
+- Coordinated MiniPlayer Layout: Coordinated collapsed MiniPlayer bottom offset and rounded corner transition (`32.dp`) in `SheetVisualState`, ensuring seamless aesthetic alignment above the floating capsule.
+- Dynamic System Insets & Screen Transitions: Fluid hardware-accelerated translation and alpha fading during player expansion and sub-route navigation.
+
+#### 2. Spotify In-App Authentication & Playlist Importer
+- In-App WebView Authentication: Direct in-app Spotify login flow (`SpotifyLoginActivity`) with desktop user-agent, modern TOTP token retrieval for `/api/token`, and session cookie sanitization.
+- Accounts Screen Integration: Connect and disconnect Spotify accounts under the Accounts screen with status indicators.
+- Authenticated Access & Private Playlists: Authenticated web player token retrieval, user profile fetching, and private playlist detection.
+- Pathfinder GraphQL Fetcher: Resilient track extraction using Spotify's Pathfinder GraphQL API with sanitized session cookies.
+- Hybrid Matching Engine: Matches imported Spotify playlists against local library files and YouTube Music online catalog for instant streaming and playback.
+- Android Share Sheet Integration: Import Spotify playlists directly from Spotify URLs via the system share sheet.
+- Zero-Stutter Importer Dialog: Optimized `ImportSpotifyPlaylistDialog` with memoized shapes and throttled progress updates for fluid multi-track matching.
+
+#### 3. Taste Profile & Listening Analytics
+- Streamed & Cached Track Inclusion: Taste Profile analytics and listening statistics now incorporate streamed and cached YouTube Music tracks.
+- Cleaner Analytics: Filtered placeholder artists and albums from listening stats calculations.
+
+---
+
 ## [0.1.0-alpha] - 2026-08-26
 
 ### Initial Alpha Milestone Release
