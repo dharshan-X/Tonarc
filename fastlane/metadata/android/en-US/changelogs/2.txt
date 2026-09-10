@@ -1,8 +1,8 @@
 Tonarc 0.2.0-alpha:
 
-* Modern Floating Pill navigation bar style with smooth sliding indicator and haptic feedback.
+* Modern Floating Pill navigation bar style with organic fluid physics (liquid stretch & squash).
+* Tactile spring icon pops with hardware-accelerated animations and zero stutter.
 * In-app Spotify account connection and playlist import with local & cloud track matching.
 * Double-tap search tab to quickly focus the search bar.
-* Hardware-accelerated navigation animations with zero stutter.
 * Streamed and cached YouTube Music songs now included in Taste Profile and listening stats.
 * Smoother playlist import dialog with throttled progress and memoized shapes.

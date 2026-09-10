@@ -12,7 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### 1. Modern Minimalist Floating Pill Navigation Bar
 - Floating Pill Style: Added a sleek, stadium-shaped (`CircleShape`) floating pill navigation bar option selectable under **Settings > Appearance > Navigation Bar Style**.
-- Hardware-Accelerated Sliding Indicator: Sliding capsule indicator powered by `Modifier.graphicsLayer { translationX = ... }` and snappy non-bouncy spring physics (`Spring.DampingRatioNoBouncy`, `Spring.StiffnessMedium`), eliminating recompositions, remeasurements, and layout passes on the UI thread for zero-stutter navigation transitions.
+- Fluid Physics & Liquid Stretch/Squash: Asymmetric dual-edge spring physics (`headOffset` and `tailOffset`) creating organic horizontal elongation (up to $1.35\times$) and volume-conserving vertical squash during indicator motion, snapping elastically into place upon destination arrival.
+- Active Icon Spring Pop: Bouncy spring pop animation (`0.90 -> 1.12 -> 1.0`) on the newly selected tab icon, rendered with hardware-accelerated `graphicsLayer` scaling.
+- Hardware-Accelerated Sliding Indicator: All translation, stretch, and squash transforms run purely inside `Modifier.graphicsLayer { ... }` on the RenderNode, eliminating recompositions and layout passes on the UI thread for zero-stutter navigation transitions.
 - Zero-Latency Visual Response: Immediate visual feedback on tab selection decoupled from route backstack resolution, with smooth animated color tint transitions (`animateColorAsState`).
 - Search Double-Tap: Double-tapping the Search tab instantly activates and focuses the search bar for quick music lookups.
 - Coordinated MiniPlayer Layout: Coordinated collapsed MiniPlayer bottom offset and rounded corner transition (`32.dp`) in `SheetVisualState`, ensuring seamless aesthetic alignment above the floating capsule.
