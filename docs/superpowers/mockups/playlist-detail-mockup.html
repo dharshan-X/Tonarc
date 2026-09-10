@@ -419,127 +419,128 @@
       display: none; /* Zero scrollbar as requested */
     }
 
-    /* 1. Dark Rounded Hero Card */
+    /* 1. Full Bleed Dark Rounded Hero Card */
     .hero-section {
       width: 100%;
-      background: var(--md-sys-color-surface-container-lowest);
+      height: 360px;
       border-bottom-left-radius: 38px;
       border-bottom-right-radius: 38px;
-      padding: 50px 20px 36px 20px;
+      padding: 50px 20px 32px 20px;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      justify-content: space-between;
       position: relative;
       box-shadow: 0 16px 36px rgba(0,0,0,0.45);
-      transition: background-color 0.3s;
+      overflow: hidden;
     }
 
     body.theme-light .hero-section {
-      box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.15);
     }
 
-    /* Hero Top Actions (Only Back Button, clean top with no profile/menu) */
+    /* Hero Background 2x2 Artwork Mosaic */
+    .hero-art-bg-mosaic {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 2px;
+      z-index: 1;
+    }
+
+    .hero-mosaic-tile {
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-color: var(--md-sys-color-surface-container-high);
+    }
+
+    /* Cinematic Gradient Scrim Overlay */
+    .hero-scrim-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom,
+        rgba(0,0,0,0.65) 0%,
+        rgba(0,0,0,0.25) 25%,
+        rgba(0,0,0,0.50) 55%,
+        rgba(0,0,0,0.82) 80%,
+        rgba(0,0,0,0.96) 100%
+      );
+      z-index: 2;
+    }
+
+    .hero-ambient-tint {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom,
+        var(--ambient-glow) 0%,
+        transparent 50%,
+        var(--ambient-glow) 100%
+      );
+      opacity: 0.35;
+      z-index: 3;
+    }
+
+    /* Hero Top Actions */
     .hero-top-nav {
       width: 100%;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      z-index: 4;
+      position: relative;
     }
 
     .hero-top-btn {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: var(--md-sys-color-surface-container-high);
+      background: rgba(0, 0, 0, 0.40);
       border: none;
-      color: var(--md-sys-color-on-surface);
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-
-    /* Hero Artwork Display */
-    .hero-art-display {
-      position: relative;
-      width: 180px;
-      height: 180px;
-      margin-top: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .art-glow {
-      position: absolute;
-      width: 170px;
-      height: 170px;
-      border-radius: 50%;
-      background: radial-gradient(circle, var(--ambient-glow) 0%, rgba(0,0,0,0) 70%);
-      filter: blur(24px);
-      z-index: 1;
-      transition: background 0.3s;
-    }
-
-    .hero-art-card {
-      position: relative;
-      z-index: 2;
-      width: 176px;
-      height: 176px;
-      border-radius: 28px;
-      overflow: hidden;
-      box-shadow: 0 16px 36px rgba(0,0,0,0.6);
-      background: #1a1722;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .hero-svg-art {
-      width: 100%;
-      height: 100%;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
     /* Hero Typography */
     .hero-typography {
-      margin-top: 18px;
-      text-align: center;
+      z-index: 4;
+      position: relative;
+      text-align: left;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: flex-start;
       gap: 4px;
-      z-index: 2;
-    }
-
-    .hero-tag-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 12px;
-      background: var(--chip-bg);
-      color: var(--md-sys-color-primary);
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
+      padding-right: 64px;
     }
 
     .hero-title {
-      font-size: 24px;
-      font-weight: 900;
-      color: var(--md-sys-color-on-surface);
-      letter-spacing: -0.6px;
-      margin-top: 4px;
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
     }
 
     .hero-meta {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--md-sys-color-on-surface-variant);
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.80);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -1395,37 +1396,19 @@
               </button>
             </div>
 
-            <!-- Hero Artwork Showcase with Dynamic Ambient Glow -->
-            <div class="hero-art-display">
-              <div class="art-glow"></div>
-              <div class="hero-art-card">
-                <svg class="hero-svg-art" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="200" height="200" fill="#181522"/>
-                  <!-- Abstract Cassette / Synthesizer Cover Artwork -->
-                  <circle cx="100" cy="100" r="82" stroke="var(--md-sys-color-primary)" stroke-width="4" stroke-dasharray="6 4" opacity="0.6"/>
-                  <circle cx="100" cy="100" r="64" fill="#201b2c" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
-                  
-                  <!-- Vinyl Grooves -->
-                  <circle cx="100" cy="100" r="50" stroke="rgba(255,255,255,0.06)" stroke-width="1.5"/>
-                  <circle cx="100" cy="100" r="38" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
-                  
-                  <!-- Center Label -->
-                  <circle cx="100" cy="100" r="24" fill="var(--md-sys-color-primary)"/>
-                  <circle cx="100" cy="100" r="6" fill="#0f0e13"/>
-                  
-                  <!-- Equalizer soundwaves radiating -->
-                  <path d="M30 100 Q65 60 100 100 T170 100" stroke="var(--md-sys-color-primary)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8"/>
-                  <path d="M40 115 Q70 85 100 115 T160 115" stroke="var(--md-sys-color-on-primary-container)" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
-
-                  <!-- Tonarc Sparkles -->
-                  <path d="M145 45L147 38L154 36L147 34L145 27L143 34L136 36L143 38Z" fill="var(--md-sys-color-primary)"/>
-                  <path d="M55 155L56 150L61 148L56 146L55 141L54 146L49 148L54 150Z" fill="var(--md-sys-color-primary)"/>
-                </svg>
-              </div>
+            <!-- Full-Bleed 2x2 Album Art Background Mosaic -->
+            <div class="hero-art-bg-mosaic">
+              <div class="hero-mosaic-tile" style="background: linear-gradient(135deg, #2b1055, #7597de);"></div>
+              <div class="hero-mosaic-tile" style="background: linear-gradient(135deg, #11998e, #38ef7d);"></div>
+              <div class="hero-mosaic-tile" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);"></div>
+              <div class="hero-mosaic-tile" style="background: linear-gradient(135deg, #f7971e, #ffd200);"></div>
             </div>
 
+            <!-- Cinematic Gradient Scrim Overlay -->
+            <div class="hero-scrim-gradient"></div>
+            <div class="hero-ambient-tint"></div>
+
             <div class="hero-typography">
-              <div class="hero-tag-badge">● Tonarc Playlist</div>
               <div class="hero-title">Midnight Lo-Fi Echoes</div>
               <div class="hero-meta">
                 <span>10 Songs</span>
