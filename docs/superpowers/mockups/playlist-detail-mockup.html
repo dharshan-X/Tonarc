@@ -517,20 +517,28 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
-    /* Hero Typography */
-    .hero-typography {
+    /* Hero Bottom Row: Typography & Play FAB */
+    .hero-bottom-row {
       z-index: 4;
       position: relative;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .hero-typography {
+      flex: 1;
       text-align: left;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       gap: 4px;
-      padding-right: 64px;
+      padding-right: 16px;
     }
 
     .hero-title {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 800;
       color: #ffffff;
       letter-spacing: -0.5px;
@@ -546,12 +554,20 @@
       gap: 6px;
     }
 
-    /* Seam Overlapping Play FAB (56.dp anchored on seam) */
-    .seam-fab-anchor {
-      position: absolute;
-      bottom: -28px;
-      right: 24px;
-      z-index: 10;
+    .play-fab {
+      width: 56px;
+      height: 56px;
+      min-width: 56px;
+      border-radius: 50%;
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      border: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
     }
 
     .play-fab {
@@ -1408,19 +1424,18 @@
             <div class="hero-scrim-gradient"></div>
             <div class="hero-ambient-tint"></div>
 
-            <div class="hero-typography">
-              <div class="hero-title">Midnight Lo-Fi Echoes</div>
-              <div class="hero-meta">
-                <span>10 Songs</span>
-                <span>•</span>
-                <span>41 mins</span>
-                <span>•</span>
-                <span>Lossless FLAC</span>
+            <div class="hero-bottom-row">
+              <div class="hero-typography">
+                <div class="hero-title">Midnight Lo-Fi Echoes</div>
+                <div class="hero-meta">
+                  <span>10 Songs</span>
+                  <span>•</span>
+                  <span>41 mins</span>
+                  <span>•</span>
+                  <span>Lossless FLAC</span>
+                </div>
               </div>
-            </div>
 
-            <!-- Overlapping Seam Play FAB (56.dp) -->
-            <div class="seam-fab-anchor">
               <button class="play-fab" id="fabPlay" onclick="togglePlayback()" title="Play All">
                 <svg id="fabSvg" viewBox="0 0 24 24"><polygon points="7 4 19 12 7 20 7 4"></polygon></svg>
               </button>

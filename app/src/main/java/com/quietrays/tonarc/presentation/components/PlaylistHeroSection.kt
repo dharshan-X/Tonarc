@@ -295,6 +295,12 @@ fun PlaylistHeroSection(
         resolvePlaylistSubtitleMeta(songs.size, formattedDuration)
     }
 
+    val fabScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1.04f else 1.0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "fabScale"
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -426,73 +432,73 @@ fun PlaylistHeroSection(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
-                    // Playlist Name
-                    Text(
-                        text = playlist.name,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontFamily = RoundedSans,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.5).sp
-                        ),
-                        color = Color.White,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(end = 64.dp)
-                    )
+                    // Bottom Row: Title + Metadata on left, Play FAB on right
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 16.dp)
+                        ) {
+                            Text(
+                                text = playlist.name,
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontFamily = RoundedSans,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = (-0.5).sp
+                                ),
+                                color = Color.White,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
-                    // Metadata Subtitle
-                    Text(
-                        text = subtitleMeta,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = RoundedSans,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = Color.White.copy(alpha = 0.80f),
-                        modifier = Modifier.padding(end = 64.dp)
-                    )
+                            Text(
+                                text = subtitleMeta,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = RoundedSans,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = Color.White.copy(alpha = 0.80f)
+                            )
+                        }
+
+                        FloatingActionButton(
+                            onClick = {
+                                performAppCompatHapticFeedback(
+                                    view,
+                                    appHapticsConfig,
+                                    HapticFeedbackConstantsCompat.CONTEXT_CLICK
+                                )
+                                onPlayFabClick()
+                            },
+                            shape = CircleShape,
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            elevation = FloatingActionButtonDefaults.elevation(
+                                defaultElevation = 6.dp,
+                                pressedElevation = 10.dp
+                            ),
+                            modifier = Modifier
+                                .size(56.dp)
+                                .graphicsLayer {
+                                    scaleX = fabScale
+                                    scaleY = fabScale
+                                }
+                        ) {
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                contentDescription = if (isPlaying) stringResource(R.string.cd_pause) else stringResource(R.string.cd_play),
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
                 }
             }
-        }
-
-        // Seam-Overlapping Floating Action Button (56.dp)
-        val fabScale by animateFloatAsState(
-            targetValue = if (isPlaying) 1.04f else 1.0f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-            label = "fabScale"
-        )
-
-        FloatingActionButton(
-            onClick = {
-                performAppCompatHapticFeedback(
-                    view,
-                    appHapticsConfig,
-                    HapticFeedbackConstantsCompat.CONTEXT_CLICK
-                )
-                onPlayFabClick()
-            },
-            shape = CircleShape,
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            elevation = FloatingActionButtonDefaults.elevation(
-                defaultElevation = 6.dp,
-                pressedElevation = 10.dp
-            ),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = (-24).dp, y = 28.dp)
-                .size(56.dp)
-                .graphicsLayer {
-                    scaleX = fabScale
-                    scaleY = fabScale
-                }
-        ) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = if (isPlaying) stringResource(R.string.cd_pause) else stringResource(R.string.cd_play),
-                modifier = Modifier.size(28.dp)
-            )
         }
     }
 }

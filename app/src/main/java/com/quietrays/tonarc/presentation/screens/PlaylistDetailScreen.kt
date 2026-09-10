@@ -493,12 +493,12 @@ fun PlaylistDetailScreen(
                     }
 
                     item(key = "playlist_action_chips") {
-                        Spacer(modifier = Modifier.height(28.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 10.dp)
+                                .padding(horizontal = 16.dp)
                                 .padding(bottom = 6.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
