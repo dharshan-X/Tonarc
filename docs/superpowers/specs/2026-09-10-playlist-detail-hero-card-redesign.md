@@ -17,7 +17,7 @@ The playlist detail screen is built on a **Full-Page Unified Scroll Architecture
    - As the user scrolls down through the track list, the dark hero section scrolls up naturally (with optional subtle parallax/scale collapse into a compact top app bar).
    - The list tiles flow naturally down the screen, providing maximum vertical reading comfort.
 2. **Hero Section**: The dark rounded card with bottom curvature (`RoundedCornerShape(bottomStart = 38.dp, bottomEnd = 38.dp)`), centered artwork with ambient glow, bold expressive typography, and the overlapping seam Floating Action Button (`56.dp`).
-3. **Pastel Badge List Tiles**: Flat list tiles sitting directly on the surface (zero shadow, zero elevation, no outer card container) with circular pastel tonal badges (`44.dp`), high-contrast two-line typography, subtle hairline dividers, and trailing duration/options.
+3. **Pastel Badge List Tiles**: Full-width edge-to-edge flat list tiles (zero shadow, zero elevation, 100% width spanning borders) with circular pastel tonal badges (`44.dp`), high-contrast two-line typography, subtle hairline dividers, and trailing duration/options.
 4. **Zero Scrollbars**: Completely clean edges (`ExpressiveScrollBar` eliminated).
 
 ```
@@ -69,7 +69,7 @@ The playlist detail screen is built on a **Full-Page Unified Scroll Architecture
 * **Overlapping Play FAB**: `56.dp` circle (`FloatingActionButton`) anchored directly across the seam (`offset(y = (-28).dp)`).
 
 ### 2.3 Pastel Badge List Tiles (`PlaylistSongTile`)
-* **Flat Surface**: Tiles sit directly on the page background (`surface`) with 0dp elevation, zero box shadows, and no outer container card.
+* **Full-Width Edge-to-Edge List**: Tiles span 100% full width with 0dp elevation, zero shadow, and 1dp horizontal dividers spanning edge-to-edge, framed by 20dp internal horizontal padding.
 * **Leading Pastel Badge**:
   * Circular badge (`size = 44.dp`, `shape = CircleShape`).
   * Dynamic pastel tinted background with matching saturated icon:
