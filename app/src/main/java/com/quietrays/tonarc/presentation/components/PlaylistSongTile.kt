@@ -85,11 +85,26 @@ fun resolvePastelBadgePalette(index: Int): PastelBadgePalette {
     return PastelPalettes[safeIndex]
 }
 
-fun resolvePlaylistTileShape(isFirst: Boolean, isLast: Boolean, cornerRadius: Dp = 20.dp): Shape = when {
-    isFirst && isLast -> RoundedCornerShape(cornerRadius)
-    isFirst -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
-    isLast -> RoundedCornerShape(bottomStart = cornerRadius, bottomEnd = cornerRadius)
-    else -> RectangleShape
+fun resolvePlaylistTileShape(
+    isFirst: Boolean,
+    isLast: Boolean,
+    largeRadius: Dp = 16.dp,
+    smallRadius: Dp = 4.dp
+): Shape = when {
+    isFirst && isLast -> RoundedCornerShape(largeRadius)
+    isFirst -> RoundedCornerShape(
+        topStart = largeRadius,
+        topEnd = largeRadius,
+        bottomStart = smallRadius,
+        bottomEnd = smallRadius
+    )
+    isLast -> RoundedCornerShape(
+        topStart = smallRadius,
+        topEnd = smallRadius,
+        bottomStart = largeRadius,
+        bottomEnd = largeRadius
+    )
+    else -> RoundedCornerShape(smallRadius)
 }
 
 fun Modifier.playlistGroupItem(
@@ -241,7 +256,7 @@ fun PlaylistSongTile(
     onMoreOptionsClick: (Song) -> Unit,
     modifier: Modifier = Modifier,
     dragHandle: @Composable (() -> Unit)? = null,
-    showDivider: Boolean = true
+    showDivider: Boolean = false
 ) {
     val palette = remember(index) { resolvePastelBadgePalette(index) }
 

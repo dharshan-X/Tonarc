@@ -110,7 +110,6 @@ import com.quietrays.tonarc.presentation.components.PlaylistHeroSection
 import com.quietrays.tonarc.presentation.components.PlaylistSongTile
 import com.quietrays.tonarc.presentation.components.SongInfoBottomSheet
 import com.quietrays.tonarc.presentation.components.SongPickerBottomSheet
-import com.quietrays.tonarc.presentation.components.playlistGroupItem
 import com.quietrays.tonarc.presentation.components.rememberModalSheetState
 import com.quietrays.tonarc.presentation.components.resolveNavBarOccupiedHeight
 import com.quietrays.tonarc.presentation.components.resolvePlaylistTileShape
@@ -600,7 +599,7 @@ fun PlaylistDetailScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
+                                .padding(horizontal = 18.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -653,21 +652,20 @@ fun PlaylistDetailScreen(
                             )
 
                             val tileShape = remember(isFirst, isLast) {
-                                resolvePlaylistTileShape(isFirst, isLast, 20.dp)
+                                resolvePlaylistTileShape(isFirst, isLast, largeRadius = 16.dp, smallRadius = 4.dp)
+                            }
+
+                            val itemBgColor = when {
+                                playbackUiState.isCurrentSong && playbackUiState.isPlaying -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                                playbackUiState.isCurrentSong -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
+                                else -> MaterialTheme.colorScheme.surfaceContainer
                             }
 
                             Box(
                                 modifier = Modifier
-                                    .padding(horizontal = 10.dp)
-                                    .playlistGroupItem(
-                                        isFirst = isFirst,
-                                        isLast = isLast,
-                                        borderColor = MaterialTheme.colorScheme.outlineVariant,
-                                        cornerRadius = 20.dp,
-                                        borderWidth = 1.dp
-                                    )
+                                    .padding(horizontal = 16.dp, vertical = 2.dp)
                                     .clip(tileShape)
-                                    .background(Color.Transparent)
+                                    .background(itemBgColor)
                                     .graphicsLayer {
                                         scaleX = scale
                                         scaleY = scale
@@ -725,7 +723,7 @@ fun PlaylistDetailScreen(
                                             )
                                         }
                                     },
-                                    showDivider = !isLast
+                                    showDivider = false
                                 )
                             }
                         }
