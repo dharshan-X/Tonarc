@@ -1,9 +1,11 @@
 package com.quietrays.tonarc.presentation.components
 
 import android.os.SystemClock
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,7 +23,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -84,13 +88,19 @@ fun FloatingPillNavigationBar(
     onSearchIconDoubleTap: () -> Unit = {}
 ) {
     val routes = remember(navItems) { navItems.map { it.screen.route } }
-    val selectedIndex = resolveActiveTabIndex(currentRoute, routes)
+    val routeIndex = resolveActiveTabIndex(currentRoute, routes)
+    var targetIndex by remember { mutableIntStateOf(routeIndex) }
+
+    // Synchronize targetIndex if route changes externally (back gesture, etc.)
+    LaunchedEffect(routeIndex) {
+        targetIndex = routeIndex
+    }
 
     val animatedIndicatorOffset by animateDpAsState(
-        targetValue = calculatePillActiveOffset(selectedIndex),
+        targetValue = calculatePillActiveOffset(targetIndex),
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
         ),
         label = "FloatingPillActiveIndicatorOffset"
     )
@@ -122,10 +132,12 @@ fun FloatingPillNavigationBar(
                 .width(totalWidth),
             contentAlignment = Alignment.CenterStart
         ) {
-            // Sliding active indicator capsule
+            // Sliding active indicator capsule - rendered via graphicsLayer to avoid recompositions
             Box(
                 modifier = Modifier
-                    .offset(x = animatedIndicatorOffset)
+                    .graphicsLayer {
+                        translationX = animatedIndicatorOffset.toPx()
+                    }
                     .size(width = FloatingPillIndicatorWidth, height = FloatingPillIndicatorHeight)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.secondaryContainer)
@@ -139,17 +151,22 @@ fun FloatingPillNavigationBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 navItems.forEachIndexed { index, item ->
-                    val isSelected = index == selectedIndex
+                    val isSelected = index == targetIndex
                     val iconRes = if (isSelected && item.selectedIconResId != null && item.selectedIconResId != 0) {
                         item.selectedIconResId
                     } else {
                         item.iconResId
                     }
-                    val iconTint = if (isSelected) {
+                    val targetTint = if (isSelected) {
                         MaterialTheme.colorScheme.onSecondaryContainer
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
                     }
+                    val iconTint by animateColorAsState(
+                        targetValue = targetTint,
+                        animationSpec = tween(durationMillis = 180),
+                        label = "FloatingPillIconTint_${item.screen.route}"
+                    )
 
                     Box(
                         modifier = Modifier
@@ -167,16 +184,19 @@ fun FloatingPillNavigationBar(
                             ) {
                                 val itemRoute = item.screen.route
                                 val isSearchTab = itemRoute == Screen.Search.route
-                                val isAlreadySelected = latestCurrentRoute == itemRoute
+                                val isNavAlreadyOnRoute = latestCurrentRoute == itemRoute
+                                val isPendingOrSelected = isNavAlreadyOnRoute || (targetIndex == index)
 
                                 if (isSearchTab) {
                                     val now = SystemClock.elapsedRealtime()
                                     val isDoubleTap = now - lastSearchTapTimestamp <= 350L
                                     lastSearchTapTimestamp = now
 
-                                    if (!isAlreadySelected) {
+                                    if (!isPendingOrSelected) {
+                                        targetIndex = index
                                         hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         if (!navController.navigateToTopLevelSafely(itemRoute)) {
+                                            targetIndex = routeIndex
                                             lastSearchTapTimestamp = 0L
                                             return@clickable
                                         }
@@ -184,7 +204,7 @@ fun FloatingPillNavigationBar(
 
                                     if (isDoubleTap) {
                                         lastSearchTapTimestamp = 0L
-                                        if (isAlreadySelected) {
+                                        if (isNavAlreadyOnRoute) {
                                             latestOnSearchIconDoubleTap()
                                         } else {
                                             scope.launch {
@@ -193,10 +213,13 @@ fun FloatingPillNavigationBar(
                                             }
                                         }
                                     }
-                                } else if (!isAlreadySelected) {
+                                } else if (!isPendingOrSelected) {
+                                    targetIndex = index
                                     lastSearchTapTimestamp = 0L
                                     hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    navController.navigateToTopLevelSafely(itemRoute)
+                                    if (!navController.navigateToTopLevelSafely(itemRoute)) {
+                                        targetIndex = routeIndex
+                                    }
                                 }
                             },
                         contentAlignment = Alignment.Center
