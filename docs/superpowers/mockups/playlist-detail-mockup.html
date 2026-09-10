@@ -658,37 +658,44 @@
       color: var(--md-sys-color-on-surface-variant);
     }
 
-    /* Subtle Outlined List Container (Zero Elevation, 1dp border, matching bg) */
+    /* Connected Cards List Group (Material 3 Expressive Connected Shapes) */
     .tiles-grouped-card {
       width: 100%;
-      background: transparent; /* Exactly matches page surface! */
-      border: 1px solid var(--md-sys-color-outline-variant); /* Crisp 1dp outline border all around */
-      border-radius: 20px; /* 20.dp rounded corners */
-      box-shadow: none; /* 0dp elevation and zero shadow */
+      background: transparent;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      transition: border-color 0.3s;
+      gap: 3px;
     }
 
-    /* List Tiles Matching Reference */
+    /* List Tiles Matching Reference (16dp outer, 4dp inner, surfaceContainer fill) */
     .pastel-list-tile {
       display: flex;
       align-items: center;
-      padding: 12px 14px;
+      padding: 14px 16px;
       gap: 12px;
-      border-bottom: 1px solid var(--md-sys-color-surface-container-high);
+      background: var(--md-sys-color-surface-container);
+      border-radius: 4px;
       cursor: pointer;
       position: relative;
       transition: background 0.15s;
     }
 
+    .pastel-list-tile:first-child {
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+    }
+
     .pastel-list-tile:last-child {
-      border-bottom: none;
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+    }
+
+    .pastel-list-tile.playing {
+      background: var(--md-sys-color-primary-container);
     }
 
     .pastel-list-tile:hover {
-      background: rgba(255,255,255,0.03);
+      filter: brightness(1.08);
     }
 
     body.theme-light .pastel-list-tile:hover {
