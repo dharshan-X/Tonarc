@@ -6,7 +6,8 @@
   <title>Tonarc - Material 3 Expressive Playlist Detail Screen Mockup</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <style>
     :root {
       /* 1. Violet Night (Tonarc Default) */
@@ -23,9 +24,10 @@
       --md-sys-color-surface-container-high: #2d2935;
       --md-sys-color-surface-container-highest: #383441;
       --md-sys-color-outline-variant: #49454f;
-      --ambient-glow: rgba(208, 188, 255, 0.38);
-      --chip-bg: rgba(208, 188, 255, 0.12);
-      --app-font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --ambient-glow: rgba(208, 188, 255, 0.45);
+      --chip-bg: rgba(208, 188, 255, 0.10);
+      --app-font: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono-font: 'JetBrains Mono', monospace;
     }
 
     /* 2. Terracotta Sunset */
@@ -517,7 +519,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
-    /* Hero Bottom Row: Typography & Play FAB */
+    /* Hero Bottom Row: Typography & Play FAB (Editorial Split) */
     .hero-bottom-row {
       z-index: 4;
       position: relative;
@@ -525,6 +527,7 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
+      gap: 16px;
     }
 
     .hero-typography {
@@ -533,25 +536,49 @@
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 4px;
-      padding-right: 16px;
+      gap: 6px;
+      min-width: 0;
     }
 
     .hero-title {
-      font-size: 24px;
+      font-family: var(--app-font);
+      font-size: 26px;
       font-weight: 800;
       color: #ffffff;
-      letter-spacing: -0.5px;
-      line-height: 1.2;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
     }
 
     .hero-meta {
-      font-size: 13px;
+      font-family: var(--app-font);
+      font-size: 12.5px;
       font-weight: 500;
-      color: rgba(255, 255, 255, 0.80);
+      color: rgba(255, 255, 255, 0.82);
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .audio-spec-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      font-family: var(--mono-font);
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      color: #ffffff;
+      text-transform: uppercase;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
     }
 
     .play-fab {
@@ -562,35 +589,22 @@
       background: var(--md-sys-color-primary);
       color: var(--md-sys-color-on-primary);
       border: none;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 3px var(--md-sys-color-surface);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
-    }
-
-    .play-fab {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: var(--md-sys-color-primary);
-      color: var(--md-sys-color-on-primary);
-      border: none;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 3px var(--md-sys-color-surface);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
+      flex-shrink: 0;
+      transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s, box-shadow 0.3s;
     }
 
     .play-fab:hover {
-      transform: scale(1.08);
+      transform: scale(1.06);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 0 0 3px var(--md-sys-color-surface);
     }
 
     .play-fab:active {
-      transform: scale(0.92);
+      transform: scale(0.94);
     }
 
     .play-fab svg {
@@ -601,18 +615,18 @@
 
     /* 2. Track List Area Scrolling Inline with the Whole Page */
     .sheet-flow-content {
-      padding: 34px 10px 24px 10px; /* Slim 10.dp margin from screen edge */
+      padding: 24px 10px 24px 10px;
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
 
-    /* Action Chips Row */
+    /* Action Command Dock (Tactile Frosted Bar) */
     .action-chips-scroll {
       display: flex;
       gap: 8px;
       overflow-x: auto;
-      padding: 2px 2px 8px 2px;
+      padding: 4px 2px;
     }
 
     .action-chips-scroll::-webkit-scrollbar {
@@ -623,25 +637,34 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 7px 13px;
+      padding: 8px 14px;
       border-radius: 20px;
       background: var(--md-sys-color-surface-container-high);
-      border: 1px solid transparent;
+      border: 1px solid rgba(255, 255, 255, 0.05);
       color: var(--md-sys-color-on-surface);
+      font-family: var(--app-font);
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 600;
       white-space: nowrap;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: transform 0.16s cubic-bezier(0.2, 0, 0, 1), background 0.2s, box-shadow 0.2s;
     }
 
     .action-chip:hover {
+      transform: translateY(-1px);
       background: var(--md-sys-color-surface-container-highest);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .action-chip:active {
+      transform: scale(0.96);
     }
 
     .action-chip.active {
       background: var(--md-sys-color-primary);
       color: var(--md-sys-color-on-primary);
+      border-color: var(--md-sys-color-primary);
+      box-shadow: 0 4px 14px var(--ambient-glow);
     }
 
     .action-chip.danger-active {
@@ -658,21 +681,25 @@
     .section-header-bar {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 0 4px;
+      align-items: baseline;
+      padding: 8px 4px 2px 4px;
     }
 
     .m3-headline {
-      font-size: 16px;
+      font-family: var(--app-font);
+      font-size: 13px;
       font-weight: 800;
       color: var(--md-sys-color-on-surface);
-      letter-spacing: -0.2px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
     }
 
     .track-count-tag {
-      font-size: 12px;
+      font-family: var(--mono-font);
+      font-size: 11px;
       font-weight: 600;
       color: var(--md-sys-color-on-surface-variant);
+      letter-spacing: 0.5px;
     }
 
     /* Connected Cards List Group (Material 3 Expressive Connected Shapes) */
@@ -1432,7 +1459,7 @@
                   <span>•</span>
                   <span>41 mins</span>
                   <span>•</span>
-                  <span>Lossless FLAC</span>
+                  <span class="audio-spec-pill">24-BIT FLAC</span>
                 </div>
               </div>
 
@@ -1738,7 +1765,7 @@
         </div>
 
       </div>
-      <span class="device-title" style="font-size:12.5px; margin-top:4px;">💡 Interactive: Scroll phone screen vertically • Tap FAB to play/pause • Tap chips & 3-dots</span>
+      <span class="device-title" style="font-size:12.5px; margin-top:4px;">Interactive Preview: Scroll phone screen vertically • Tap FAB to play/pause • Tap chips & 3-dots</span>
     </div>
 
   </div>
@@ -1795,6 +1822,36 @@
 
     let currentTrackIdx = 0;
 
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const themeParam = params.get('theme');
+      if (themeParam) {
+        setTheme(themeParam);
+      }
+      const scrollParam = params.get('scroll');
+      if (scrollParam) {
+        const pageScroll = document.getElementById('pageScroll');
+        if (pageScroll) {
+          pageScroll.scrollTop = parseInt(scrollParam, 10);
+          const topBar = document.getElementById('collapsedBar');
+          if (topBar && parseInt(scrollParam, 10) > 220) {
+            topBar.style.transition = 'none';
+            topBar.classList.add('visible');
+          }
+          handlePageScroll(pageScroll);
+        }
+      }
+      if (window.gsap) {
+        gsap.from('.pastel-list-tile', {
+          y: 16,
+          opacity: 0,
+          duration: 0.45,
+          stagger: 0.035,
+          ease: 'power2.out'
+        });
+      }
+    });
+
     // Theme Switcher (6 Color Schemes)
     function setTheme(name) {
       document.body.className = '';
@@ -1812,16 +1869,27 @@
       const activeBtn = document.getElementById(activeBtnId);
       if (activeBtn) activeBtn.classList.add('active');
 
+      if (window.gsap) {
+        gsap.fromTo('.pastel-list-tile', 
+          { opacity: 0.85, y: 4 }, 
+          { opacity: 1, y: 0, duration: 0.25, stagger: 0.02, ease: 'power1.out' }
+        );
+      }
+
       showToast('Theme set to ' + name.charAt(0).toUpperCase() + name.slice(1));
     }
 
-    // Scroll collapse handler
+    // Scroll collapse handler with GSAP parallax
     function handlePageScroll(el) {
       const topBar = document.getElementById('collapsedBar');
       if (el.scrollTop > 220) {
         topBar.classList.add('visible');
       } else {
         topBar.classList.remove('visible');
+      }
+      const heroArt = document.querySelector('.hero-art-bg-mosaic');
+      if (heroArt && window.gsap) {
+        gsap.to(heroArt, { y: el.scrollTop * 0.3, duration: 0.1, overwrite: 'auto' });
       }
     }
 

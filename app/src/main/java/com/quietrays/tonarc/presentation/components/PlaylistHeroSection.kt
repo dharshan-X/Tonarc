@@ -285,6 +285,10 @@ fun PlaylistHeroSection(
     val glowColor = remember(playlist.coverColorArgb) {
         playlist.coverColorArgb?.let { Color(it) } ?: Color.Transparent
     }
+    val themePrimary = MaterialTheme.colorScheme.primary
+    val ambientGlowColor = remember(glowColor, themePrimary) {
+        if (glowColor != Color.Transparent) glowColor else themePrimary
+    }
 
     val tagText = remember(playlist.source, isFolderPlaylist, isSmartPlaylist) {
         resolvePlaylistTagBadge(playlist.source, isFolderPlaylist, isSmartPlaylist)
@@ -313,7 +317,11 @@ fun PlaylistHeroSection(
             shadowElevation = 0.dp,
             tonalElevation = 0.dp
         ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+            ) {
                 // Full-bleed album arts filling the hero
                 PlaylistHeroArtworkBackground(
                     playlist = playlist,
@@ -338,22 +346,20 @@ fun PlaylistHeroSection(
                         )
                 )
 
-                // Ambient custom cover color tint if present
-                if (glowColor != Color.Transparent) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        glowColor.copy(alpha = 0.20f),
-                                        Color.Transparent,
-                                        glowColor.copy(alpha = 0.35f)
-                                    )
+                // Ambient backlight glow matching theme or custom playlist cover color
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    ambientGlowColor.copy(alpha = 0.20f),
+                                    Color.Transparent,
+                                    ambientGlowColor.copy(alpha = 0.35f)
                                 )
                             )
-                    )
-                }
+                        )
+                )
 
                 val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                 val cutoutTop = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
@@ -369,8 +375,9 @@ fun PlaylistHeroSection(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .fillMaxHeight()
                         .padding(horizontal = 20.dp)
-                        .padding(top = topPadding, bottom = 38.dp)
+                        .padding(top = topPadding, bottom = 24.dp)
                 ) {
                     // Top Row: Back button & Options button
                     Row(
@@ -409,7 +416,7 @@ fun PlaylistHeroSection(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(130.dp))
+                    Spacer(modifier = Modifier.weight(1f))
 
                     // Expressive Tag Badge (only shown when tagText is non-null)
                     if (!tagText.isNullOrBlank()) {

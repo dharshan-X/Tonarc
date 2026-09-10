@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -87,6 +88,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -143,6 +145,8 @@ private fun PlaylistActionChip(
     isDanger: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val view = LocalView.current
+    val appHapticsConfig = LocalAppHapticsConfig.current
     val containerColor = when {
         isActive && isDanger -> MaterialTheme.colorScheme.errorContainer
         isActive -> MaterialTheme.colorScheme.primary
@@ -155,10 +159,18 @@ private fun PlaylistActionChip(
     }
 
     Surface(
-        onClick = onClick,
+        onClick = {
+            performAppCompatHapticFeedback(
+                view,
+                appHapticsConfig,
+                HapticFeedbackConstantsCompat.CONTEXT_CLICK
+            )
+            onClick()
+        },
         shape = CircleShape,
         color = containerColor,
         contentColor = contentColor,
+        border = if (!isActive) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) else null,
         modifier = modifier.height(36.dp)
     ) {
         Row(
@@ -317,9 +329,13 @@ fun PlaylistDetailScreen(
         songsInPlaylist.any { com.quietrays.tonarc.data.offline.CloudOfflineRepository.isCloudSong(it) }
     }
 
-    val showCollapsedTopBar by remember {
+    val density = LocalDensity.current
+    val collapseThresholdPx = remember(density) {
+        with(density) { 260.dp.roundToPx() }
+    }
+    val showCollapsedTopBar by remember(collapseThresholdPx) {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 240
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > collapseThresholdPx
         }
     }
 
