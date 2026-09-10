@@ -2,130 +2,231 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform `PlaylistDetailScreen` into an immersive, modern Material 3 Expressive experience with hero artwork (`PlaylistCover`), ambient gradient backdrop, collapsible scroll motion, and sleek pill controls.
+**Goal:** Transform `PlaylistDetailScreen` into a unified full-page scrolling experience featuring a dark rounded hero card (`#16151a`), seam-overlapping Play FAB (`56.dp`), subtle outlined flat list container (`10.dp` margin, `1dp` border, `20.dp` radius, matching background), and circular pastel badges (`44.dp`) with animated equalizer wave bars, maintaining 100% feature parity.
 
-**Architecture:** Create a dedicated `PlaylistHeroHeader` component rendering the playlist cover art, ambient glow, title, source/duration badges, and modern Play/Shuffle pills. Integrate it into `PlaylistDetailScreen` with a smooth scroll-driven collapse mechanism that transitions into a compact top app bar without breaking existing reorder, edit, and deletion flows.
+**Architecture:** 
+1. `PlaylistHeroSection.kt`: Dark rounded bottom card (`RoundedCornerShape(bottomStart = 38.dp, bottomEnd = 38.dp)`) with dynamic ambient glow tinted by theme/artwork, clean top (no menu/profile buttons), bold typography, and seam-overlapping Play FAB (`56.dp`).
+2. `PlaylistSongTile.kt`: List tile with `44.dp` pastel circular badge, live animated equalizer wave bars on active track, duration, trailing options button, and animated slots for reorder drag handle and remove delete icon.
+3. `PlaylistDetailScreen.kt`: Single unified `LazyColumn` scrolling the whole screen seamlessly; hero collapses into a pinned compact top bar. Completely eliminates `ExpressiveScrollBar`. Wraps song items in a subtle 1dp outlined container (`10.dp` side margin, `20.dp` corners, matching surface background) while keeping all existing Tonarc features intact: `SongPickerBottomSheet`, reorder drag-and-drop, remove mode, `LibrarySortBottomSheet`, `PlaylistBottomSheet`, `SongInfoBottomSheet`, and M3U export.
 
-**Tech Stack:** Jetpack Compose, Material 3 Expressive, Coil, Reorderable LazyColumn, Dagger Hilt.
+**Tech Stack:** Jetpack Compose, Material 3 Expressive, `sh.calvin.reorderable`, Coil, Dagger Hilt.
 
 ## Global Constraints
 
 - Append `--no-daemon` to all Gradle invocations.
 - Format all file references as markdown links with the `file://` scheme.
 - Maintain existing playlist capabilities: reordering songs, remove mode, adding songs, sort sheet, cloud downloads, M3U export, edit/delete dialogs.
-- Keep UI rendering 60–120 FPS fluid using `graphicsLayer` where applicable.
+- Zero shadow & 0dp elevation for list container; background strictly matches page background (`surface`).
+- Full-page scroll: entire screen scrolls together in one `LazyColumn`; no nested inner scroll containers.
 
 ---
 
-### Task 1: Create `PlaylistHeroHeader` Composable Component
+### Task 1: Create `PlaylistHeroSection` Composable Component
 
 **Files:**
-- Create: `app/src/main/java/com/quietrays/tonarc/presentation/components/PlaylistHeroHeader.kt`
-- Test: `app/src/test/java/com/quietrays/tonarc/presentation/components/PlaylistHeroHeaderTest.kt`
+- Create: `app/src/main/java/com/quietrays/tonarc/presentation/components/PlaylistHeroSection.kt`
+- Test: `app/src/test/java/com/quietrays/tonarc/presentation/components/PlaylistHeroSectionTest.kt`
 
 **Interfaces:**
 - Produces:
   ```kotlin
   @Composable
-  fun PlaylistHeroHeader(
+  fun PlaylistHeroSection(
       playlist: Playlist,
       songs: ImmutableList<Song>,
       isFolderPlaylist: Boolean,
       isSmartPlaylist: Boolean,
-      onPlayAllClick: () -> Unit,
-      onShuffleClick: () -> Unit,
-      modifier: Modifier = Modifier,
-      scale: Float = 1.0f,
-      alpha: Float = 1.0f
+      isPlaying: Boolean,
+      onPlayFabClick: () -> Unit,
+      onBackClick: () -> Unit,
+      onOptionsClick: () -> Unit,
+      modifier: Modifier = Modifier
   )
   ```
 
-- [ ] **Step 1: Write unit test for helper formatting / layout resolution**
+- [ ] **Step 1: Write unit test for `PlaylistHeroSection` metadata formatting & badge logic**
 
-Create `app/src/test/java/com/quietrays/tonarc/presentation/components/PlaylistHeroHeaderTest.kt` verifying metadata formatting (songs count, duration, source badges) and helper logic.
+Create `app/src/test/java/com/quietrays/tonarc/presentation/components/PlaylistHeroSectionTest.kt` testing helper functions for badge text, duration formatting, and song count resolution.
 
 - [ ] **Step 2: Run unit test to verify failure**
 
 ```bash
-./gradlew :app:testDebugUnitTest --tests "*.PlaylistHeroHeaderTest" --no-daemon
+./gradlew :app:testDebugUnitTest --tests "*.PlaylistHeroSectionTest" --no-daemon
 ```
 
-- [ ] **Step 3: Implement `PlaylistHeroHeader.kt`**
+- [ ] **Step 3: Implement `PlaylistHeroSection.kt`**
 
-Implement `PlaylistHeroHeader.kt` containing:
-- Ambient vertical gradient backdrop using playlist cover color or theme `secondaryContainer`.
-- Centered 180dp $\times$ 180dp `PlaylistCover` with subtle shadow elevation.
-- Prominent playlist name in `headlineMedium` (`RoundedSans`).
-- Metadata row: Source badge (Spotify, YouTube, Smart Playlist), song count, total duration.
-- Unified Play All (`Button` with `CircleShape`) and Shuffle (`FilledTonalButton` with `CircleShape`) 50dp pill buttons.
-- `graphicsLayer` scale and alpha modifier support for smooth collapse motion.
+Implement `PlaylistHeroSection.kt` in `presentation/components/`:
+- `Surface` container with `color = MaterialTheme.colorScheme.surfaceContainerLowest` (#16151a).
+- `shape = RoundedCornerShape(bottomStart = 38.dp, bottomEnd = 38.dp)`.
+- Status bar padding and clean top row: Back button (`Icons.AutoMirrored.Rounded.ArrowBack`) and Options button (`Icons.Filled.MoreVert`). Completely remove menu and profile buttons.
+- Centered artwork (`176.dp`) with dynamic ambient glow matching `playlist.coverColorArgb` or `MaterialTheme.colorScheme.primary`.
+- Playlist metadata: tag badge (`● Tonarc Playlist`), title (`headlineMedium`, `RoundedSans`), duration and lossless/track info.
+- Overlapping seam Play FAB: `FloatingActionButton` (`56.dp`, `CircleShape`) positioned at `Alignment.BottomEnd` with `offset(x = (-24).dp, y = 28.dp)` relative to hero card, toggling Play and Pause icons with spring bounce.
 
 - [ ] **Step 4: Run unit tests to verify pass**
 
 ```bash
-./gradlew :app:testDebugUnitTest --tests "*.PlaylistHeroHeaderTest" --no-daemon
+./gradlew :app:testDebugUnitTest --tests "*.PlaylistHeroSectionTest" --no-daemon
 ```
 
 - [ ] **Step 5: Commit changes**
 
 ```bash
-git add app/src/main/java/com/quietrays/tonarc/presentation/components/PlaylistHeroHeader.kt app/src/test/java/com/quietrays/tonarc/presentation/components/PlaylistHeroHeaderTest.kt
-git commit -m "feat(playlist): create PlaylistHeroHeader component with ambient backdrop and cover art"
+git add app/src/main/java/com/quietrays/tonarc/presentation/components/PlaylistHeroSection.kt app/src/test/java/com/quietrays/tonarc/presentation/components/PlaylistHeroSectionTest.kt
+git commit -m "feat(playlist): create PlaylistHeroSection with dark rounded bottom card and seam Play FAB"
 ```
 
 ---
 
-### Task 2: Integrate `PlaylistHeroHeader` and Collapsible Scroll Motion in `PlaylistDetailScreen.kt`
+### Task 2: Create `PlaylistSongTile` Composable Component with Pastel Circular Badges
+
+**Files:**
+- Create: `app/src/main/java/com/quietrays/tonarc/presentation/components/PlaylistSongTile.kt`
+- Test: `app/src/test/java/com/quietrays/tonarc/presentation/components/PlaylistSongTileTest.kt`
+
+**Interfaces:**
+- Produces:
+  ```kotlin
+  @Composable
+  fun PlaylistSongTile(
+      song: Song,
+      index: Int,
+      isCurrentSong: Boolean,
+      isPlaying: Boolean,
+      isReorderMode: Boolean,
+      isRemoveMode: Boolean,
+      onClick: () -> Unit,
+      onRemoveClick: () -> Unit,
+      onMoreOptionsClick: (Song) -> Unit,
+      dragHandle: @Composable (() -> Unit)? = null,
+      showDivider: Boolean = true,
+      modifier: Modifier = Modifier
+  )
+  ```
+
+- [ ] **Step 1: Write unit test for pastel badge color mapping**
+
+Create `app/src/test/java/com/quietrays/tonarc/presentation/components/PlaylistSongTileTest.kt` verifying that pastel background and icon tint colors are deterministically resolved by track index / title hash (Blue, Lime, Purple, Orange, Chartreuse, Mint, Sage, Coral, Sky, Lavender).
+
+- [ ] **Step 2: Run unit test to verify failure**
+
+```bash
+./gradlew :app:testDebugUnitTest --tests "*.PlaylistSongTileTest" --no-daemon
+```
+
+- [ ] **Step 3: Implement `PlaylistSongTile.kt`**
+
+Implement `PlaylistSongTile.kt` with:
+- Drag handle slot animated when `isReorderMode` is true (`Icons.Rounded.DragIndicator`).
+- Remove button slot animated when `isRemoveMode` is true (`Icons.Default.RemoveCircleOutline` with error tint).
+- `44.dp` circular badge (`CircleShape`) with pastel background and saturated icon / album art.
+- Animated 3-bar equalizer wave bars (`mini-wave-box`) displayed inside the badge when `isCurrentSong && isPlaying`.
+- Two-line typography: Title (`titleMedium`, `FontWeight.Bold`, `primary` when active) and Subtitle (`bodySmall`, `onSurfaceVariant`).
+- Trailing duration text (`labelMedium`) and 3-dots `IconButton` (`Icons.Filled.MoreVert`).
+- `HorizontalDivider` with hairline 0.8dp thickness (`MaterialTheme.colorScheme.surfaceContainerHigh`) below each tile except the last.
+
+- [ ] **Step 4: Run unit tests to verify pass**
+
+```bash
+./gradlew :app:testDebugUnitTest --tests "*.PlaylistSongTileTest" --no-daemon
+```
+
+- [ ] **Step 5: Commit changes**
+
+```bash
+git add app/src/main/java/com/quietrays/tonarc/presentation/components/PlaylistSongTile.kt app/src/test/java/com/quietrays/tonarc/presentation/components/PlaylistSongTileTest.kt
+git commit -m "feat(playlist): create PlaylistSongTile with pastel circular badges and animated equalizer"
+```
+
+---
+
+### Task 3: Refactor `PlaylistDetailScreen.kt` with Full-Page Unified Scroll Architecture
 
 **Files:**
 - Modify: `app/src/main/java/com/quietrays/tonarc/presentation/screens/PlaylistDetailScreen.kt`
 
 **Interfaces:**
 - Consumes:
-  - `PlaylistHeroHeader` from Task 1
-  - `PlaylistCover`
+  - `PlaylistHeroSection` from Task 1
+  - `PlaylistSongTile` from Task 2
   - `PlaylistViewModel` & `PlayerViewModel`
 - Produces:
-  - Fluid collapsible header scrolling in `PlaylistDetailScreen`
-  - Streamlined action chips row (+ Add Songs, Reorder, Remove, Sort)
-  - Full preservation of drag-and-drop reordering, deletion, and edit sheets
+  - Single continuous `LazyColumn` scrolling edge-to-edge
+  - Action chips row (`+ Add Songs`, `↕ Reorder`, `✕ Remove`, `🔀 Shuffle`, `⇅ Sort`)
+  - Subtle outlined container (`10.dp` margin, `1dp` border, `20.dp` radius, matching background)
+  - Pinned compact top bar fading in on scroll
+  - 100% feature parity preserved: `SongPickerBottomSheet`, `ReorderableItem`, remove mode, `LibrarySortBottomSheet`, `PlaylistBottomSheet`, `SongInfoBottomSheet`, `m3uExportLauncher`.
 
-- [ ] **Step 1: Wire scroll-driven collapse calculations in `PlaylistDetailScreen`**
-
-Use `derivedStateOf` over `listState` to calculate `collapseFraction`:
-- `collapseFraction` smoothly transitions from 0.0f (at top) to 1.0f (scrolled past hero header).
-- In the top bar: Show title and track count when `collapseFraction > 0.6f` with animated alpha fade.
-- In the hero header: Fade out and scale down slightly (`scale = 1.0f - (collapseFraction * 0.15f)`, `alpha = (1.0f - collapseFraction * 1.5f).coerceIn(0f, 1f)`).
-
-- [ ] **Step 2: Replace legacy header with `PlaylistHeroHeader` and streamlined action chips**
+- [ ] **Step 1: Replace split scroll layout with unified `LazyColumn`**
 
 In `PlaylistDetailScreen.kt`:
-- Place `PlaylistHeroHeader` as the first item or header in the layout.
-- Modernize the action chips row (+ Add, Reorder, Remove, Sort) with `FilterChip` / `AssistChip` styling.
-- Ensure song items, drag reordering handles, and remove mode badges render cleanly.
+- Eliminate inner nested scroll containers and remove `ExpressiveScrollBar`.
+- Top-level `Box` containing:
+  - Single `LazyColumn` with state `listState`.
+  - Item 0: `PlaylistHeroSection` with seam Play FAB.
+  - Item 1: Action chips row with horizontal scroll:
+    - `+ Add Songs` button (opens `SongPickerBottomSheet`).
+    - `↕ Reorder` button (toggles `isReorderModeEnabled`).
+    - `✕ Remove` button (toggles `isRemoveModeEnabled`).
+    - `🔀 Shuffle` button (calls `playerViewModel.playSongsShuffled`).
+    - `⇅ Sort` button (calls `playerViewModel.showSortingSheet()`).
+  - Item 2: Section header ("Tracklist • X Songs").
+  - Item 3: Outlined list container:
+    - `Modifier.padding(horizontal = 10.dp).border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)).clip(RoundedCornerShape(20.dp)).background(Color.Transparent)`
+    - Inside, iterate over `localReorderableSongs` with `ReorderableItem(state = reorderableState, key = song.id)`.
+    - Render `PlaylistSongTile` for each song.
 
-- [ ] **Step 3: Verify with unit tests and assemble debug build**
+- [ ] **Step 2: Implement pinned collapsed TopAppBar**
+
+Fade in pinned collapsed top app bar when `listState.firstVisibleItemIndex > 0`:
+- Back navigation button (`Icons.AutoMirrored.Rounded.ArrowBack`).
+- Playlist title & track count text.
+- Options button (`Icons.Filled.MoreVert`).
+- Status bar padding.
+
+- [ ] **Step 3: Verify all dialogs and sheets work with zero regressions**
+
+Verify:
+- `SongPickerBottomSheet` opens on `+ Add Songs`.
+- Drag-and-drop reordering works with haptics and persists to database.
+- Remove mode deletes songs.
+- `LibrarySortBottomSheet` sorts playlist tracks.
+- `PlaylistBottomSheet` triggers Edit, Delete, Transition, M3U export.
+- `SongInfoBottomSheet` triggers Favorite, Play Next, Add to Queue.
+
+- [ ] **Step 4: Run unit tests and assemble debug APK**
 
 ```bash
 ./gradlew :app:testDebugUnitTest --no-daemon
 ./gradlew assembleDebug --no-daemon
 ```
 
-- [ ] **Step 4: Commit changes**
+- [ ] **Step 5: Commit changes**
 
 ```bash
 git add app/src/main/java/com/quietrays/tonarc/presentation/screens/PlaylistDetailScreen.kt
-git commit -m "feat(playlist): integrate immersive hero header and collapsible motion into PlaylistDetailScreen"
+git commit -m "feat(playlist): implement full-page scroll, outlined list container, and action chips in PlaylistDetailScreen"
 ```
 
 ---
 
-### Task 3: Update Changelogs, Full Verification & Remote Pushes
+### Task 4: Documentation & Final Verification
 
 **Files:**
 - Modify: `CHANGELOG.md`
 - Modify: `fastlane/metadata/android/en-US/changelogs/2.txt`
 
-- [ ] **Step 1: Document playlist page redesign in `CHANGELOG.md` and fastlane metadata**
-- [ ] **Step 2: Run all unit tests to ensure zero regressions**
-- [ ] **Step 3: Commit changelogs and push to `tonarc/main` and `origin/tonarc-main`**
+- [ ] **Step 1: Update CHANGELOG.md with playlist screen redesign**
+- [ ] **Step 2: Run full unit test suite to verify zero regressions**
+
+```bash
+./gradlew :app:testDebugUnitTest --no-daemon
+```
+
+- [ ] **Step 3: Commit final documentation**
+
+```bash
+git add CHANGELOG.md fastlane/metadata/android/en-US/changelogs/2.txt
+git commit -m "docs: document playlist detail screen Material 3 redesign in changelogs"
+```
