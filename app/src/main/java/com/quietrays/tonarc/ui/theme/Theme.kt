@@ -25,12 +25,39 @@ import androidx.core.view.WindowCompat
 import com.quietrays.tonarc.presentation.viewmodel.ColorSchemePair
 import androidx.core.graphics.ColorUtils
 
+import androidx.compose.runtime.DisposableEffect
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+
 val LocalTonarcDarkTheme = staticCompositionLocalOf { false }
 
-private tailrec fun Context.findActivity(): Activity? = when (this) {
+internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+@Composable
+fun HideStatusBarEffect(enabled: Boolean = true) {
+    val view = LocalView.current
+    if (view.isInEditMode) return
+
+    DisposableEffect(view, enabled) {
+        if (!enabled) return@DisposableEffect onDispose {}
+
+        val window = view.context.findActivity()?.window
+        val insetsController = window?.let { WindowCompat.getInsetsController(it, view) }
+
+        insetsController?.let { controller ->
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.statusBars())
+        }
+
+        onDispose {
+            insetsController?.show(WindowInsetsCompat.Type.statusBars())
+        }
+    }
 }
 
 @Suppress("DEPRECATION")

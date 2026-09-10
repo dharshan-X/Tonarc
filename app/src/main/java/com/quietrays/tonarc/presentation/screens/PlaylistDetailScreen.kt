@@ -25,12 +25,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -120,6 +122,7 @@ import com.quietrays.tonarc.presentation.viewmodel.PlayerViewModel
 import com.quietrays.tonarc.presentation.viewmodel.PlaylistSongsOrderMode
 import com.quietrays.tonarc.presentation.viewmodel.PlaylistViewModel
 import com.quietrays.tonarc.presentation.viewmodel.PlaylistViewModel.Companion.FOLDER_PLAYLIST_PREFIX
+import com.quietrays.tonarc.ui.theme.HideStatusBarEffect
 import com.quietrays.tonarc.ui.theme.RoundedSans
 import com.quietrays.tonarc.utils.formatSongCount
 import com.quietrays.tonarc.utils.formatTotalDuration
@@ -257,6 +260,7 @@ fun PlaylistDetailScreen(
             showSongInfoBottomSheet = true
         }
     }
+    HideStatusBarEffect()
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomBarHeightDp = resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
@@ -742,10 +746,20 @@ fun PlaylistDetailScreen(
                         color = MaterialTheme.colorScheme.surfaceContainerLowest,
                         shadowElevation = 4.dp
                     ) {
+                        val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                        val cutoutTop = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+                        val collapsedTopPadding = remember(statusBarTop, cutoutTop) {
+                            when {
+                                statusBarTop > 0.dp -> statusBarTop
+                                cutoutTop > 0.dp -> cutoutTop
+                                else -> 0.dp
+                            }
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .statusBarsPadding()
+                                .padding(top = collapsedTopPadding)
                                 .height(64.dp)
                                 .padding(horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically

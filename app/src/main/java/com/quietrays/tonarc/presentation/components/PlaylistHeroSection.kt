@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -345,13 +349,22 @@ fun PlaylistHeroSection(
                     )
                 }
 
+                val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                val cutoutTop = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+                val topPadding = remember(statusBarTop, cutoutTop) {
+                    when {
+                        statusBarTop > 0.dp -> statusBarTop + 8.dp
+                        cutoutTop > 0.dp -> cutoutTop + 8.dp
+                        else -> 20.dp
+                    }
+                }
+
                 // Foreground Content
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .statusBarsPadding()
                         .padding(horizontal = 20.dp)
-                        .padding(top = 8.dp, bottom = 38.dp)
+                        .padding(top = topPadding, bottom = 38.dp)
                 ) {
                     // Top Row: Back button & Options button
                     Row(
