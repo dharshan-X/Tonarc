@@ -33,13 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Streamed & Cached Track Inclusion: Taste Profile analytics and listening statistics now incorporate streamed and cached YouTube Music tracks.
 - Cleaner Analytics: Filtered placeholder artists and albums from listening stats calculations.
 
-#### 4. Immersive Playlist Detail Screen Redesign
-- Hero Artwork & Ambient Backdrop: Prominent 176dp playlist cover supporting user custom artwork, dynamic 4-art album collages, and custom colored shapes/icons, enveloped in a soft ambient gradient glow.
-- Fluid Collapsible Scroll Motion: Smooth scroll-driven collapse where the hero artwork, title, and pill buttons scale and fade seamlessly into a sleek, compact top app bar with animated track count.
-- Modern Pill Action Controls: Symmetrical Material 3 Expressive pill buttons for "Play All" and "Shuffle".
-- Streamlined Action Chips: Horizontal scrolling quick-action chips for "+ Add Songs", "Reorder", and "Remove", with dedicated active states.
-- Enhanced Usability: One-tap "Done" top-bar button and system back handler for quick exit from reorder and remove modes.
-- Expressive Empty State: Engaging empty playlist presentation with direct "+ Add Songs" call to action.
+#### 4. Material 3 Expressive Playlist Detail Screen Redesign
+- Full-Page Unified Scroll Architecture: The entire screen scrolls as a single continuous document (`LazyColumn`) from top to bottom with zero nested inner scroll containers and completely clean edges (eliminated `ExpressiveScrollBar`).
+- Dark Rounded Hero Card: Deep-toned surface container (`#16151a`) with expressive bottom curvature (`38.dp` radius), centered 176dp artwork with dynamic ambient glow matching theme/cover art, clean top with back and options buttons (no menu or profile buttons), and bold typography.
+- Seam-Overlapping Play FAB: Tactile 56dp circular floating action button (`CircleShape`) anchored across the hero card dividing seam (`offset(x = -24.dp, y = 28.dp)`), driving play/pause state with spring bounce animation.
+- Subtle Outlined List Container: Tracklist framed by a crisp 1dp outline border (`outlineVariant`) with 20dp rounded corners and slim 10dp side margins, with surface background matching the page seamlessly (0dp elevation and zero shadow).
+- Circular Pastel Badges: 44dp circular badges with soft pastel tonal backgrounds (Blue, Lime, Purple, Orange, Chartreuse, Mint, Sage, Coral, Sky, Lavender) and saturated iconography / album art.
+- Live Animated Equalizer: Real-time 3-bar animated equalizer wave bars displayed inside the pastel badge of the actively playing track.
+- Action Chips Row: Scrollable chips for "+ Add Songs", "↕ Reorder", "✕ Remove", "🔀 Shuffle", and "⇅ Sort" with dedicated active states.
+- Pinned Collapsing Top Bar: Fluid top app bar fading in as user scrolls through the tracklist with one-tap "Done" button during reorder/remove modes.
+- 100% Feature Parity Preserved: Retained song picker sheet, drag-and-drop reordering with haptic feedback, item removal, library sorting sheet, playlist options sheet (edit, delete, default transition, M3U export), song info sheet, and offline cloud downloads.
 
 ---
 
