@@ -69,7 +69,7 @@ The playlist detail screen is built on a **Full-Page Unified Scroll Architecture
 * **Overlapping Play FAB**: `56.dp` circle (`FloatingActionButton`) anchored directly across the seam (`offset(y = (-28).dp)`).
 
 ### 2.3 Pastel Badge List Tiles (`PlaylistSongTile`)
-* **Subtle Outlined List Container**: Card spans nearly full width with a slim 10.dp margin from the screen edges, framed by a crisp 1dp outline border on all four sides (`RoundedCornerShape(20.dp)`), 0dp elevation, zero shadow, and hairline dividers between items.
+* **Subtle Outlined List Container**: Card spans nearly full width with a slim 10.dp margin from the screen edges, framed by a crisp 1dp outline border on all four sides (`RoundedCornerShape(20.dp)`), with background color identical to the page background (`surface`), 0dp elevation, zero shadow, and hairline dividers between items.
 * **Leading Pastel Badge**:
   * Circular badge (`size = 44.dp`, `shape = CircleShape`).
   * Dynamic pastel tinted background with matching saturated icon:
