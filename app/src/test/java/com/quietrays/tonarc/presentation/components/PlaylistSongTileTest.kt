@@ -39,4 +39,18 @@ class PlaylistSongTileTest {
         assertNotNull(palette.background)
         assertNotNull(palette.iconTint)
     }
+
+    @Test
+    fun resolvePlaylistTileShape_returnsExpectedShape() {
+        val singleShape = resolvePlaylistTileShape(isFirst = true, isLast = true)
+        val firstShape = resolvePlaylistTileShape(isFirst = true, isLast = false)
+        val middleShape = resolvePlaylistTileShape(isFirst = false, isLast = false)
+        val lastShape = resolvePlaylistTileShape(isFirst = false, isLast = true)
+
+        assertNotNull(singleShape)
+        assertNotNull(firstShape)
+        assertNotNull(middleShape)
+        assertNotNull(lastShape)
+    }
 }
+

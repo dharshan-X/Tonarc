@@ -47,6 +47,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
 import coil.size.Size
 import com.quietrays.tonarc.R
 import com.quietrays.tonarc.data.model.Song
@@ -75,6 +84,89 @@ fun resolvePastelBadgePalette(index: Int): PastelBadgePalette {
     val safeIndex = ((index % PastelPalettes.size) + PastelPalettes.size) % PastelPalettes.size
     return PastelPalettes[safeIndex]
 }
+
+fun resolvePlaylistTileShape(isFirst: Boolean, isLast: Boolean, cornerRadius: Dp = 20.dp): Shape = when {
+    isFirst && isLast -> RoundedCornerShape(cornerRadius)
+    isFirst -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
+    isLast -> RoundedCornerShape(bottomStart = cornerRadius, bottomEnd = cornerRadius)
+    else -> RectangleShape
+}
+
+fun Modifier.playlistGroupItem(
+    isFirst: Boolean,
+    isLast: Boolean,
+    borderColor: Color,
+    cornerRadius: Dp = 20.dp,
+    borderWidth: Dp = 1.dp
+): Modifier = this.drawBehind {
+    val strokeWidth = borderWidth.toPx()
+    val r = cornerRadius.toPx()
+    val w = size.width
+    val h = size.height
+
+    if (isFirst && isLast) {
+        drawRoundRect(
+            color = borderColor,
+            size = size,
+            style = Stroke(width = strokeWidth),
+            cornerRadius = CornerRadius(r, r)
+        )
+    } else if (isFirst) {
+        val path = Path().apply {
+            moveTo(strokeWidth / 2f, h)
+            lineTo(strokeWidth / 2f, r)
+            arcTo(
+                rect = Rect(strokeWidth / 2f, strokeWidth / 2f, r * 2f, r * 2f),
+                startAngleDegrees = 180f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+            lineTo(w - r, strokeWidth / 2f)
+            arcTo(
+                rect = Rect(w - r * 2f, strokeWidth / 2f, w - strokeWidth / 2f, r * 2f),
+                startAngleDegrees = 270f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+            lineTo(w - strokeWidth / 2f, h)
+        }
+        drawPath(path, color = borderColor, style = Stroke(width = strokeWidth))
+    } else if (isLast) {
+        val path = Path().apply {
+            moveTo(w - strokeWidth / 2f, 0f)
+            lineTo(w - strokeWidth / 2f, h - r)
+            arcTo(
+                rect = Rect(w - r * 2f, h - r * 2f, w - strokeWidth / 2f, h - strokeWidth / 2f),
+                startAngleDegrees = 0f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+            lineTo(r, h - strokeWidth / 2f)
+            arcTo(
+                rect = Rect(strokeWidth / 2f, h - r * 2f, r * 2f, h - strokeWidth / 2f),
+                startAngleDegrees = 90f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+            lineTo(strokeWidth / 2f, 0f)
+        }
+        drawPath(path, color = borderColor, style = Stroke(width = strokeWidth))
+    } else {
+        drawLine(
+            color = borderColor,
+            start = Offset(strokeWidth / 2f, 0f),
+            end = Offset(strokeWidth / 2f, h),
+            strokeWidth = strokeWidth
+        )
+        drawLine(
+            color = borderColor,
+            start = Offset(w - strokeWidth / 2f, 0f),
+            end = Offset(w - strokeWidth / 2f, h),
+            strokeWidth = strokeWidth
+        )
+    }
+}
+
 
 @Composable
 fun AnimatedEqualizerWaveBars(
