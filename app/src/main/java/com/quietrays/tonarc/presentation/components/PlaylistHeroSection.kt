@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -19,12 +21,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -35,19 +38,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.HapticFeedbackConstantsCompat
+import coil.compose.AsyncImage
 import com.quietrays.tonarc.R
 import com.quietrays.tonarc.data.model.Playlist
 import com.quietrays.tonarc.data.model.Song
@@ -61,12 +63,11 @@ internal fun resolvePlaylistTagBadge(
     source: String,
     isFolder: Boolean,
     isSmart: Boolean
-): String = when {
+): String? = when {
     isFolder -> "Folder"
     isSmart -> "Smart Mix"
-    source.equals("YOUTUBE", ignoreCase = true) -> "YouTube Music"
     source.equals("SPOTIFY", ignoreCase = true) -> "Spotify"
-    else -> "Tonarc Playlist"
+    else -> null
 }
 
 internal fun resolvePlaylistSubtitleMeta(
@@ -76,6 +77,188 @@ internal fun resolvePlaylistSubtitleMeta(
 ): String {
     val countText = if (songCount == 1) "1 song" else "$songCount songs"
     return "$countText • $totalDurationText • $formatTag"
+}
+
+internal fun extractHeroAlbumArts(
+    coverImageUri: String?,
+    songs: List<Song>,
+    maxArts: Int = 4
+): List<String> {
+    if (!coverImageUri.isNullOrBlank()) {
+        return listOf(coverImageUri)
+    }
+    return songs.asSequence()
+        .mapNotNull { it.albumArtUriString }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .take(maxArts)
+        .toList()
+}
+
+@Composable
+private fun PlaylistHeroArtworkBackground(
+    playlist: Playlist,
+    songs: ImmutableList<Song>,
+    modifier: Modifier = Modifier
+) {
+    val albumArts = remember(playlist.coverImageUri, songs) {
+        extractHeroAlbumArts(playlist.coverImageUri, songs)
+    }
+
+    Box(modifier = modifier) {
+        when {
+            albumArts.isEmpty() -> {
+                val fallbackColor = playlist.coverColorArgb?.let { Color(it) }
+                    ?: MaterialTheme.colorScheme.surfaceContainerLowest
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(fallbackColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.22f),
+                        modifier = Modifier.size(72.dp)
+                    )
+                }
+            }
+            albumArts.size == 1 -> {
+                AsyncImage(
+                    model = albumArts[0],
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                )
+            }
+            albumArts.size == 2 -> {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    AsyncImage(
+                        model = albumArts[0],
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    )
+                    AsyncImage(
+                        model = albumArts[1],
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    )
+                }
+            }
+            albumArts.size == 3 -> {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    AsyncImage(
+                        model = albumArts[0],
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        AsyncImage(
+                            model = albumArts[1],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        )
+                        AsyncImage(
+                            model = albumArts[2],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        )
+                    }
+                }
+            }
+            else -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        AsyncImage(
+                            model = albumArts[0],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        )
+                        AsyncImage(
+                            model = albumArts[1],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        AsyncImage(
+                            model = albumArts[2],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        )
+                        AsyncImage(
+                            model = albumArts[3],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -120,130 +303,143 @@ fun PlaylistHeroSection(
             shadowElevation = 0.dp,
             tonalElevation = 0.dp
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 8.dp, bottom = 42.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Clean Top Row: Only Back button & Options button (No Menu, No Profile button)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    FilledTonalIconButton(
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        onClick = onBackClick
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = backLabel
-                        )
-                    }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                // Full-bleed album arts filling the hero
+                PlaylistHeroArtworkBackground(
+                    playlist = playlist,
+                    songs = songs,
+                    modifier = Modifier.matchParentSize()
+                )
 
-                    if (!isFolderPlaylist) {
-                        FilledTonalIconButton(
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            ),
-                            onClick = onOptionsClick
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.MoreVert,
-                                contentDescription = moreOptionsLabel
-                            )
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.size(40.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Centered Cover Artwork with Dynamic Ambient Glow
+                // Cinematic gradient scrim overlay for high contrast and readability
                 Box(
-                    modifier = Modifier.size(180.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val activeGlow = if (glowColor != Color.Transparent) glowColor else MaterialTheme.colorScheme.primary
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color.Black.copy(alpha = 0.65f),
+                                    0.25f to Color.Black.copy(alpha = 0.25f),
+                                    0.55f to Color.Black.copy(alpha = 0.50f),
+                                    0.80f to Color.Black.copy(alpha = 0.82f),
+                                    1.0f to Color.Black.copy(alpha = 0.96f)
+                                )
+                            )
+                        )
+                )
+
+                // Ambient custom cover color tint if present
+                if (glowColor != Color.Transparent) {
                     Box(
                         modifier = Modifier
-                            .size(170.dp)
+                            .matchParentSize()
                             .background(
-                                Brush.radialGradient(
+                                Brush.verticalGradient(
                                     colors = listOf(
-                                        activeGlow.copy(alpha = 0.42f),
-                                        Color.Transparent
+                                        glowColor.copy(alpha = 0.20f),
+                                        Color.Transparent,
+                                        glowColor.copy(alpha = 0.35f)
                                     )
-                                ),
-                                shape = CircleShape
+                                )
                             )
                     )
-
-                    PlaylistCover(
-                        playlist = playlist,
-                        playlistSongs = songs,
-                        size = 176.dp,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(26.dp))
-                            .shadow(elevation = 10.dp, shape = RoundedCornerShape(26.dp), clip = false)
-                    )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Expressive Tag Badge
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-                    contentColor = MaterialTheme.colorScheme.primary
+                // Foreground Content
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 8.dp, bottom = 38.dp)
                 ) {
+                    // Top Row: Back button & Options button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FilledTonalIconButton(
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color.Black.copy(alpha = 0.40f),
+                                contentColor = Color.White
+                            ),
+                            onClick = onBackClick
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = backLabel
+                            )
+                        }
+
+                        if (!isFolderPlaylist) {
+                            FilledTonalIconButton(
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = Color.Black.copy(alpha = 0.40f),
+                                    contentColor = Color.White
+                                ),
+                                onClick = onOptionsClick
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.MoreVert,
+                                    contentDescription = moreOptionsLabel
+                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.size(40.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(130.dp))
+
+                    // Expressive Tag Badge (only shown when tagText is non-null)
+                    if (!tagText.isNullOrBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White.copy(alpha = 0.18f),
+                            contentColor = Color.White
+                        ) {
+                            Text(
+                                text = "● ${tagText.uppercase()}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontFamily = RoundedSans,
+                                    letterSpacing = 0.8.sp
+                                ),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // Playlist Name
                     Text(
-                        text = "● ${tagText.uppercase()}",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.ExtraBold,
+                        text = playlist.name,
+                        style = MaterialTheme.typography.headlineMedium.copy(
                             fontFamily = RoundedSans,
-                            letterSpacing = 0.8.sp
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.5).sp
                         ),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(end = 64.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Metadata Subtitle
+                    Text(
+                        text = subtitleMeta,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = RoundedSans,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = Color.White.copy(alpha = 0.80f),
+                        modifier = Modifier.padding(end = 64.dp)
                     )
                 }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Playlist Name
-                Text(
-                    text = playlist.name,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontFamily = RoundedSans,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.5).sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Metadata Subtitle
-                Text(
-                    text = subtitleMeta,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = RoundedSans,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
 
@@ -287,3 +483,4 @@ fun PlaylistHeroSection(
         }
     }
 }
+
