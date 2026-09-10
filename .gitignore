@@ -2,6 +2,7 @@
 .DS_Store
 hs_err_pid*.log
 *.salive
+*.bckup
 *.apk
 *.aab
 **.jks

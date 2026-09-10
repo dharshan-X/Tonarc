@@ -109,6 +109,10 @@ class GenreDetailViewModel @Inject constructor(
     private val dispatchers: DispatcherProvider
 ) : ViewModel() {
 
+    companion object {
+        private val youtubeGenreCache = com.quietrays.tonarc.data.cache.SimpleLruCache<String, YouTubeGenreExploreResult>(25)
+    }
+
     private val _uiState = MutableStateFlow(GenreDetailUiState())
     val uiState: StateFlow<GenreDetailUiState> = _uiState.asStateFlow()
 
@@ -143,8 +147,15 @@ class GenreDetailViewModel @Inject constructor(
     fun loadYouTubeGenreContent(genreName: String) {
         currentGenreName = genreName
         currentContinuationToken = null
+        val cached = youtubeGenreCache[genreName]
+        if (cached != null) {
+            _youtubeContent.value = cached
+            _hasMoreYouTube.value = !cached.continuationToken.isNullOrBlank()
+        }
         viewModelScope.launch {
-            _isYouTubeLoading.value = true
+            if (cached == null) {
+                _isYouTubeLoading.value = true
+            }
             try {
                 val matchedGenre = YouTubeGenreCatalog.findGenreOrMood(genreName)
                 val initialResult = youTubeRepository.getYouTubeGenreExplore(matchedGenre)
@@ -167,10 +178,12 @@ class GenreDetailViewModel @Inject constructor(
 
                 currentContinuationToken = token
                 _hasMoreYouTube.value = !token.isNullOrBlank()
-                _youtubeContent.value = initialResult.copy(
+                val finalResult = initialResult.copy(
                     topSongs = collectedSongs.distinctBy { it.id },
                     continuationToken = token
                 )
+                youtubeGenreCache.put(genreName, finalResult)
+                _youtubeContent.value = finalResult
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Timber.tag("GenreDetailVM").e(e, "Failed to load YouTube genre content for $genreName")

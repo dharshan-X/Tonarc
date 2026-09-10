@@ -21,11 +21,11 @@ class PersonalizedRanker @Inject constructor() {
         val maxEnergy: Double = 1.0
     ) {
         ALL("All", targetEnergy = 0.5),
-        CHILL("Chill 🧘", targetEnergy = 0.25, maxEnergy = 0.65),
-        WORKOUT("Workout ⚡", targetEnergy = 0.90, minEnergy = 0.55),
-        HAPPY("Happy 🎉", targetEnergy = 0.70, minEnergy = 0.40),
-        FOCUS("Focus 📚", targetEnergy = 0.30, maxEnergy = 0.60),
-        MELANCHOLY("Melancholy 🌧️", targetEnergy = 0.30, maxEnergy = 0.65)
+        CHILL("Chill", targetEnergy = 0.25, maxEnergy = 0.65),
+        WORKOUT("Workout", targetEnergy = 0.90, minEnergy = 0.55),
+        HAPPY("Happy", targetEnergy = 0.70, minEnergy = 0.40),
+        FOCUS("Focus", targetEnergy = 0.30, maxEnergy = 0.60),
+        MELANCHOLY("Melancholy", targetEnergy = 0.30, maxEnergy = 0.65)
     }
 
     data class RankingWeights(

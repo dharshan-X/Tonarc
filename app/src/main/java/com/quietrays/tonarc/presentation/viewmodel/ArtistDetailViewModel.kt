@@ -94,15 +94,24 @@ class ArtistDetailViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
+    companion object {
+        private val artistCache = com.quietrays.tonarc.data.cache.SimpleLruCache<Long, ArtistDetailUiState>(30)
+    }
+
     private var currentLoadJob: Job? = null
     private var loadedArtistId: Long? = null
 
     private fun loadArtistData(id: Long) {
         loadedArtistId = id
         currentLoadJob?.cancel()
+        val cached = artistCache[id]
+        if (cached != null) {
+            _uiState.value = cached.copy(isLoading = false, error = null)
+        } else {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+        }
         currentLoadJob = viewModelScope.launch {
             Timber.tag("ArtistDebug").d("loadArtistData: id=$id")
-            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val artistDetailsFlow = musicRepository.getArtistById(id)
                 val artistSongsFlow = musicRepository.getSongsForArtist(id)
@@ -112,11 +121,13 @@ class ArtistDetailViewModel @Inject constructor(
                     artist to songs
                 }
                     .catch { e ->
-                        _uiState.update {
-                            it.copy(
-                                error = context.getString(R.string.error_loading_artist, e.localizedMessage ?: ""),
-                                isLoading = false
-                            )
+                        if (_uiState.value.artist == null) {
+                            _uiState.update {
+                                it.copy(
+                                    error = context.getString(R.string.error_loading_artist, e.localizedMessage ?: ""),
+                                    isLoading = false
+                                )
+                            }
                         }
                     }
                     .collect { (artist, songs) ->
@@ -135,13 +146,15 @@ class ArtistDetailViewModel @Inject constructor(
                                     } catch (_: Exception) { null }
                                 } else null
                                 _artistColorScheme.value = newScheme
-                                _uiState.value = ArtistDetailUiState(
+                                val state = ArtistDetailUiState(
                                     artist = onlineArtist,
                                     songs = orderedSongs,
                                     albumSections = albumSections,
                                     effectiveImageUrl = effectiveUrl,
                                     isLoading = false
                                 )
+                                _uiState.value = state
+                                artistCache.put(id, state)
                             } else {
                                 _uiState.update {
                                     it.copy(error = context.getString(R.string.could_not_find_artist), isLoading = false)
@@ -173,7 +186,7 @@ class ArtistDetailViewModel @Inject constructor(
                         } else null
 
                         _artistColorScheme.value = newScheme
-                        _uiState.value = ArtistDetailUiState(
+                        val state = ArtistDetailUiState(
                             artist = artist.copy(
                                 imageUrl = if (artist.customImageUri.isNullOrBlank()) effectiveUrl else artist.imageUrl
                             ),
@@ -182,6 +195,8 @@ class ArtistDetailViewModel @Inject constructor(
                             effectiveImageUrl = effectiveUrl,
                             isLoading = false
                         )
+                        _uiState.value = state
+                        artistCache.put(id, state)
                     }
 
             } catch (e: Exception) {

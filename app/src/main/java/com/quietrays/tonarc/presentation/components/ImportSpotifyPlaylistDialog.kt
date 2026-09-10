@@ -526,7 +526,7 @@ fun ImportSpotifyPlaylistDialog(
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Text(
-                                                text = "💡 Or in Spotify app: tap ••• on playlist -> select 'Make Public'",
+                                                text = "Tip: In Spotify app, tap ... on playlist -> select 'Make Public'",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.padding(10.dp)

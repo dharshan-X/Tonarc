@@ -108,7 +108,7 @@ class InnertubeApiServiceTest {
         assertThat(request.method).isEqualTo("POST")
         assertThat(request.url.toString()).isEqualTo("https://music.youtube.com/youtubei/v1/like/like?prettyPrint=false")
         assertThat(request.header("X-YouTube-Client-Name")).isEqualTo("67")
-        assertThat(request.header("X-YouTube-Client-Version")).isEqualTo("1.20240301.01.00")
+        assertThat(request.header("X-YouTube-Client-Version")).isEqualTo("1.20260908.14.00")
         assertThat(request.header("User-Agent")).isNotEmpty()
         assertThat(request.header("Referer")).isEqualTo("https://music.youtube.com/")
         assertThat(request.header("Origin")).isEqualTo("https://music.youtube.com")
@@ -121,7 +121,7 @@ class InnertubeApiServiceTest {
         assertThat(bodyJson.has("context")).isTrue()
         val clientObj = bodyJson.getJSONObject("context").getJSONObject("client")
         assertThat(clientObj.getString("clientName")).isEqualTo("WEB_REMIX")
-        assertThat(clientObj.getString("clientVersion")).isEqualTo("1.20240301.01.00")
+        assertThat(clientObj.getString("clientVersion")).isEqualTo("1.20260908.14.00")
         assertThat(clientObj.getString("hl")).isEqualTo("en")
         assertThat(clientObj.getString("gl")).isEqualTo("US")
     }

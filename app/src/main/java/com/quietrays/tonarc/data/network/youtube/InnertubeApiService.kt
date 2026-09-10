@@ -32,7 +32,7 @@ class InnertubeApiService @Inject constructor(
         private const val BASE_URL = "https://music.youtube.com/youtubei/v1"
         private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         private const val CLIENT_NAME = "WEB_REMIX"
-        private const val CLIENT_VERSION = "1.20240301.01.00"
+        private const val CLIENT_VERSION = "1.20260908.14.00"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
         const val YTM_FILTER_SONGS = "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D"

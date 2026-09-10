@@ -543,6 +543,92 @@ class InnertubeParserTest {
         assertThat(tracks[0].title).isEqualTo("Kanave Kanave")
         assertThat(tracks[0].artist).isEqualTo("Anirudh")
     }
+
+    @Test
+    fun parseBrowseSections_extractsPersonalizedShelvesAndResponsiveItems() {
+        val json = """
+            {
+              "contents": {
+                "singleColumnBrowseResultsRenderer": {
+                  "tabs": [
+                    {
+                      "tabRenderer": {
+                        "content": {
+                          "sectionListRenderer": {
+                            "contents": [
+                              {
+                                "musicShelfRenderer": {
+                                  "title": { "runs": [{ "text": "Quick picks" }] },
+                                  "contents": [
+                                    {
+                                      "musicResponsiveListItemRenderer": {
+                                        "playlistItemData": { "videoId": "qp_song_1" },
+                                        "flexColumns": [
+                                          { "musicResponsiveListItemFlexColumnRenderer": { "text": { "runs": [{ "text": "Blinding Lights" }] } } },
+                                          { "musicResponsiveListItemFlexColumnRenderer": { "text": { "runs": [{ "text": "The Weeknd" }] } } }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "itemSectionRenderer": {
+                                  "contents": [
+                                    {
+                                      "musicCarouselShelfRenderer": {
+                                        "header": {
+                                          "musicCarouselShelfBasicHeaderRenderer": {
+                                            "title": { "runs": [{ "text": "Mixed for you" }] }
+                                          }
+                                        },
+                                        "contents": [
+                                          {
+                                            "musicTwoRowItemRenderer": {
+                                              "title": { "runs": [{ "text": "My Supermix" }] },
+                                              "subtitle": { "runs": [{ "text": "YouTube Music" }] },
+                                              "navigationEndpoint": {
+                                                "browseEndpoint": {
+                                                  "browseId": "RDTMAK123"
+                                                }
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+        """.trimIndent()
+
+        val sections = InnertubeParser.parseBrowseSections(json)
+        assertThat(sections).hasSize(2)
+
+        // Section 1: Quick picks (parsed from musicShelfRenderer with responsive item)
+        val qp = sections[0]
+        assertThat(qp.title).isEqualTo("Quick picks")
+        assertThat(qp.tracks).hasSize(1)
+        assertThat(qp.tracks[0].videoId).isEqualTo("qp_song_1")
+        assertThat(qp.tracks[0].title).isEqualTo("Blinding Lights")
+        assertThat(qp.tracks[0].artist).isEqualTo("The Weeknd")
+
+        // Section 2: Mixed for you (parsed from nested itemSectionRenderer -> musicCarouselShelfRenderer)
+        val mixes = sections[1]
+        assertThat(mixes.title).isEqualTo("Mixed for you")
+        assertThat(mixes.playlists).hasSize(1)
+        assertThat(mixes.playlists[0].playlistId).isEqualTo("RDTMAK123")
+        assertThat(mixes.playlists[0].title).isEqualTo("My Supermix")
+    }
 }
 
 

@@ -47,6 +47,10 @@ class AlbumDetailViewModel @Inject constructor(
         .map { downloads -> downloads.mapTo(mutableSetOf()) { it.sourceUri } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    companion object {
+        private val albumCache = com.quietrays.tonarc.data.cache.SimpleLruCache<Long, AlbumDetailUiState>(30)
+    }
+
     private var loadedAlbumId: Long? = null
 
     init {
@@ -65,8 +69,13 @@ class AlbumDetailViewModel @Inject constructor(
     }
 
     private fun loadAlbumData(id: Long) {
-        viewModelScope.launch {
+        val cached = albumCache[id]
+        if (cached != null) {
+            _uiState.value = cached.copy(isLoading = false, error = null)
+        } else {
             _uiState.update { it.copy(isLoading = true, error = null) }
+        }
+        viewModelScope.launch {
             try {
                 val albumDetailsFlow = musicRepository.getAlbumById(id)
                 val albumSongsFlow = musicRepository.getSongsForAlbum(id)
@@ -75,16 +84,18 @@ class AlbumDetailViewModel @Inject constructor(
                     album to songs
                 }
                     .catch { e ->
-                        _uiState.update {
-                            it.copy(
-                                error = context.getString(R.string.error_loading_album, e.localizedMessage ?: ""),
-                                isLoading = false
-                            )
+                        if (_uiState.value.album == null) {
+                            _uiState.update {
+                                it.copy(
+                                    error = context.getString(R.string.error_loading_album, e.localizedMessage ?: ""),
+                                    isLoading = false
+                                )
+                            }
                         }
                     }
                     .collect { (album, songs) ->
                         if (album != null) {
-                            _uiState.value = AlbumDetailUiState(
+                            val state = AlbumDetailUiState(
                                 album = album,
                                 songs = songs.sortedWith(
                                     compareBy<Song> { it.discNumber ?: 1 }
@@ -93,22 +104,28 @@ class AlbumDetailViewModel @Inject constructor(
                                 ),
                                 isLoading = false
                             )
+                            _uiState.value = state
+                            albumCache.put(id, state)
                         } else {
                             val onlineResult = withContext(Dispatchers.IO) {
                                 youTubeRepository.getAlbumDetails(id)
                             }
                             if (onlineResult != null) {
                                 val (onlineAlbum, onlineSongs) = onlineResult
-                                _uiState.value = AlbumDetailUiState(
+                                val state = AlbumDetailUiState(
                                     album = onlineAlbum,
                                     songs = onlineSongs,
                                     isLoading = false
                                 )
+                                _uiState.value = state
+                                albumCache.put(id, state)
                             } else {
-                                _uiState.value = AlbumDetailUiState(
-                                    error = context.getString(R.string.album_not_found),
-                                    isLoading = false
-                                )
+                                if (_uiState.value.album == null) {
+                                    _uiState.value = AlbumDetailUiState(
+                                        error = context.getString(R.string.album_not_found),
+                                        isLoading = false
+                                    )
+                                }
                             }
                         }
                     }

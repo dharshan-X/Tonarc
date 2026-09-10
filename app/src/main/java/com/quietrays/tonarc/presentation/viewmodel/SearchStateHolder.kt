@@ -101,6 +101,13 @@ class SearchStateHolder @Inject constructor(
         }
     }
 
+    private data class CachedOnlineSearchResult(
+        val items: List<SearchResultItem>,
+        val continuationToken: String?
+    )
+
+    private val onlineSearchCache = com.quietrays.tonarc.data.cache.SimpleLruCache<String, CachedOnlineSearchResult>(40)
+
     private var activeSearchJob: Job? = null
     private var currentLocalResults: List<SearchResultItem> = emptyList()
     private var currentOnlineResults: List<SearchResultItem> = emptyList()
@@ -128,9 +135,19 @@ class SearchStateHolder @Inject constructor(
 
             val currentFilter = _selectedSearchFilter.value
             val requestId = request.requestId
+            val cacheKey = "${normalizedQuery.trim().lowercase()}_${currentFilter.name}"
 
             currentLocalResults = emptyList()
-            currentOnlineResults = emptyList()
+
+            // Restore from cache immediately if available
+            val cachedOnline = onlineSearchCache[cacheKey]
+            if (cachedOnline != null) {
+                currentContinuationToken = cachedOnline.continuationToken
+                currentOnlineResults = cachedOnline.items
+                updateCombinedResults(requestId)
+            } else {
+                currentOnlineResults = emptyList()
+            }
 
             // 1. Stage 1: Local Search Flow (FTS4 SQLite)
             launch {
@@ -148,13 +165,16 @@ class SearchStateHolder @Inject constructor(
 
             // 2. Stage 2: Background Progressive Online Search (YouTube Music)
             launch {
-                _isSearchingOnline.value = true
+                if (cachedOnline == null) {
+                    _isSearchingOnline.value = true
+                }
                 try {
                     val ytResult = youTubeRepository.searchAllPaginated(normalizedQuery, currentFilter, null)
                     if (requestId != latestSearchRequestId.get()) return@launch
 
                     currentContinuationToken = ytResult.continuationToken
                     currentOnlineResults = ytResult.items
+                    onlineSearchCache.put(cacheKey, CachedOnlineSearchResult(ytResult.items, ytResult.continuationToken))
                     updateCombinedResults(requestId)
                 } catch (_: CancellationException) {
                 } catch (e: Exception) {
@@ -194,6 +214,8 @@ class SearchStateHolder @Inject constructor(
 
                     if (newUniqueItems.isNotEmpty()) {
                         currentOnlineResults = currentOnlineResults + newUniqueItems
+                        val cacheKey = "${lastQuery.trim().lowercase()}_${_selectedSearchFilter.value.name}"
+                        onlineSearchCache.put(cacheKey, CachedOnlineSearchResult(currentOnlineResults, currentContinuationToken))
                         updateCombinedResults(latestSearchRequestId.get())
                     }
                 }

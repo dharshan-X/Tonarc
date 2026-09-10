@@ -1000,53 +1000,98 @@ object InnertubeParser {
         val sections = mutableListOf<InnertubeBrowseSection>()
         try {
             val json = JSONObject(jsonString)
-            val sectionList = json.optJSONObject("contents")
+            val contentsObj = json.optJSONObject("contents")
+            val sectionList = contentsObj
                 ?.optJSONObject("singleColumnBrowseResultsRenderer")
                 ?.optJSONArray("tabs")
                 ?.optJSONObject(0)
                 ?.optJSONObject("tabRenderer")
                 ?.optJSONObject("content")
                 ?.optJSONObject("sectionListRenderer")
-                ?.optJSONArray("contents") ?: JSONArray()
+                ?.optJSONArray("contents")
+                ?: contentsObj
+                    ?.optJSONObject("twoColumnBrowseResultsRenderer")
+                    ?.optJSONObject("secondaryContents")
+                    ?.optJSONObject("sectionListRenderer")
+                    ?.optJSONArray("contents")
+                ?: contentsObj
+                    ?.optJSONObject("sectionListRenderer")
+                    ?.optJSONArray("contents")
+                ?: JSONArray()
 
             for (i in 0 until sectionList.length()) {
-                val sectionObj = sectionList.optJSONObject(i)
-                val carousel = sectionObj?.optJSONObject("musicCarouselShelfRenderer") ?: continue
-                val header = carousel.optJSONObject("header")
-                    ?.optJSONObject("musicCarouselShelfBasicHeaderRenderer")
-                val title = header?.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: "Section"
-                val subtitle = header?.optJSONObject("strapline")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+                val sectionObj = sectionList.optJSONObject(i) ?: continue
 
-                val tracks = mutableListOf<InnertubeTrack>()
-                val albums = mutableListOf<InnertubeAlbum>()
-                val artists = mutableListOf<InnertubeArtist>()
-                val playlists = mutableListOf<InnertubePlaylist>()
-
-                val contents = carousel.optJSONArray("contents") ?: JSONArray()
-                for (j in 0 until contents.length()) {
-                    val item = contents.optJSONObject(j)?.optJSONObject("musicResponsiveListItemRenderer")
-                        ?: contents.optJSONObject(j)?.optJSONObject("musicTwoRowItemRenderer")
-                    if (item != null) {
-                        parseTwoRowOrResponsiveItem(item, tracks, albums, artists, playlists)
+                val itemSectionContents = sectionObj.optJSONObject("itemSectionRenderer")?.optJSONArray("contents")
+                if (itemSectionContents != null && itemSectionContents.length() > 0) {
+                    for (k in 0 until itemSectionContents.length()) {
+                        val nestedObj = itemSectionContents.optJSONObject(k) ?: continue
+                        parseSingleShelf(nestedObj, sections)
                     }
+                    continue
                 }
 
-                if (tracks.isNotEmpty() || albums.isNotEmpty() || playlists.isNotEmpty()) {
-                    sections.add(
-                        InnertubeBrowseSection(
-                            title = title,
-                            subtitle = subtitle,
-                            tracks = tracks,
-                            albums = albums,
-                            playlists = playlists
-                        )
-                    )
-                }
+                parseSingleShelf(sectionObj, sections)
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to parse browse sections")
         }
         return sections
+    }
+
+    private fun parseSingleShelf(shelfWrapper: JSONObject, sections: MutableList<InnertubeBrowseSection>) {
+        val carousel = shelfWrapper.optJSONObject("musicCarouselShelfRenderer")
+        val shelf = shelfWrapper.optJSONObject("musicShelfRenderer")
+        val targetShelf = carousel ?: shelf ?: return
+
+        val header = targetShelf.optJSONObject("header")
+        val basicHeader = header?.optJSONObject("musicCarouselShelfBasicHeaderRenderer")
+            ?: header?.optJSONObject("musicShelfBasicHeaderRenderer")
+            ?: header?.optJSONObject("musicHeaderRenderer")
+
+        val titleRuns = basicHeader?.optJSONObject("title")?.optJSONArray("runs")
+            ?: targetShelf.optJSONObject("title")?.optJSONArray("runs")
+        val title = titleRuns?.optJSONObject(0)?.optString("text")
+            ?: basicHeader?.optJSONObject("title")?.optString("simpleText")
+            ?: targetShelf.optJSONObject("title")?.optString("simpleText")
+            ?: "Section"
+
+        val straplineRuns = basicHeader?.optJSONObject("strapline")?.optJSONArray("runs")
+            ?: basicHeader?.optJSONObject("subtitle")?.optJSONArray("runs")
+        val subtitle = straplineRuns?.optJSONObject(0)?.optString("text")
+            ?: basicHeader?.optJSONObject("strapline")?.optString("simpleText")
+            ?: basicHeader?.optJSONObject("subtitle")?.optString("simpleText")
+
+        val tracks = mutableListOf<InnertubeTrack>()
+        val albums = mutableListOf<InnertubeAlbum>()
+        val artists = mutableListOf<InnertubeArtist>()
+        val playlists = mutableListOf<InnertubePlaylist>()
+
+        val contents = targetShelf.optJSONArray("contents") ?: JSONArray()
+        for (j in 0 until contents.length()) {
+            val itemObj = contents.optJSONObject(j) ?: continue
+            val responsive = itemObj.optJSONObject("musicResponsiveListItemRenderer")
+            val twoRow = itemObj.optJSONObject("musicTwoRowItemRenderer")
+
+            when {
+                responsive != null -> parseResponsiveListItem(responsive, tracks, albums, artists, playlists)
+                twoRow != null -> parseTwoRowOrResponsiveItem(twoRow, tracks, albums, artists, playlists)
+                itemObj.has("flexColumns") -> parseResponsiveListItem(itemObj, tracks, albums, artists, playlists)
+                itemObj.has("title") -> parseTwoRowOrResponsiveItem(itemObj, tracks, albums, artists, playlists)
+            }
+        }
+
+        if (tracks.isNotEmpty() || albums.isNotEmpty() || playlists.isNotEmpty() || artists.isNotEmpty()) {
+            sections.add(
+                InnertubeBrowseSection(
+                    title = title,
+                    subtitle = subtitle,
+                    tracks = tracks,
+                    albums = albums,
+                    playlists = playlists
+                )
+            )
+        }
     }
 
     private fun parseTwoRowOrResponsiveItem(
@@ -1056,6 +1101,10 @@ object InnertubeParser {
         artists: MutableList<InnertubeArtist>,
         playlists: MutableList<InnertubePlaylist>
     ) {
+        if (item.has("flexColumns")) {
+            parseResponsiveListItem(item, tracks, albums, artists, playlists)
+            return
+        }
         val title = item.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
             ?: item.optJSONObject("title")?.optString("simpleText") ?: return
         val subtitleRuns = item.optJSONObject("subtitle")?.optJSONArray("runs") ?: JSONArray()
@@ -1108,6 +1157,7 @@ object InnertubeParser {
         val navEndpoint = item.optJSONObject("navigationEndpoint")
         val watchEndpoint = navEndpoint?.optJSONObject("watchEndpoint")
         val browseEndpoint = navEndpoint?.optJSONObject("browseEndpoint")
+        val watchPlaylistEndpoint = navEndpoint?.optJSONObject("watchPlaylistEndpoint")
 
         val videoId = watchEndpoint?.optString("videoId")
         if (!videoId.isNullOrBlank()) {
@@ -1124,9 +1174,17 @@ object InnertubeParser {
         }
 
         val browseId = browseEndpoint?.optString("browseId")
+        val watchPlaylistId = watchPlaylistEndpoint?.optString("playlistId")
         val rootPageType = browseEndpoint?.optJSONObject("browseEndpointContextSupportedConfigs")
             ?.optJSONObject("browseEndpointContextMusicConfig")
             ?.optString("pageType")
+
+        val effectivePlaylistId = when {
+            !browseId.isNullOrBlank() && (browseId.startsWith("VL") || browseId.startsWith("PL") || browseId.startsWith("RD") || browseId == "FEmusic_liked_videos" || browseId == "LM" || browseId == "VLLM") -> browseId
+            !watchPlaylistId.isNullOrBlank() -> watchPlaylistId
+            !browseId.isNullOrBlank() && rootPageType == "MUSIC_PAGE_TYPE_PLAYLIST" -> browseId
+            else -> null
+        }
 
         if (!browseId.isNullOrBlank()) {
             if (browseId.startsWith("MPREb_") || browseId.startsWith("FEmusic_library_album")) {
@@ -1138,6 +1196,7 @@ object InnertubeParser {
                         thumbnailUri = thumbnail
                     )
                 )
+                return
             } else if (browseId.startsWith("UC")) {
                 artists.add(
                     InnertubeArtist(
@@ -1146,21 +1205,22 @@ object InnertubeParser {
                         thumbnailUri = thumbnail
                     )
                 )
-            } else if (browseId.startsWith("VL") || browseId.startsWith("RDAMPL") || browseId.startsWith("PL") ||
-                rootPageType == "MUSIC_PAGE_TYPE_PLAYLIST" || browseId == "FEmusic_liked_videos" || browseId == "LM" || browseId == "VLLM"
-            ) {
-                val trackCount = allSubtitleRuns.firstOrNull { it.contains("track", ignoreCase = true) || it.contains("song", ignoreCase = true) }
-                    ?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-                playlists.add(
-                    InnertubePlaylist(
-                        playlistId = browseId,
-                        title = title,
-                        author = author,
-                        trackCount = trackCount,
-                        thumbnailUri = thumbnail
-                    )
-                )
+                return
             }
+        }
+
+        if (!effectivePlaylistId.isNullOrBlank()) {
+            val trackCount = allSubtitleRuns.firstOrNull { it.contains("track", ignoreCase = true) || it.contains("song", ignoreCase = true) }
+                ?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+            playlists.add(
+                InnertubePlaylist(
+                    playlistId = effectivePlaylistId,
+                    title = title,
+                    author = author,
+                    trackCount = trackCount,
+                    thumbnailUri = thumbnail
+                )
+            )
         }
     }
 

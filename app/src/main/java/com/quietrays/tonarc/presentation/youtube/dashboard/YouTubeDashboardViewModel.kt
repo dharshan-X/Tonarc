@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
+import com.quietrays.tonarc.data.cache.UiContentCache
 
 sealed interface YouTubeDashboardUiState {
     data object Loading : YouTubeDashboardUiState
@@ -45,7 +46,8 @@ class YouTubeDashboardViewModel @Inject constructor(
     private val personalizedRanker: PersonalizedRanker,
     private val adaptiveWeightTuner: AdaptiveWeightTuner,
     private val engagementDao: EngagementDao,
-    private val musicRepository: MusicRepository
+    private val musicRepository: MusicRepository,
+    private val uiContentCache: UiContentCache? = null
 ) : ViewModel() {
 
     internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO
@@ -74,6 +76,17 @@ class YouTubeDashboardViewModel @Inject constructor(
     private var cachedSections: List<InnertubeBrowseSection> = emptyList()
 
     init {
+        val cached = uiContentCache?.loadCachedExploreDashboard()
+        if (cached != null) {
+            cachedCharts = cached.charts
+            cachedSections = cached.sections
+            _uiState.value = YouTubeDashboardUiState.Success(
+                forYou = cached.forYou,
+                charts = cached.charts,
+                sections = cached.sections,
+                selectedMood = _selectedMood.value
+            )
+        }
         loadDashboard()
     }
 
@@ -111,12 +124,16 @@ class YouTubeDashboardViewModel @Inject constructor(
 
     fun loadDashboard() {
         viewModelScope.launch {
-            _uiState.value = YouTubeDashboardUiState.Loading
+            if (_uiState.value !is YouTubeDashboardUiState.Success) {
+                _uiState.value = YouTubeDashboardUiState.Loading
+            }
             try {
                 youTubeRepository.getExploreSections()
                     .catch { e ->
                         Timber.e(e, "Failed to load explore sections")
-                        _uiState.value = YouTubeDashboardUiState.Error(e.message ?: "Failed to load Explore")
+                        if (_uiState.value !is YouTubeDashboardUiState.Success) {
+                            _uiState.value = YouTubeDashboardUiState.Error(e.message ?: "Failed to load Explore")
+                        }
                     }
                     .collect { sections ->
                         cachedSections = sections
@@ -172,10 +189,13 @@ class YouTubeDashboardViewModel @Inject constructor(
                             sections = sections,
                             selectedMood = _selectedMood.value
                         )
+                        uiContentCache?.saveExploreDashboard(forYou, cachedCharts, sections)
                     }
             } catch (e: Exception) {
                 Timber.e(e, "Error initializing explore dashboard")
-                _uiState.value = YouTubeDashboardUiState.Error(e.message ?: "Network error")
+                if (_uiState.value !is YouTubeDashboardUiState.Success) {
+                    _uiState.value = YouTubeDashboardUiState.Error(e.message ?: "Network error")
+                }
             }
         }
     }

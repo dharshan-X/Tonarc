@@ -178,7 +178,7 @@ class TasteProfileManager @Inject constructor(
                 return ArchetypeInfo(
                     title = "Late-Night Audiophile",
                     subtitle = "Finds magic in midnight frequencies and ambient solitude",
-                    emoji = "🌌"
+                    emoji = ""
                 )
             }
 
@@ -193,7 +193,7 @@ class TasteProfileManager @Inject constructor(
                 return ArchetypeInfo(
                     title = "Acoustic Explorer",
                     subtitle = "Energized by morning melodies and organic rhythms",
-                    emoji = "🌅"
+                    emoji = ""
                 )
             }
         }
@@ -203,7 +203,7 @@ class TasteProfileManager @Inject constructor(
             return ArchetypeInfo(
                 title = "Acoustic Explorer",
                 subtitle = "Energized by morning melodies and organic rhythms",
-                emoji = "🌅"
+                emoji = ""
             )
         }
 
@@ -220,7 +220,7 @@ class TasteProfileManager @Inject constructor(
             return ArchetypeInfo(
                 title = "High-Energy Motivator",
                 subtitle = "Fueled by high-tempo anthems and pulse-pounding beats",
-                emoji = "⚡"
+                emoji = ""
             )
         }
 
@@ -231,14 +231,14 @@ class TasteProfileManager @Inject constructor(
             return ArchetypeInfo(
                 title = "Eclectic Dreamer",
                 subtitle = "Effortlessly flows across borders and contrasting sounds",
-                emoji = "🎧"
+                emoji = ""
             )
         }
 
         return ArchetypeInfo(
             title = "Melody Connoisseur",
             subtitle = "Guided by timeless songwriting and deep harmonies",
-            emoji = "🎵"
+            emoji = ""
         )
     }
 
@@ -262,7 +262,7 @@ class TasteProfileManager @Inject constructor(
         return TasteProfile(
             archetypeTitle = "Melody Connoisseur",
             archetypeSubtitle = "Guided by timeless songwriting and deep harmonies",
-            archetypeEmoji = "🎵",
+            archetypeEmoji = "",
             totalListeningDurationMs = 0L,
             totalPlays = 0,
             topGenres = emptyList(),

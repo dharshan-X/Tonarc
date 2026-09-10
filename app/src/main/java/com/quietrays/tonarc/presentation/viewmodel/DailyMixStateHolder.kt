@@ -25,6 +25,7 @@ import kotlinx.coroutines.withContext
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.quietrays.tonarc.data.cache.UiContentCache
 
 /**
  * Manages Daily Mix and Your Mix state with deep YouTube Music and local library integration.
@@ -41,7 +42,8 @@ class DailyMixStateHolder @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val musicRepository: MusicRepository,
     private val youTubeRepository: YouTubeRepository,
-    private val youTubeDao: YouTubeDao
+    private val youTubeDao: YouTubeDao,
+    private val uiContentCache: UiContentCache? = null
 ) {
     internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO
 
@@ -52,7 +54,7 @@ class DailyMixStateHolder @Inject constructor(
         youTubeRepository: YouTubeRepository,
         youTubeDao: YouTubeDao,
         ioDispatcher: kotlinx.coroutines.CoroutineDispatcher
-    ) : this(dailyMixManager, userPreferencesRepository, musicRepository, youTubeRepository, youTubeDao) {
+    ) : this(dailyMixManager, userPreferencesRepository, musicRepository, youTubeRepository, youTubeDao, null) {
         this.ioDispatcher = ioDispatcher
     }
     private var scope: CoroutineScope? = null
@@ -151,6 +153,8 @@ class DailyMixStateHolder @Inject constructor(
                 _yourMixSongs.value = yourMix.toImmutableList()
                 userPreferencesRepository.saveYourMixSongIds(yourMix.map { it.id })
 
+                uiContentCache?.saveDailyMixes(mix, yourMix)
+
                 val contextual = dailyMixManager.generateAllContextualMixes(allCandidateSongs, favoriteIds)
                 _contextualMixes.value = contextual
             } else {
@@ -165,6 +169,17 @@ class DailyMixStateHolder @Inject constructor(
      * Load persisted daily mix from storage using multi-source ID resolution.
      */
     fun loadPersistedDailyMix() {
+        scope?.launch(ioDispatcher) {
+            uiContentCache?.loadCachedDailyMixes()?.let { (daily, your) ->
+                if (daily.isNotEmpty() && _dailyMixSongs.value.isEmpty()) {
+                    _dailyMixSongs.value = daily.toImmutableList()
+                }
+                if (your.isNotEmpty() && _yourMixSongs.value.isEmpty()) {
+                    _yourMixSongs.value = your.toImmutableList()
+                }
+            }
+        }
+
         scope?.launch(ioDispatcher) {
             val dailyMixIds = userPreferencesRepository.dailyMixSongIdsFlow.first()
             if (dailyMixIds.isNotEmpty() && _dailyMixSongs.value.isEmpty()) {

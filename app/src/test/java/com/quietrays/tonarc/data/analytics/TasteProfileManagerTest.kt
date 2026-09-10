@@ -76,7 +76,7 @@ class TasteProfileManagerTest {
         val profile = tasteProfileManager.computeTasteProfile()
 
         assertEquals("Melody Connoisseur", profile.archetypeTitle)
-        assertEquals("🎵", profile.archetypeEmoji)
+        assertEquals("", profile.archetypeEmoji)
         assertEquals(0L, profile.totalListeningDurationMs)
         assertEquals(0, profile.totalPlays)
         assertTrue(profile.topGenres.isEmpty())
@@ -183,7 +183,7 @@ class TasteProfileManagerTest {
         val profile = tasteProfileManager.computeTasteProfile()
 
         assertEquals("Late-Night Audiophile", profile.archetypeTitle)
-        assertEquals("🌌", profile.archetypeEmoji)
+        assertEquals("", profile.archetypeEmoji)
         assertEquals("Finds magic in midnight frequencies and ambient solitude", profile.archetypeSubtitle)
     }
 
@@ -205,7 +205,7 @@ class TasteProfileManagerTest {
         val profile = tasteProfileManager.computeTasteProfile()
 
         assertEquals("Acoustic Explorer", profile.archetypeTitle)
-        assertEquals("🌅", profile.archetypeEmoji)
+        assertEquals("", profile.archetypeEmoji)
         assertEquals("Energized by morning melodies and organic rhythms", profile.archetypeSubtitle)
     }
 
@@ -225,7 +225,7 @@ class TasteProfileManagerTest {
         val profile = tasteProfileManager.computeTasteProfile()
 
         assertEquals("Acoustic Explorer", profile.archetypeTitle)
-        assertEquals("🌅", profile.archetypeEmoji)
+        assertEquals("", profile.archetypeEmoji)
     }
 
     @Test
@@ -244,7 +244,7 @@ class TasteProfileManagerTest {
         val profile = tasteProfileManager.computeTasteProfile()
 
         assertEquals("High-Energy Motivator", profile.archetypeTitle)
-        assertEquals("⚡", profile.archetypeEmoji)
+        assertEquals("", profile.archetypeEmoji)
         assertEquals("Fueled by high-tempo anthems and pulse-pounding beats", profile.archetypeSubtitle)
     }
 
@@ -266,7 +266,7 @@ class TasteProfileManagerTest {
         val profile = tasteProfileManager.computeTasteProfile()
 
         assertEquals("Eclectic Dreamer", profile.archetypeTitle)
-        assertEquals("🎧", profile.archetypeEmoji)
+        assertEquals("", profile.archetypeEmoji)
         assertEquals("Effortlessly flows across borders and contrasting sounds", profile.archetypeSubtitle)
     }
 
@@ -286,7 +286,7 @@ class TasteProfileManagerTest {
         val profile = tasteProfileManager.computeTasteProfile()
 
         assertEquals("Melody Connoisseur", profile.archetypeTitle)
-        assertEquals("🎵", profile.archetypeEmoji)
+        assertEquals("", profile.archetypeEmoji)
         assertEquals("Guided by timeless songwriting and deep harmonies", profile.archetypeSubtitle)
     }
 

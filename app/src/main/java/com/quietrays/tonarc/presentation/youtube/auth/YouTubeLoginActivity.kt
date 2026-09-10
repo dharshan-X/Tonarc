@@ -6,11 +6,13 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.Bundle
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -188,6 +190,9 @@ class YouTubeLoginActivity : ComponentActivity() {
                             onPageLoadingChanged = { loading -> isLoading = loading },
                             onCookiesDetected = { cookies ->
                                 viewModel.onCookiesCaptured(cookies)
+                            },
+                            onVisitorDataDetected = { vData ->
+                                viewModel.onVisitorDataCaptured(vData)
                             }
                         )
 
@@ -287,50 +292,85 @@ fun YouTubeTokenInputDialog(
 @Composable
 private fun YouTubeLoginWebView(
     onPageLoadingChanged: (Boolean) -> Unit,
-    onCookiesDetected: (String) -> Unit
+    onCookiesDetected: (String) -> Unit,
+    onVisitorDataDetected: (String) -> Unit
 ) {
+    var webViewInstance by remember { mutableStateOf<WebView?>(null) }
+
+    BackHandler(enabled = webViewInstance?.canGoBack() == true) {
+        webViewInstance?.goBack()
+    }
+
     AndroidView(
         factory = { ctx ->
             WebView(ctx).apply {
+                val cookieManager = CookieManager.getInstance()
+                cookieManager.setAcceptCookie(true)
+                cookieManager.setAcceptThirdPartyCookies(this, true)
+
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
                     databaseEnabled = true
+                    setSupportZoom(true)
+                    builtInZoomControls = true
+                    displayZoomControls = false
                     mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                    userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+                }
+
+                addJavascriptInterface(object {
+                    @JavascriptInterface
+                    fun onRetrieveVisitorData(newVisitorData: String?) {
+                        if (!newVisitorData.isNullOrBlank()) {
+                            onVisitorDataDetected(newVisitorData)
+                        }
+                    }
+                }, "Android")
+
+                fun extractAndReportCookies(targetUrl: String?) {
+                    val musicCookies = cookieManager.getCookie("https://music.youtube.com") ?: ""
+                    val ytCookies = cookieManager.getCookie("https://youtube.com") ?: ""
+                    val googleCookies = cookieManager.getCookie("https://accounts.google.com") ?: ""
+                    val currentCookies = targetUrl?.let { cookieManager.getCookie(it) } ?: ""
+
+                    val allCookieMap = mutableMapOf<String, String>()
+                    listOf(googleCookies, ytCookies, musicCookies, currentCookies).forEach { cookieStr ->
+                        cookieStr.split(";").forEach { pair ->
+                            val trimmed = pair.trim()
+                            val key = trimmed.substringBefore("=").trim()
+                            val value = trimmed.substringAfter("=", "").trim()
+                            if (key.isNotEmpty() && value.isNotEmpty()) {
+                                allCookieMap[key] = value
+                            }
+                        }
+                    }
+                    val combinedCookies = allCookieMap.entries.joinToString("; ") { "${it.key}=${it.value}" }
+                    if (allCookieMap.containsKey("SAPISID") || allCookieMap.containsKey("__Secure-3PAPISID") || allCookieMap.containsKey("__Secure-1PAPISID") || allCookieMap.containsKey("LOGIN_INFO")) {
+                        android.util.Log.d("YouTubeMusic", "YouTube Music login cookies captured successfully! Keys: ${allCookieMap.keys}")
+                        onCookiesDetected(combinedCookies)
+                    }
                 }
 
                 webViewClient = object : WebViewClient() {
+                    override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
+                        super.doUpdateVisitedHistory(view, url, isReload)
+                        if (url.startsWith("https://music.youtube.com")) {
+                            extractAndReportCookies(url)
+                        }
+                    }
+
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         onPageLoadingChanged(false)
-
-                        val cookieManager = CookieManager.getInstance()
-                        val musicCookies = cookieManager.getCookie("https://music.youtube.com") ?: ""
-                        val ytCookies = cookieManager.getCookie("https://youtube.com") ?: ""
-                        val googleCookies = cookieManager.getCookie("https://accounts.google.com") ?: ""
-                        val currentCookies = url?.let { cookieManager.getCookie(it) } ?: ""
-
-                        val allCookieMap = mutableMapOf<String, String>()
-                        listOf(googleCookies, ytCookies, musicCookies, currentCookies).forEach { cookieStr ->
-                            cookieStr.split(";").forEach { pair ->
-                                val trimmed = pair.trim()
-                                val key = trimmed.substringBefore("=").trim()
-                                val value = trimmed.substringAfter("=", "").trim()
-                                if (key.isNotEmpty() && value.isNotEmpty()) {
-                                    allCookieMap[key] = value
-                                }
-                            }
-                        }
-                        val combinedCookies = allCookieMap.entries.joinToString("; ") { "${it.key}=${it.value}" }
-                        if (allCookieMap.containsKey("SAPISID") || allCookieMap.containsKey("__Secure-3PAPISID") || allCookieMap.containsKey("__Secure-1PAPISID") || allCookieMap.containsKey("LOGIN_INFO")) {
-                            android.util.Log.d("YouTubeMusic", "YouTube Music login cookies captured successfully! Keys: ${allCookieMap.keys}")
-                            onCookiesDetected(combinedCookies)
+                        extractAndReportCookies(url)
+                        if (url != null && url.startsWith("https://music.youtube.com")) {
+                            loadUrl("javascript:Android.onRetrieveVisitorData(window.yt?.config_?.VISITOR_DATA || '')")
                         }
                     }
                 }
 
-                loadUrl("https://accounts.google.com/ServiceLogin?service=youtube&passive=true&continue=https%3A%2F%2Fmusic.youtube.com")
+                webViewInstance = this
+                loadUrl("https://accounts.google.com/ServiceLogin?ltmpl=music&service=youtube&passive=true&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26next%3Dhttps%253A%252F%252Fmusic.youtube.com%252F")
             }
         },
         modifier = Modifier.fillMaxSize()

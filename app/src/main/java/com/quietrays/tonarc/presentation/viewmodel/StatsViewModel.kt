@@ -50,6 +50,8 @@ class StatsViewModel @Inject constructor(
     @Volatile
     private var cachedSongs: List<Song>? = null
 
+    private val rangeSummaryCache = java.util.concurrent.ConcurrentHashMap<StatsTimeRange, PlaybackStatsSummary>()
+
     init {
         observeStatsRefreshFlow()
         refreshRange(
@@ -79,6 +81,7 @@ class StatsViewModel @Inject constructor(
                     playbackStatsRepository.loadSummary(StatsTimeRange.WEEK, songs)
                 }
             }.onSuccess { summary ->
+                rangeSummaryCache[StatsTimeRange.WEEK] = summary
                 _weeklyOverview.value = summary
             }.onFailure { throwable ->
                 Timber.e(throwable, "Failed to load weekly stats overview")
@@ -114,12 +117,26 @@ class StatsViewModel @Inject constructor(
         showLoading: Boolean = true,
         updateWeeklyOverview: Boolean = false
     ) {
-        viewModelScope.launch {
-            if (showLoading) {
-                _uiState.update { it.copy(isLoading = true, isRefreshing = false, selectedRange = range) }
-            } else {
-                _uiState.update { it.copy(isRefreshing = true, selectedRange = range) }
+        val cached = rangeSummaryCache[range]
+        if (cached != null) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    isRefreshing = true,
+                    summary = cached,
+                    selectedRange = range
+                )
             }
+            if (updateWeeklyOverview && _weeklyOverview.value == null) {
+                _weeklyOverview.value = cached
+            }
+        } else if (showLoading) {
+            _uiState.update { it.copy(isLoading = true, isRefreshing = false, selectedRange = range) }
+        } else {
+            _uiState.update { it.copy(isRefreshing = true, selectedRange = range) }
+        }
+
+        viewModelScope.launch {
             val summary = runCatching {
                 withContext(Dispatchers.IO) {
                     val songs = loadSongs()
@@ -127,6 +144,7 @@ class StatsViewModel @Inject constructor(
                 }
             }
             summary.getOrNull()?.let { loaded ->
+                rangeSummaryCache[range] = loaded
                 if (updateWeeklyOverview) {
                     _weeklyOverview.value = loaded
                 }
@@ -135,7 +153,7 @@ class StatsViewModel @Inject constructor(
                 current.copy(
                     isLoading = false,
                     isRefreshing = false,
-                    summary = summary.getOrNull(),
+                    summary = summary.getOrNull() ?: current.summary,
                     selectedRange = range
                 )
             }
@@ -148,6 +166,7 @@ class StatsViewModel @Inject constructor(
             playbackStatsRepository.refreshFlow
                 .drop(1)
                 .collectLatest {
+                    rangeSummaryCache.clear()
                     val selectedRange = _uiState.value.selectedRange
                     refreshRange(
                         range = selectedRange,
@@ -168,6 +187,7 @@ class StatsViewModel @Inject constructor(
 
     fun forceRegenerateStats() {
         cachedSongs = null
+        rangeSummaryCache.clear()
         playbackStatsRepository.requestRefresh()
     }
 

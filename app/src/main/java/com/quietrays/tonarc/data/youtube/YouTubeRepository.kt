@@ -145,11 +145,16 @@ class YouTubeRepository @Inject constructor(
                 section.albums.forEach { newAlbums.add(it.toDomainAlbum()) }
 
                 when {
-                    titleLower.contains("quick pick") || titleLower.contains("start radio") || titleLower.contains("listen again") -> {
-                        quickPicks.addAll(section.tracks.map { it.toDomainSong() })
+                    titleLower.contains("quick pick") || titleLower.contains("start radio") || titleLower.contains("listen again") || titleLower.contains("forgotten favorite") || titleLower.contains("speed dial") || titleLower.contains("similar to") -> {
+                        val songs = section.tracks.map { it.toDomainSong() }
+                        quickPicks.addAll(songs)
+                        communitySongs.addAll(songs)
                     }
                     titleLower.contains("mix") || titleLower.contains("for you") || subtitleLower.contains("mix") -> {
                         mixedPlaylists.addAll(section.playlists.map { it.toDomainPlaylist() })
+                        if (section.tracks.isNotEmpty()) {
+                            communitySongs.addAll(section.tracks.map { it.toDomainSong() })
+                        }
                     }
                     titleLower.contains("trending") || titleLower.contains("community") || titleLower.contains("popular") -> {
                         trendingPlaylists.addAll(section.playlists.map { it.toDomainPlaylist() })

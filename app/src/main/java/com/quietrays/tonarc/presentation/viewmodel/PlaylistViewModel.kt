@@ -153,6 +153,7 @@ class PlaylistViewModel @Inject constructor(
         const val FOLDER_PLAYLIST_PREFIX = "folder_playlist:"
         private const val MANUAL_ORDER_MODE = "manual"
         private const val SMART_PLAYLIST_MAX_ITEMS = 100
+        private val playlistDetailsCache = com.quietrays.tonarc.data.cache.SimpleLruCache<String, Pair<Playlist, List<Song>>>(30)
 
         fun sanitizeFileName(name: String): String {
             val sanitized = name.replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_").trim('_')
@@ -224,11 +225,22 @@ class PlaylistViewModel @Inject constructor(
     }
 
     fun loadPlaylistDetails(playlistId: String) {
-        viewModelScope.launch {
-            val shouldKeepExisting = _uiState.value.currentPlaylistDetails?.id == playlistId
+        val cached = playlistDetailsCache[playlistId]
+        if (cached != null) {
             _uiState.update {
                 it.copy(
-                    isLoading = true,
+                    isLoading = false,
+                    playlistNotFound = false,
+                    currentPlaylistDetails = cached.first,
+                    currentPlaylistSongs = cached.second
+                )
+            }
+        }
+        viewModelScope.launch {
+            val shouldKeepExisting = _uiState.value.currentPlaylistDetails?.id == playlistId || cached != null
+            _uiState.update {
+                it.copy(
+                    isLoading = if (cached != null) false else true,
                     playlistNotFound = false,
                     currentPlaylistDetails = if (shouldKeepExisting) it.currentPlaylistDetails else null,
                     currentPlaylistSongs = if (shouldKeepExisting) it.currentPlaylistSongs else emptyList()
@@ -259,6 +271,7 @@ class PlaylistViewModel @Inject constructor(
                         val sortedFolderSongs = withContext(Dispatchers.Default) {
                             applySortToSongs(songsList, folderSortOption)
                         }
+                        playlistDetailsCache.put(playlistId, pseudoPlaylist to sortedFolderSongs)
                         _uiState.update {
                             it.copy(
                                 currentPlaylistDetails = pseudoPlaylist,
@@ -270,13 +283,15 @@ class PlaylistViewModel @Inject constructor(
                         }
                     } else {
                         Timber.tag("PlaylistVM").w("Folder playlist with path $folderPath not found.")
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                playlistNotFound = true,
-                                currentPlaylistDetails = null,
-                                currentPlaylistSongs = emptyList()
-                            )
+                        if (_uiState.value.currentPlaylistDetails == null) {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    playlistNotFound = true,
+                                    currentPlaylistDetails = null,
+                                    currentPlaylistSongs = emptyList()
+                                )
+                            }
                         }
                     }
                 } else if (playlistId == "ytm_liked_music") {
@@ -302,6 +317,7 @@ class PlaylistViewModel @Inject constructor(
                         PlaylistSongsOrderMode.Manual -> likedSongs
                     }
 
+                    playlistDetailsCache.put(playlistId, playlistDetails to orderedSongs)
                     _uiState.update {
                         it.copy(
                             currentPlaylistDetails = playlistDetails,
@@ -334,6 +350,7 @@ class PlaylistViewModel @Inject constructor(
                             PlaylistSongsOrderMode.Manual -> songsList
                         }
 
+                        playlistDetailsCache.put(playlistId, playlistForDisplay to orderedSongs)
                         _uiState.update {
                             it.copy(
                                 currentPlaylistDetails = playlistForDisplay,
@@ -368,6 +385,7 @@ class PlaylistViewModel @Inject constructor(
                                 }
                                 PlaylistSongsOrderMode.Manual -> domainSongs
                             }
+                            playlistDetailsCache.put(playlistId, playlistDetails to orderedSongs)
                             _uiState.update {
                                 it.copy(
                                     currentPlaylistDetails = playlistDetails,
@@ -426,6 +444,7 @@ class PlaylistViewModel @Inject constructor(
                                     }
                                     PlaylistSongsOrderMode.Manual -> onlineSongs
                                 }
+                                playlistDetailsCache.put(playlistId, onlinePlaylist to orderedSongs)
                                 _uiState.update {
                                     it.copy(
                                         currentPlaylistDetails = onlinePlaylist,
@@ -683,6 +702,7 @@ class PlaylistViewModel @Inject constructor(
 
     fun deletePlaylist(playlistId: String) {
         if (isFolderPlaylistId(playlistId)) return
+        playlistDetailsCache.remove(playlistId)
         viewModelScope.launch {
             if (playlistId == "ytm_liked_music" || playlistId.startsWith("PL") || playlistId.startsWith("RD") || youTubeDao.getPlaylistById(playlistId) != null) {
                 withContext(Dispatchers.IO) {

@@ -127,6 +127,7 @@ import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.util.Locale
 import javax.inject.Inject
+import com.quietrays.tonarc.data.cache.UiContentCache
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import coil.memory.MemoryCache
@@ -292,7 +293,8 @@ class PlayerViewModel @Inject constructor(
     private val mediaControllerFactory: com.quietrays.tonarc.data.media.MediaControllerFactory,
     private val smartRadioEngine: com.quietrays.tonarc.data.recommendation.SmartRadioEngine,
     private val tasteProfileManager: TasteProfileManager,
-    private val dailyMixManager: DailyMixManager = dailyMixStateHolder.dailyMixManager
+    private val dailyMixManager: DailyMixManager = dailyMixStateHolder.dailyMixManager,
+    private val uiContentCache: UiContentCache? = null
 ) : ViewModel() {
 
     fun playSmartPlaylist(type: com.quietrays.tonarc.data.model.SmartPlaylistType) {
@@ -1437,11 +1439,15 @@ class PlayerViewModel @Inject constructor(
     val isHomeRecommendationsLoading: StateFlow<Boolean> = _isHomeRecommendationsLoading.asStateFlow()
 
     private var homeRecommendationsJob: Job? = null
+    private var hasFetchedHomeRecommendationsFromNetwork = false
 
     fun loadHomeRecommendations(forceRefresh: Boolean = false) {
         if (homeRecommendationsJob?.isActive == true) return
-        if (!forceRefresh && (_fromCommunitySongs.value.isNotEmpty() || _favoriteArtistSections.value.isNotEmpty())) return
-        _isHomeRecommendationsLoading.value = true
+        if (!forceRefresh && hasFetchedHomeRecommendationsFromNetwork) return
+        val hasContent = _fromCommunitySongs.value.isNotEmpty() || _favoriteArtistSections.value.isNotEmpty()
+        if (!hasContent) {
+            _isHomeRecommendationsLoading.value = true
+        }
         homeRecommendationsJob = viewModelScope.launch {
             try {
                 kotlinx.coroutines.coroutineScope {
@@ -1467,6 +1473,7 @@ class PlayerViewModel @Inject constructor(
                             if (recs.quickPicks.isNotEmpty()) {
                                 _quickPicks.value = recs.quickPicks.toImmutableList()
                             }
+                            uiContentCache?.saveHomeRecommendations(recs)
                         } catch (e: Exception) {
                             Timber.tag("PlayerViewModel").e(e, "Error loading browse home recommendations")
                         }
@@ -1497,6 +1504,7 @@ class PlayerViewModel @Inject constructor(
                                 if (sections.isNotEmpty()) {
                                     _favoriteArtistSections.value = sections.toImmutableList()
                                     _favoriteArtistsSongs.value = sections.flatMap { it.songs }.distinctBy { it.id }.toImmutableList()
+                                    uiContentCache?.saveArtistSections(sections)
                                 }
                             }
                         } catch (e: Exception) {
@@ -1506,6 +1514,7 @@ class PlayerViewModel @Inject constructor(
                 }
             } finally {
                 _isHomeRecommendationsLoading.value = false
+                hasFetchedHomeRecommendationsFromNetwork = true
             }
         }
     }
@@ -2062,6 +2071,35 @@ class PlayerViewModel @Inject constructor(
             }.launchIn(viewModelScope)
 
             libraryStateHolder.initialize(viewModelScope)
+            uiContentCache?.let { cache ->
+                viewModelScope.launch(Dispatchers.IO) {
+                    cache.loadCachedHomeRecommendations()?.let { recs ->
+                        if (recs.fromCommunity.isNotEmpty() && _fromCommunitySongs.value.isEmpty()) {
+                            _fromCommunitySongs.value = recs.fromCommunity.toImmutableList()
+                        }
+                        if (recs.trendingCommunityPlaylists.isNotEmpty() && _trendingCommunityPlaylists.value.isEmpty()) {
+                            _trendingCommunityPlaylists.value = recs.trendingCommunityPlaylists.toImmutableList()
+                        }
+                        if (recs.featuredPlaylists.isNotEmpty() && _featuredPlaylists.value.isEmpty()) {
+                            _featuredPlaylists.value = recs.featuredPlaylists.toImmutableList()
+                        }
+                        if (recs.mixedForYou.isNotEmpty() && _mixedForYouPlaylists.value.isEmpty()) {
+                            _mixedForYouPlaylists.value = recs.mixedForYou.toImmutableList()
+                        }
+                        if (recs.newAlbums.isNotEmpty() && _newAlbums.value.isEmpty()) {
+                            _newAlbums.value = recs.newAlbums.toImmutableList()
+                        }
+                        if (recs.quickPicks.isNotEmpty() && _quickPicks.value.isEmpty()) {
+                            _quickPicks.value = recs.quickPicks.toImmutableList()
+                        }
+                    }
+                    val cachedSections = cache.loadCachedArtistSections()
+                    if (cachedSections.isNotEmpty() && _favoriteArtistSections.value.isEmpty()) {
+                        _favoriteArtistSections.value = cachedSections.toImmutableList()
+                        _favoriteArtistsSongs.value = cachedSections.flatMap { it.songs }.distinctBy { it.id }.toImmutableList()
+                    }
+                }
+            }
             loadHomeRecommendations()
 
             viewModelScope.launch {

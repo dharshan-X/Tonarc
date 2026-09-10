@@ -289,7 +289,7 @@ class PlayerViewModelRadioTest {
         coEvery { mockTasteProfileManager.computeTasteProfile() } returns TasteProfile(
             archetypeTitle = "Melody Connoisseur",
             archetypeSubtitle = "Guided by timeless songwriting and deep harmonies",
-            archetypeEmoji = "🎵",
+            archetypeEmoji = "",
             totalListeningDurationMs = 0L,
             totalPlays = 0,
             topGenres = emptyList(),
@@ -395,7 +395,7 @@ class PlayerViewModelRadioTest {
     fun test_playContextualMix_playsSongsInContext() = runTest(testDispatcher) {
         val mix = ContextualMix(
             mood = MixMood.ENERGY_BOOST,
-            title = "⚡ Afternoon Energy",
+            title = "Afternoon Energy",
             subtitle = "High tempo drive",
             songs = listOf(radioTrack1, radioTrack2)
         )
@@ -411,7 +411,7 @@ class PlayerViewModelRadioTest {
     fun test_playDiscoveryRadar_playsDiscoveryRadarMix() = runTest(testDispatcher) {
         val radarMix = ContextualMix(
             mood = MixMood.DISCOVERY_RADAR,
-            title = "📡 Discovery Radar",
+            title = "Discovery Radar",
             subtitle = "Fresh tracks",
             songs = listOf(radioTrack1, radioTrack2)
         )
@@ -429,7 +429,7 @@ class PlayerViewModelRadioTest {
         val expectedProfile = TasteProfile(
             archetypeTitle = "Late-Night Audiophile",
             archetypeSubtitle = "Finds magic in midnight frequencies",
-            archetypeEmoji = "🌌",
+            archetypeEmoji = "",
             totalListeningDurationMs = 120_000L,
             totalPlays = 15,
             topGenres = emptyList(),
@@ -450,7 +450,7 @@ class PlayerViewModelRadioTest {
         val expectedProfile = TasteProfile(
             archetypeTitle = "High-Energy Motivator",
             archetypeSubtitle = "Fueled by high-tempo anthems",
-            archetypeEmoji = "⚡",
+            archetypeEmoji = "",
             totalListeningDurationMs = 240_000L,
             totalPlays = 30,
             topGenres = emptyList(),
@@ -474,7 +474,7 @@ class PlayerViewModelRadioTest {
         val expectedProfile = TasteProfile(
             archetypeTitle = "Acoustic Explorer",
             archetypeSubtitle = "Energized by morning melodies",
-            archetypeEmoji = "🌅",
+            archetypeEmoji = "",
             totalListeningDurationMs = 60_000L,
             totalPlays = 5,
             topGenres = emptyList(),
@@ -496,7 +496,7 @@ class PlayerViewModelRadioTest {
         val emptyProfile = TasteProfile(
             archetypeTitle = "Melody Connoisseur",
             archetypeSubtitle = "Guided by timeless songwriting",
-            archetypeEmoji = "🎵",
+            archetypeEmoji = "",
             totalListeningDurationMs = 0L,
             totalPlays = 0,
             topGenres = emptyList(),

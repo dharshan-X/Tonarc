@@ -50,6 +50,19 @@ class YouTubeLoginViewModel @Inject constructor(
         }
     }
 
+    fun onVisitorDataCaptured(visitorData: String) {
+        val trimmed = visitorData.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            try {
+                innertubeApiService.visitorData = trimmed
+                userPreferencesRepository.setYouTubeVisitorData(trimmed)
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to save YouTube visitor data")
+            }
+        }
+    }
+
     fun onTokenOrCookiesPasted(rawInput: String) {
         val parsed = InnertubeAuthParser.parse(rawInput)
         if (!parsed.isValid) {
