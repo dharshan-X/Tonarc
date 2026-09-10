@@ -6,3 +6,5 @@ Tonarc 0.2.0-alpha:
 * Double-tap search tab to quickly focus the search bar.
 * Streamed and cached YouTube Music songs now included in Taste Profile and listening stats.
 * Smoother playlist import dialog with throttled progress and memoized shapes.
+* Immersive Playlist Detail redesign with hero artwork, ambient glow, and collapsible scroll motion.
+* Modern Material 3 Expressive Play All & Shuffle pills, and streamlined quick-action chips (+ Add, Reorder, Remove).

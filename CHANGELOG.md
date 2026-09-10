@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Streamed & Cached Track Inclusion: Taste Profile analytics and listening statistics now incorporate streamed and cached YouTube Music tracks.
 - Cleaner Analytics: Filtered placeholder artists and albums from listening stats calculations.
 
+#### 4. Immersive Playlist Detail Screen Redesign
+- Hero Artwork & Ambient Backdrop: Prominent 176dp playlist cover supporting user custom artwork, dynamic 4-art album collages, and custom colored shapes/icons, enveloped in a soft ambient gradient glow.
+- Fluid Collapsible Scroll Motion: Smooth scroll-driven collapse where the hero artwork, title, and pill buttons scale and fade seamlessly into a sleek, compact top app bar with animated track count.
+- Modern Pill Action Controls: Symmetrical Material 3 Expressive pill buttons for "Play All" and "Shuffle".
+- Streamlined Action Chips: Horizontal scrolling quick-action chips for "+ Add Songs", "Reorder", and "Remove", with dedicated active states.
+- Enhanced Usability: One-tap "Done" top-bar button and system back handler for quick exit from reorder and remove modes.
+- Expressive Empty State: Engaging empty playlist presentation with direct "+ Add Songs" call to action.
+
 ---
 
 ## [0.1.0-alpha] - 2026-08-26
