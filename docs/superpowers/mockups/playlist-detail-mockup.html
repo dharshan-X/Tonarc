@@ -443,7 +443,7 @@
 
     /* 2. Track List Area (flows down the page naturally) */
     .sheet-flow-content {
-      padding: 26px 0 60px 0; /* Full width edge-to-edge! */
+      padding: 26px 10px 60px 10px; /* Small subtle 10px side margin */
       background: var(--md-sys-color-surface);
       display: flex;
       flex-direction: column;
@@ -455,7 +455,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0 20px;
+      padding: 0 6px;
     }
 
     .m3-headline {
@@ -479,21 +479,19 @@
     .tiles-grouped-card {
       width: 100%;
       background: var(--md-sys-color-surface-container);
-      border-top: 1px solid var(--md-sys-color-outline-variant);
-      border-bottom: 1px solid var(--md-sys-color-outline-variant);
-      border-left: none;
-      border-right: none;
-      border-radius: 0;
-      box-shadow: none;
+      border: 1px solid var(--md-sys-color-outline-variant); /* 1dp crisp border all around */
+      border-radius: 20px; /* Subtle rounded corners */
+      box-shadow: none; /* 0dp elevation and zero shadow */
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     /* List Tiles Matching Reference */
     .pastel-list-tile {
       display: flex;
       align-items: center;
-      padding: 14px 20px;
+      padding: 13px 14px;
       gap: 14px;
       border-bottom: 1px solid var(--md-sys-color-surface-container-high);
       cursor: pointer;
