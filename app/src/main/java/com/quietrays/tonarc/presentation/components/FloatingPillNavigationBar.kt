@@ -4,6 +4,7 @@ import android.os.SystemClock
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -110,13 +111,26 @@ fun FloatingPillNavigationBar(
         targetIndex = routeIndex
     }
 
-    val animatedIndicatorOffset by animateDpAsState(
-        targetValue = calculatePillActiveOffset(targetIndex),
+    val targetOffset = calculatePillActiveOffset(targetIndex)
+
+    // Head spring: fast, responsive leading edge
+    val animatedHeadOffset by animateDpAsState(
+        targetValue = targetOffset,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
         ),
-        label = "FloatingPillActiveIndicatorOffset"
+        label = "FloatingPillHeadOffset"
+    )
+
+    // Tail spring: lagging trailing edge with subtle inertia
+    val animatedTailOffset by animateDpAsState(
+        targetValue = targetOffset,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "FloatingPillTailOffset"
     )
 
     val totalWidth = (FloatingPillSlotWidth * navItems.size) + (FloatingPillHorizontalPadding * 2)
@@ -146,11 +160,20 @@ fun FloatingPillNavigationBar(
                 .width(totalWidth),
             contentAlignment = Alignment.CenterStart
         ) {
-            // Sliding active indicator capsule - rendered via graphicsLayer to avoid recompositions
+            val fluidScale = calculatePillFluidScale(
+                headOffset = animatedHeadOffset,
+                tailOffset = animatedTailOffset,
+                baseWidth = FloatingPillIndicatorWidth
+            )
+            val centerTranslation = (animatedHeadOffset + animatedTailOffset) / 2
+
+            // Sliding active indicator capsule - rendered via graphicsLayer with fluid stretch & squash
             Box(
                 modifier = Modifier
                     .graphicsLayer {
-                        translationX = animatedIndicatorOffset.toPx()
+                        translationX = centerTranslation.toPx()
+                        scaleX = fluidScale.scaleX
+                        scaleY = fluidScale.scaleY
                     }
                     .size(width = FloatingPillIndicatorWidth, height = FloatingPillIndicatorHeight)
                     .clip(CircleShape)
@@ -180,6 +203,21 @@ fun FloatingPillNavigationBar(
                         targetValue = targetTint,
                         animationSpec = tween(durationMillis = 180),
                         label = "FloatingPillIconTint_${item.screen.route}"
+                    )
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.0f else 0.90f,
+                        animationSpec = if (isSelected) {
+                            spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        } else {
+                            spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        },
+                        label = "FloatingPillIconScale_${item.screen.route}"
                     )
 
                     Box(
@@ -242,7 +280,12 @@ fun FloatingPillNavigationBar(
                             painter = painterResource(id = iconRes),
                             contentDescription = item.label,
                             tint = iconTint,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = iconScale
+                                    scaleY = iconScale
+                                }
+                                .size(24.dp)
                         )
                     }
                 }
