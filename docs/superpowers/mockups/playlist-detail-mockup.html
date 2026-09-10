@@ -52,7 +52,7 @@
       --md-sys-color-surface-container: #ffffff;
       --md-sys-color-surface-container-high: #e8e7ee;
       --md-sys-color-surface-container-highest: #dedce3;
-      --md-sys-color-outline-variant: #cac4d0;
+      --md-sys-color-outline-variant: #e0dee6;
     }
 
     * {
@@ -477,19 +477,20 @@
 
     /* Rounded Card Grouping the List Tiles */
     .tiles-grouped-card {
-      background: transparent;
-      border-radius: 0;
-      box-shadow: none;
-      border: none;
+      background: var(--md-sys-color-surface-container);
+      border-radius: 24px;
+      border: 1px solid var(--md-sys-color-outline-variant); /* 1dp crisp top, bottom, left, right border */
+      box-shadow: none; /* ZERO shadow and 0dp elevation */
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     /* List Tiles Matching Reference */
     .pastel-list-tile {
       display: flex;
       align-items: center;
-      padding: 14px 6px;
+      padding: 14px 16px;
       gap: 14px;
       border-bottom: 1px solid var(--md-sys-color-surface-container-high);
       cursor: pointer;
@@ -705,9 +706,7 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
           </button>
           <span class="collapsed-title">Music Cover</span>
-          <button class="user-avatar-btn" title="Account">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-          </button>
+          <div style="width: 24px;"></div>
         </div>
 
         <!-- WHOLE PAGE SCROLL STREAM -->
@@ -716,15 +715,8 @@
           <!-- 1. Dark Rounded Hero Card in Scroll Stream -->
           <div class="hero-section">
             
-            <div class="hero-app-bar">
-              <button class="nav-icon-btn" title="Navigation Menu">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
-              </button>
-
-              <button class="user-avatar-btn" title="Account / Options">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </button>
-            </div>
+            <!-- Clean Top (Menu and Profile buttons removed) -->
+            <div style="height: 16px;"></div>
 
             <!-- Hero Artwork Showcase -->
             <div class="hero-art-display">
