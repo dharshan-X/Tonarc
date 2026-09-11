@@ -33,7 +33,10 @@ internal fun LibraryPlaybackAwareSongItem(
     isSelectionMode: Boolean = false,
     onLongPress: () -> Unit = {},
     onMoreOptionsClick: (Song) -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAddToQueue: ((Song) -> Unit)? = null,
+    onToggleFavorite: ((Song) -> Unit)? = null,
+    isSwipeEnabled: Boolean = true
 ) {
     val playbackUiState by remember(song.id, playerViewModel) {
         playerViewModel.stablePlayerState
@@ -47,8 +50,12 @@ internal fun LibraryPlaybackAwareSongItem(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = LibrarySongPlaybackUiState())
 
+    val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
+    val isFavorite = favoriteSongIds.contains(song.id) || song.isFavorite
+    val resolvedSong = if (song.isFavorite != isFavorite) song.copy(isFavorite = isFavorite) else song
+
     EnhancedSongListItem(
-        song = song,
+        song = resolvedSong,
         isPlaying = playbackUiState.isPlaying,
         isCurrentSong = playbackUiState.isCurrentSong,
         isLoading = false,
@@ -59,6 +66,9 @@ internal fun LibraryPlaybackAwareSongItem(
         isSelectionMode = isSelectionMode,
         onLongPress = onLongPress,
         onMoreOptionsClick = onMoreOptionsClick,
-        onClick = onClick
+        onClick = onClick,
+        onAddToQueue = onAddToQueue,
+        onToggleFavorite = onToggleFavorite,
+        isSwipeEnabled = isSwipeEnabled
     )
 }

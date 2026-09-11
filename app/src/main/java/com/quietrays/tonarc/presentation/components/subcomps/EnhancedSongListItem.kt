@@ -21,9 +21,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.quietrays.tonarc.presentation.components.SwipeActionConfig
+import com.quietrays.tonarc.presentation.components.SwipeableSongActionRow
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -58,6 +63,7 @@ import com.quietrays.tonarc.presentation.components.AutoScrollingText
 import com.quietrays.tonarc.presentation.components.ShimmerBox
 import androidx.compose.ui.res.stringResource
 import com.quietrays.tonarc.R
+import com.quietrays.tonarc.presentation.viewmodel.PlayerViewModel
 import com.quietrays.tonarc.presentation.components.SmartImage
 
 @Immutable
@@ -104,7 +110,10 @@ fun EnhancedSongListItem(
     showMoreOptionsButton: Boolean = true,
     onLongPress: () -> Unit = {},
     onMoreOptionsClick: (Song) -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAddToQueue: ((Song) -> Unit)? = null,
+    onToggleFavorite: ((Song) -> Unit)? = null,
+    isSwipeEnabled: Boolean = true
 ) {
     val albumArtTargetSizePx = with(LocalDensity.current) { albumArtSize.roundToPx() }
     val isHighlighted = isCurrentSong && !isLoading
@@ -181,6 +190,30 @@ fun EnhancedSongListItem(
     )
     val showSelectionDecoration = selectionVisualProgress > 0.001f
 
+    val startAction = remember(onAddToQueue, colors.primaryContainer, colors.onPrimaryContainer) {
+        if (onAddToQueue != null) {
+            SwipeActionConfig(
+                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                contentDescription = "Add Queue",
+                containerColor = colors.primaryContainer,
+                contentColor = colors.onPrimaryContainer,
+                labelText = "Add Queue"
+            )
+        } else null
+    }
+
+    val endAction = remember(onToggleFavorite, song.isFavorite, colors.tertiaryContainer, colors.onTertiaryContainer) {
+        if (onToggleFavorite != null) {
+            SwipeActionConfig(
+                icon = if (song.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                contentDescription = if (song.isFavorite) "Unfavorite" else "Favorite",
+                containerColor = colors.tertiaryContainer,
+                contentColor = colors.onTertiaryContainer,
+                labelText = if (song.isFavorite) "Unfavorite" else "Favorite"
+            )
+        } else null
+    }
+
     if (isLoading) {
         Surface(
             modifier = modifier
@@ -239,11 +272,19 @@ fun EnhancedSongListItem(
             }
         }
     } else {
-        Surface(
-            modifier = modifier
-                .fillMaxWidth()
-                .scale(selectionScale)
-                .clip(surfaceShape)
+        SwipeableSongActionRow(
+            modifier = modifier,
+            enabled = isSwipeEnabled && !isSelectionMode,
+            startAction = startAction,
+            endAction = endAction,
+            onStartActionTriggered = { onAddToQueue?.invoke(song) },
+            onEndActionTriggered = { onToggleFavorite?.invoke(song) }
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .scale(selectionScale)
+                    .clip(surfaceShape)
                 .then(
                     if (showSelectionDecoration) {
                         Modifier.border(
@@ -406,4 +447,5 @@ fun EnhancedSongListItem(
             }
         }
     }
+}
 }

@@ -334,7 +334,9 @@ fun LibrarySongsTab(
                                         selectionIndex = if (isSelectionMode) getSelectionIndex(song.id) else null,
                                         onLongPress = rememberedOnLongPress,
                                         onMoreOptionsClick = rememberedOnMoreOptionsClick,
-                                        onClick = rememberedOnClick
+                                        onClick = rememberedOnClick,
+                                        onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                        onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
                                     )
                                 } else {
                                      EnhancedSongListItem(

@@ -263,8 +263,10 @@ fun LibraryFavoritesTab(
                                         } else {
                                             playerViewModel.showAndPlaySongFromFavorites(song)
                                         }
-                                    }
-                                )
+                                    },
+                                     onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                     onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
+                                 )
                             } else {
                                 EnhancedSongListItem(
                                     song = Song.emptySong(),
@@ -451,7 +453,9 @@ fun LibrarySongsTabPaginated(
                                         isCurrentSong = stablePlayerState.currentSong?.id == song.id,
                                         isLoading = false,
                                         onMoreOptionsClick = rememberedOnMoreOptionsClick,
-                                        onClick = rememberedOnClick
+                                        onClick = rememberedOnClick,
+                                        onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                        onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
                                     )
                                 } else {
                                     EnhancedSongListItem(

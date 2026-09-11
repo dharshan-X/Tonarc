@@ -627,6 +627,7 @@ fun SearchResultsList(
 ) {
     val localDensity = LocalDensity.current
     val playerStableState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
+    val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
 
     if (results.isEmpty()) {
         Box(
@@ -713,12 +714,16 @@ fun SearchResultsList(
             Box(modifier = Modifier.padding(bottom = 8.dp)) {
                 when (item) {
                     is SearchResultItem.SongItem -> {
+                        val isItemFavorite = favoriteSongIds.contains(item.song.id) || item.song.isFavorite
+                        val songItem = if (item.song.isFavorite != isItemFavorite) item.song.copy(isFavorite = isItemFavorite) else item.song
                         EnhancedSongListItem(
-                            song = item.song,
+                            song = songItem,
                             isPlaying = isPlaying,
                             isCurrentSong = currentPlayingSongId == item.song.id,
                             onMoreOptionsClick = onSongMoreOptionsClick,
-                            onClick = { onSongResultClick(item.song) }
+                            onClick = { onSongResultClick(item.song) },
+                            onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                            onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
                         )
                     }
 
