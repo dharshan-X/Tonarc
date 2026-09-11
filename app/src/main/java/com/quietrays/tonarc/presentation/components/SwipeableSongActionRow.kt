@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,6 +85,9 @@ fun SwipeableSongActionRow(
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
+    val currentOnStartActionTriggered by rememberUpdatedState(onStartActionTriggered)
+    val currentOnEndActionTriggered by rememberUpdatedState(onEndActionTriggered)
+
     var wasTriggeredPreviously by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.isTriggerZoneReached) {
@@ -102,22 +106,38 @@ fun SwipeableSongActionRow(
         buildList {
             if (startAction != null) {
                 add(CustomAccessibilityAction(startAction.contentDescription) {
-                    onStartActionTriggered()
+                    currentOnStartActionTriggered()
                     true
                 })
             }
             if (endAction != null) {
                 add(CustomAccessibilityAction(endAction.contentDescription) {
-                    onEndActionTriggered()
+                    currentOnEndActionTriggered()
                     true
                 })
             }
         }
     }
 
+    val isDragEnabled = enabled && (startAction != null || endAction != null)
+
     val draggableState = rememberDraggableState { delta ->
-        if (enabled) {
-            state.onDrag(if (isRtl) -delta else delta)
+        if (isDragEnabled) {
+            val logicalDelta = if (isRtl) -delta else delta
+            if (logicalDelta > 0 && startAction == null && state.offsetPx >= 0f) {
+                return@rememberDraggableState
+            }
+            if (logicalDelta < 0 && endAction == null && state.offsetPx <= 0f) {
+                return@rememberDraggableState
+            }
+            val effectiveDelta = when {
+                startAction == null && state.offsetPx < 0f && (state.offsetPx + logicalDelta) > 0f -> -state.offsetPx
+                endAction == null && state.offsetPx > 0f && (state.offsetPx + logicalDelta) < 0f -> -state.offsetPx
+                else -> logicalDelta
+            }
+            if (effectiveDelta != 0f) {
+                state.onDrag(effectiveDelta)
+            }
         }
     }
 
@@ -132,20 +152,20 @@ fun SwipeableSongActionRow(
             .draggable(
                 state = draggableState,
                 orientation = Orientation.Horizontal,
-                enabled = enabled,
+                enabled = isDragEnabled,
                 onDragStopped = { velocity ->
-                    if (enabled) {
+                    if (isDragEnabled) {
                         scope.launch {
                             val resolvedVelocity = if (isRtl) -velocity else velocity
                             state.onRelease(
                                 velocityPx = resolvedVelocity,
                                 onStartAction = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    onStartActionTriggered()
+                                    currentOnStartActionTriggered()
                                 },
                                 onEndAction = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    onEndActionTriggered()
+                                    currentOnEndActionTriggered()
                                 }
                             )
                         }
@@ -251,7 +271,7 @@ fun SwipeableSongActionRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer {
-                    translationX = currentOffset
+                    translationX = if (isRtl) -currentOffset else currentOffset
                 }
         ) {
             content()
