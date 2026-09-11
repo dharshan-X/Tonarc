@@ -26,13 +26,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -255,12 +258,57 @@ fun PlaylistSongTile(
     onRemoveClick: () -> Unit,
     onMoreOptionsClick: (Song) -> Unit,
     modifier: Modifier = Modifier,
+    onAddToQueue: ((Song) -> Unit)? = null,
+    onRemoveFromPlaylist: ((Song) -> Unit)? = null,
     dragHandle: @Composable (() -> Unit)? = null,
     showDivider: Boolean = false
 ) {
     val palette = remember(index) { resolvePastelBadgePalette(index) }
+    val colors = MaterialTheme.colorScheme
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    val startAction = remember(onAddToQueue, colors.primaryContainer, colors.onPrimaryContainer) {
+        if (onAddToQueue != null) {
+            SwipeActionConfig(
+                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                contentDescription = "Add Queue",
+                containerColor = colors.primaryContainer,
+                contentColor = colors.onPrimaryContainer,
+                labelText = "Add Queue"
+            )
+        } else null
+    }
+
+    val endAction = remember(onRemoveFromPlaylist, colors.errorContainer, colors.onErrorContainer) {
+        if (onRemoveFromPlaylist != null) {
+            SwipeActionConfig(
+                icon = Icons.Rounded.DeleteOutline,
+                contentDescription = "Remove",
+                containerColor = colors.errorContainer,
+                contentColor = colors.onErrorContainer,
+                labelText = "Remove"
+            )
+        } else null
+    }
+
+    val tileBgColor = when {
+        isCurrentSong && isPlaying -> colors.primaryContainer.copy(alpha = 0.45f)
+        isCurrentSong -> colors.primaryContainer.copy(alpha = 0.22f)
+        else -> colors.surfaceContainer
+    }
+
+    SwipeableSongActionRow(
+        modifier = modifier.fillMaxWidth(),
+        enabled = !isReorderMode,
+        startAction = startAction,
+        endAction = endAction,
+        onStartActionTriggered = { onAddToQueue?.invoke(song) },
+        onEndActionTriggered = { onRemoveFromPlaylist?.invoke(song) }
+    ) {
+        Surface(
+            color = tileBgColor,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -406,15 +454,17 @@ fun PlaylistSongTile(
                     )
                 }
             }
-        }
+            }
 
-        // Hairline Divider
-        if (showDivider) {
-            HorizontalDivider(
-                thickness = 0.8.dp,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
-                modifier = Modifier.padding(horizontal = 14.dp)
-            )
+            // Hairline Divider
+            if (showDivider) {
+                HorizontalDivider(
+                    thickness = 0.8.dp,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(horizontal = 14.dp)
+                )
+            }
+            }
         }
     }
 }

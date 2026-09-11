@@ -69,6 +69,9 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -281,10 +284,33 @@ fun PlaylistDetailScreen(
 
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val view = LocalView.current
     val appHapticsConfig = LocalAppHapticsConfig.current
     var lastMovedFrom by remember { mutableStateOf<Int?>(null) }
     var lastMovedTo by remember { mutableStateOf<Int?>(null) }
+
+    val handleRemoveSongFromPlaylist: (Song) -> Unit = remember(currentPlaylist, isEditablePlaylist, localReorderableSongs) {
+        { songToRemove ->
+            if (isEditablePlaylist) {
+                currentPlaylist?.let { playlist ->
+                    val removedSong = songToRemove
+                    val removedIndex = localReorderableSongs.indexOf(songToRemove)
+                    playlistViewModel.removeSongFromPlaylist(playlist.id, songToRemove.id)
+                    scope.launch {
+                        snackbarHostState.currentSnackbarData?.dismiss()
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Removed from playlist",
+                            actionLabel = "Undo"
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            playlistViewModel.addSongsToPlaylist(playlist.id, listOf(removedSong.id))
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     val reorderableState = rememberReorderableLazyListState(
         lazyListState = listState,
@@ -339,7 +365,8 @@ fun PlaylistDetailScreen(
         }
     }
 
-    when {
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
         uiState.isLoading && currentPlaylist == null -> {
             Box(
                 modifier = Modifier
@@ -675,17 +702,11 @@ fun PlaylistDetailScreen(
                                 resolvePlaylistTileShape(isFirst, isLast, largeRadius = 16.dp, smallRadius = 4.dp)
                             }
 
-                            val itemBgColor = when {
-                                playbackUiState.isCurrentSong && playbackUiState.isPlaying -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-                                playbackUiState.isCurrentSong -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
-                                else -> MaterialTheme.colorScheme.surfaceContainer
-                            }
-
                             Box(
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp, vertical = 2.dp)
                                     .clip(tileShape)
-                                    .background(itemBgColor)
+                                    .background(MaterialTheme.colorScheme.surfaceContainer)
                                     .graphicsLayer {
                                         scaleX = scale
                                         scaleY = scale
@@ -706,14 +727,10 @@ fun PlaylistDetailScreen(
                                             currentPlaylist.id
                                         )
                                     },
-                                    onRemoveClick = {
-                                        if (isEditablePlaylist) {
-                                            currentPlaylist.let {
-                                                playlistViewModel.removeSongFromPlaylist(it.id, song.id)
-                                            }
-                                        }
-                                    },
+                                    onRemoveClick = { handleRemoveSongFromPlaylist(song) },
                                     onMoreOptionsClick = stableOnMoreOptionsClick,
+                                    onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                    onRemoveFromPlaylist = if (isEditablePlaylist) handleRemoveSongFromPlaylist else null,
                                     dragHandle = {
                                         IconButton(
                                             onClick = {},
@@ -900,6 +917,16 @@ fun PlaylistDetailScreen(
             }
         }
     }
+
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(
+                bottom = if (hasCurrentSong) bottomBarHeightDp + MiniPlayerHeight + 8.dp else bottomBarHeightDp + 8.dp
+            )
+    )
+}
 
     if (showAddSongsSheet && currentPlaylist != null && isEditablePlaylist) {
         SongPickerBottomSheet(
