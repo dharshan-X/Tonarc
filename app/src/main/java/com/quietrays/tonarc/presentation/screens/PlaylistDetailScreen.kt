@@ -1131,12 +1131,10 @@ fun PlaylistDetailScreen(
                 onAddToQueue = {
                     playerViewModel.addSongToQueue(currentSong)
                     showSongInfoBottomSheet = false
-                    playerViewModel.sendToast(toastAddedToQueue)
                 },
                 onAddNextToQueue = {
                     playerViewModel.addSongNextToQueue(currentSong)
                     showSongInfoBottomSheet = false
-                    playerViewModel.sendToast(toastPlayingNext)
                 },
                 onAddToPlayList = {
                     showPlaylistBottomSheet = true;

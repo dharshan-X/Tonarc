@@ -324,10 +324,13 @@ fun GenreDetailScreen(
                             GenreSongItemWrapper(
                                 item = item,
                                 stablePlayerState = stablePlayerState,
+                                isFavorite = favoriteSongIds.contains(item.song.id),
                                 onSongClick = { song ->
                                     playerViewModel.showAndPlaySong(song, uiState.sortedSongs, genreDisplayName)
                                 },
-                                onMoreOptionsClick = { song -> showSongOptionsSheet = song }
+                                onMoreOptionsClick = { song -> showSongOptionsSheet = song },
+                                onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
                             )
                         }
                         is GenreDetailListItem.Spacer -> {
@@ -494,13 +497,15 @@ fun GenreDetailScreen(
                     ) { index, song ->
                         val isCurrent = stablePlayerState.currentSong?.id == song.id
                         val isPlaying = stablePlayerState.isPlaying
+                        val isFavorite = favoriteSongIds.contains(song.id)
+                        val resolvedSong = if (song.isFavorite != isFavorite) song.copy(isFavorite = isFavorite) else song
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
                             EnhancedSongListItem(
-                                song = song,
+                                song = resolvedSong,
                                 isPlaying = isPlaying,
                                 isCurrentSong = isCurrent,
                                 showAlbumArt = true,
@@ -510,7 +515,9 @@ fun GenreDetailScreen(
                                 },
                                 onMoreOptionsClick = { clickedSong ->
                                     showSongOptionsSheet = clickedSong
-                                }
+                                },
+                                onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
                             )
                         }
                     }
@@ -662,12 +669,10 @@ fun GenreDetailScreen(
                         onAddToQueue = {
                             playerViewModel.addSongToQueue(song)
                             showSongOptionsSheet = null
-                            playerViewModel.sendToast(toastAddedToQueue)
                         },
                         onAddNextToQueue = {
                             playerViewModel.addSongNextToQueue(song)
                             showSongOptionsSheet = null
-                            playerViewModel.sendToast(toastPlayingNext)
                         },
                         onAddToPlayList = {
                             showPlaylistBottomSheet = true
@@ -1024,9 +1029,13 @@ fun GenreSongItemWrapper(
     item: com.quietrays.tonarc.presentation.viewmodel.GenreDetailListItem.SongItem,
     stablePlayerState: StablePlayerState,
     onSongClick: (Song) -> Unit,
-    onMoreOptionsClick: (Song) -> Unit
+    onMoreOptionsClick: (Song) -> Unit,
+    isFavorite: Boolean = item.song.isFavorite,
+    onAddToQueue: ((Song) -> Unit)? = null,
+    onToggleFavorite: ((Song) -> Unit)? = null
 ) {
     val song = item.song
+    val resolvedSong = if (song.isFavorite != isFavorite) song.copy(isFavorite = isFavorite) else song
     val isFirstInAlbum = item.isFirstInAlbum
     val isLastInAlbum = item.isLastInAlbum
     val isLastAlbumInSection = item.isLastAlbumInSection
@@ -1068,13 +1077,15 @@ fun GenreSongItemWrapper(
             val isPlaying = stablePlayerState.isPlaying
 
             EnhancedSongListItem(
-                 song = song,
+                 song = resolvedSong,
                  isPlaying = isPlaying,
                  isCurrentSong = isCurrent,
                  showAlbumArt = false,
                  customShape = songItemShape,
                  onClick = { onSongClick(song) },
-                 onMoreOptionsClick = onMoreOptionsClick
+                 onMoreOptionsClick = onMoreOptionsClick,
+                 onAddToQueue = onAddToQueue,
+                 onToggleFavorite = onToggleFavorite
              )
              
              if (isLastInAlbum) Spacer(Modifier.height(8.dp))

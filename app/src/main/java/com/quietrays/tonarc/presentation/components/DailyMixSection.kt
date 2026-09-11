@@ -529,6 +529,7 @@ private fun DailyMixSongList(
     onMoreOptionsClick: (Song) -> Unit
 ) {
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
+    val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     val itemContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
 
     Column(
@@ -539,8 +540,10 @@ private fun DailyMixSongList(
         verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         songs.forEach { song ->
+            val isFavorite = favoriteSongIds.contains(song.id)
+            val resolvedSong = if (song.isFavorite != isFavorite) song.copy(isFavorite = isFavorite) else song
             EnhancedSongListItem(
-                song = song,
+                song = resolvedSong,
                 isCurrentSong = stablePlayerState.currentSong?.id == song.id,
                 isPlaying = stablePlayerState.isPlaying && stablePlayerState.currentSong?.id == song.id,
                 containerColorOverride = itemContainerColor,
@@ -555,6 +558,8 @@ private fun DailyMixSongList(
                         isVoluntaryPlay = false
                     )
                 },
+                onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) },
                 modifier = Modifier.fillMaxWidth()
             )
         }

@@ -34,8 +34,8 @@ internal fun LibraryPlaybackAwareSongItem(
     onLongPress: () -> Unit = {},
     onMoreOptionsClick: (Song) -> Unit,
     onClick: () -> Unit,
-    onAddToQueue: ((Song) -> Unit)? = null,
-    onToggleFavorite: ((Song) -> Unit)? = null,
+    onAddToQueue: ((Song) -> Unit)? = { playerViewModel.addSongToQueue(it) },
+    onToggleFavorite: ((Song) -> Unit)? = { playerViewModel.toggleFavoriteSpecificSong(it) },
     isSwipeEnabled: Boolean = true
 ) {
     val playbackUiState by remember(song.id, playerViewModel) {

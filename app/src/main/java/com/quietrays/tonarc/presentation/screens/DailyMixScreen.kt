@@ -345,17 +345,21 @@ fun DailyMixScreen(
                 }
 
                 items(currentMixSongs, key = { it.id }) { song ->
+                    val isFavorite = favoriteSongIds.contains(song.id)
+                    val resolvedSong = if (song.isFavorite != isFavorite) song.copy(isFavorite = isFavorite) else song
                     EnhancedSongListItem(
                         modifier = Modifier
                             .padding(horizontal = 16.dp),
-                        song = song,
+                        song = resolvedSong,
                         isCurrentSong = currentSongId == song.id,
                         isPlaying = currentSongId == song.id && isPlaying,
                         onClick = { playerViewModel.showAndPlaySong(song, currentMixSongs, currentTitle, isVoluntaryPlay = false) },
                         onMoreOptionsClick = {
                             playerViewModel.selectSongForInfo(song)
                             showSongInfoSheet = true
-                        }
+                        },
+                        onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                        onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
                     )
                 }
             }

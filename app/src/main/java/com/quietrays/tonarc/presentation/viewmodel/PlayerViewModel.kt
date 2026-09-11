@@ -3713,24 +3713,90 @@ class PlayerViewModel @Inject constructor(
         return uri.takeIf { it.scheme == "file" }?.path?.takeIf { it.isNotBlank() }
     }
 
-    fun addSongToQueue(song: Song) {
-        mediaController?.let { controller ->
-            val mediaItem = buildPlaybackMediaItem(song)
-            controller.addMediaItem(mediaItem)
+    fun addSongToQueue(song: Song, showToast: Boolean = true) {
+        if (showToast) {
+            sendToast(context.getString(R.string.toast_added_to_queue))
+        }
+
+        val currentQueue = _playerUiState.value.currentPlaybackQueue
+        val updatedQueue = (currentQueue + song).toPlaybackQueue()
+        _playerUiState.update { it.copy(currentPlaybackQueue = updatedQueue) }
+        queueStateHolder.setOriginalQueueOrder(updatedQueue)
+
+        val controller = mediaController
+        if (controller == null) {
+            val previousAction = pendingPlaybackAction
+            pendingPlaybackAction = {
+                previousAction?.invoke()
+                val liveController = mediaController
+                if (liveController != null) {
+                    val mediaItem = buildPlaybackMediaItem(song)
+                    liveController.addMediaItem(mediaItem)
+                    if (liveController.playbackState == Player.STATE_IDLE) {
+                        liveController.prepare()
+                    }
+                }
+            }
+            return
+        }
+
+        val mediaItem = buildPlaybackMediaItem(song)
+        controller.addMediaItem(mediaItem)
+        if (controller.playbackState == Player.STATE_IDLE) {
+            controller.prepare()
         }
     }
 
-    fun addSongNextToQueue(song: Song) {
-        mediaController?.let { controller ->
-            val mediaItem = buildPlaybackMediaItem(song)
+    fun addSongNextToQueue(song: Song, showToast: Boolean = true) {
+        if (showToast) {
+            sendToast(context.getString(R.string.toast_playing_next))
+        }
 
-            val insertionIndex = if (controller.currentMediaItemIndex != C.INDEX_UNSET) {
-                (controller.currentMediaItemIndex + 1).coerceAtMost(controller.mediaItemCount)
-            } else {
-                controller.mediaItemCount
+        val currentQueue = _playerUiState.value.currentPlaybackQueue
+        val currentIndex = playbackStateHolder.stablePlayerState.value.currentMediaItemIndex
+        val insertionIndexQueue = if (currentIndex in currentQueue.indices) {
+            currentIndex + 1
+        } else {
+            currentQueue.size
+        }
+        val updatedQueue = currentQueue.toMutableList().apply {
+            add(insertionIndexQueue.coerceAtMost(size), song)
+        }.toPlaybackQueue()
+        _playerUiState.update { it.copy(currentPlaybackQueue = updatedQueue) }
+        queueStateHolder.setOriginalQueueOrder(updatedQueue)
+
+        val controller = mediaController
+        if (controller == null) {
+            val previousAction = pendingPlaybackAction
+            pendingPlaybackAction = {
+                previousAction?.invoke()
+                val liveController = mediaController
+                if (liveController != null) {
+                    val mediaItem = buildPlaybackMediaItem(song)
+                    val insertionIndex = if (liveController.currentMediaItemIndex != C.INDEX_UNSET) {
+                        (liveController.currentMediaItemIndex + 1).coerceAtMost(liveController.mediaItemCount)
+                    } else {
+                        liveController.mediaItemCount
+                    }
+                    liveController.addMediaItem(insertionIndex, mediaItem)
+                    if (liveController.playbackState == Player.STATE_IDLE) {
+                        liveController.prepare()
+                    }
+                }
             }
+            return
+        }
 
-            controller.addMediaItem(insertionIndex, mediaItem)
+        val mediaItem = buildPlaybackMediaItem(song)
+        val insertionIndex = if (controller.currentMediaItemIndex != C.INDEX_UNSET) {
+            (controller.currentMediaItemIndex + 1).coerceAtMost(controller.mediaItemCount)
+        } else {
+            controller.mediaItemCount
+        }
+
+        controller.addMediaItem(insertionIndex, mediaItem)
+        if (controller.playbackState == Player.STATE_IDLE) {
+            controller.prepare()
         }
     }
 
@@ -3768,7 +3834,7 @@ class PlayerViewModel @Inject constructor(
      * Clears selection after adding.
      */
     fun addSelectedToQueue(songs: List<Song>) {
-        songs.forEach { addSongToQueue(it) }
+        songs.forEach { addSongToQueue(it, showToast = false) }
         viewModelScope.launch {
             val n = songs.size
             _toastEvents.emit(
@@ -3784,7 +3850,7 @@ class PlayerViewModel @Inject constructor(
      * Clears selection after adding.
      */
     fun addSelectedAsNext(songs: List<Song>) {
-        songs.reversed().forEach { addSongNextToQueue(it) }
+        songs.reversed().forEach { addSongNextToQueue(it, showToast = false) }
         viewModelScope.launch {
             val n = songs.size
             _toastEvents.emit(
@@ -3846,7 +3912,7 @@ class PlayerViewModel @Inject constructor(
 
                 resolvedSelection.songs
                     .asReversed()
-                    .forEach(::addSongNextToQueue)
+                    .forEach { addSongNextToQueue(it, showToast = false) }
 
                 if (resolvedSelection.wasTrimmed) {
                     _toastEvents.emit(context.getString(R.string.player_only_first_n_albums_next, MAX_ALBUM_BATCH_SELECTION))
@@ -3871,7 +3937,7 @@ class PlayerViewModel @Inject constructor(
                     return@launch
                 }
 
-                resolvedSelection.songs.forEach(::addSongToQueue)
+                resolvedSelection.songs.forEach { addSongToQueue(it, showToast = false) }
 
                 if (resolvedSelection.wasTrimmed) {
                     _toastEvents.emit(context.getString(R.string.player_only_first_n_albums_added_queue, MAX_ALBUM_BATCH_SELECTION))

@@ -1407,7 +1407,10 @@ fun LibraryScreen(
                                             onRequestCrossFolderLocate = { folderPath ->
                                                 pendingFoldersLocatePath = folderPath
                                                 playerViewModel.navigateToFolder(folderPath)
-                                            }
+                                            },
+                                            onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                            onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) },
+                                            favoriteSongIds = favoriteIds
                                         )
                                     }
 
@@ -1563,12 +1566,10 @@ fun LibraryScreen(
                 onAddToQueue = {
                     playerViewModel.addSongToQueue(currentSong)
                     showSongInfoBottomSheet = false
-                    playerViewModel.sendToast(context.getString(R.string.toast_added_to_queue))
                 },
                 onAddNextToQueue = {
                     playerViewModel.addSongNextToQueue(currentSong)
                     showSongInfoBottomSheet = false
-                    playerViewModel.sendToast(context.getString(R.string.toast_playing_next))
                 },
                 onAddToPlayList = {
                     playlistSheetSongs = persistentListOf(currentSong)
@@ -2582,7 +2583,10 @@ fun LibraryFoldersTab(
     onRegisterLocateCurrentSongAction: ((() -> Unit)?) -> Unit = {},
     pendingLocatePath: String? = null,
     onClearPendingLocate: () -> Unit = {},
-    onRequestCrossFolderLocate: (String) -> Unit = {}
+    onRequestCrossFolderLocate: (String) -> Unit = {},
+    onAddToQueue: ((Song) -> Unit)? = null,
+    onToggleFavorite: ((Song) -> Unit)? = null,
+    favoriteSongIds: Set<String> = emptySet()
 ) {
 
 
@@ -2808,8 +2812,10 @@ fun LibraryFoldersTab(
                                 }
 
                                 items(songsToShow, key = { it.id }, contentType = { "song" }) { song ->
+                                    val isFavorite = favoriteSongIds.contains(song.id)
+                                    val resolvedSong = if (song.isFavorite != isFavorite) song.copy(isFavorite = isFavorite) else song
                                     EnhancedSongListItem(
-                                        song = song,
+                                        song = resolvedSong,
                                         isPlaying = stablePlayerState.currentSong?.id == song.id && stablePlayerState.isPlaying,
                                         isCurrentSong = stablePlayerState.currentSong?.id == song.id,
                                         onMoreOptionsClick = { onMoreOptionsClick(song) },
@@ -2823,7 +2829,9 @@ fun LibraryFoldersTab(
                                             } else {
                                                 onPlaySong(song, songsToShow)
                                             }
-                                        }
+                                        },
+                                        onAddToQueue = onAddToQueue,
+                                        onToggleFavorite = onToggleFavorite
                                     )
                                 }
                             }

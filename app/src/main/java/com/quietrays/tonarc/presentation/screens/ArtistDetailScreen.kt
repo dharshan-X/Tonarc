@@ -352,13 +352,15 @@ fun ArtistDetailScreen(
                                     key = { songIndex, song -> "${sectionKey}_song_${song.id}_$songIndex" },
                                     contentType = { _, _ -> "artist_section_song" }
                                 ) { songIndex, song ->
+                                    val isFavorite = favoriteIds.contains(song.id)
+                                    val resolvedSong = if (song.isFavorite != isFavorite) song.copy(isFavorite = isFavorite) else song
                                     ArtistAlbumSectionSongItem(
                                         modifier = Modifier.animateItem(
                                             fadeInSpec = tween(durationMillis = 180),
                                             fadeOutSpec = tween(durationMillis = 120),
                                             placementSpec = tween(durationMillis = 200)
                                         ),
-                                        song = song,
+                                        song = resolvedSong,
                                         songIndex = songIndex,
                                         songCount = section.songs.size,
                                         isCurrentSong = stablePlayerState.currentSong?.id == song.id,
@@ -369,7 +371,9 @@ fun ArtistDetailScreen(
                                         onMoreOptionsClick = {
                                             playerViewModel.selectSongForInfo(song)
                                             showSongInfoBottomSheet = true
-                                        }
+                                        },
+                                        onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                        onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
                                     )
                                 }
                             }
@@ -672,7 +676,9 @@ private fun ArtistAlbumSectionSongItem(
     isCurrentSong: Boolean,
     isPlaying: Boolean,
     onSongClick: () -> Unit,
-    onMoreOptionsClick: () -> Unit
+    onMoreOptionsClick: () -> Unit,
+    onAddToQueue: ((Song) -> Unit)? = null,
+    onToggleFavorite: ((Song) -> Unit)? = null
 ) {
     val isLastSong = songIndex == songCount - 1
 
@@ -723,7 +729,9 @@ private fun ArtistAlbumSectionSongItem(
                 showAlbumArt = false,
                 customShape = songItemShape,
                 onMoreOptionsClick = { onMoreOptionsClick() },
-                onClick = onSongClick
+                onClick = onSongClick,
+                onAddToQueue = onAddToQueue,
+                onToggleFavorite = onToggleFavorite
             )
 
             if (isLastSong) {

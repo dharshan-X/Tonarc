@@ -354,7 +354,9 @@ fun AlbumDetailScreen(
                                         playerViewModel.selectSongForInfo(song)
                                         showSongInfoBottomSheet = true
                                     },
-                                    onClick = { playerViewModel.showAndPlaySong(song, songs) }
+                                    onClick = { playerViewModel.showAndPlaySong(song, songs) },
+                                    onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                    onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
                                 )
                             }
                         }

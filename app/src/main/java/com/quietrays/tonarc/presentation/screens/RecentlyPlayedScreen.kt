@@ -247,9 +247,11 @@ fun RecentlyPlayedScreen(
                             )
                         }
                         items(group.songs, key = { songUi -> songUi.song.id }, contentType = { "recently_played_song" }) { item ->
+                            val isFavorite = favoriteSongIds.contains(item.song.id)
+                            val resolvedSong = if (item.song.isFavorite != isFavorite) item.song.copy(isFavorite = isFavorite) else item.song
                             EnhancedSongListItem(
                                 modifier = Modifier.padding(horizontal = 16.dp),
-                                song = item.song,
+                                song = resolvedSong,
                                 isCurrentSong = currentSongId == item.song.id,
                                 isPlaying = currentSongId == item.song.id && isPlaying,
                                 onClick = {
@@ -262,7 +264,9 @@ fun RecentlyPlayedScreen(
                                 onMoreOptionsClick = { song ->
                                     playerViewModel.selectSongForInfo(song)
                                     showSongInfoBottomSheet = true
-                                }
+                                },
+                                onAddToQueue = { playerViewModel.addSongToQueue(it) },
+                                onToggleFavorite = { playerViewModel.toggleFavoriteSpecificSong(it) }
                             )
                         }
                     }
