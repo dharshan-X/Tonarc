@@ -168,4 +168,20 @@ class SwipeableSongStateTest {
         assertThat(state.offsetPx).isEqualTo(0f)
         assertThat(state.activeDirection).isEqualTo(SwipeDirection.NONE)
     }
+
+    @Test
+    @DisplayName("continuous multi-frame drag past threshold increases offset monotonically")
+    fun test_continuousMultiFrameDrag_increasesMonotonically() {
+        val state = SwipeableSongState(thresholdPx = 200f, maxSwipePx = 400f)
+        state.onDrag(200f)
+        var previousOffset = state.offsetPx
+        for (i in 1..10) {
+            state.onDrag(10f)
+            val currentOffset = state.offsetPx
+            assertThat(currentOffset).isGreaterThan(previousOffset)
+            previousOffset = currentOffset
+        }
+        // Total raw drag was 200f + 100f = 300f. Damped offset should be 200f + 35f = 235f.
+        assertThat(state.offsetPx).isEqualTo(235f)
+    }
 }

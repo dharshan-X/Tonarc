@@ -33,6 +33,7 @@ class SwipeableSongState(
 ) {
     private val animatable = Animatable(0f)
     private var internalOffset by mutableFloatStateOf(0f)
+    private var rawOffset = 0f
 
     val offsetPx: Float
         get() = internalOffset
@@ -48,16 +49,16 @@ class SwipeableSongState(
         get() = abs(internalOffset) >= thresholdPx
 
     fun onDrag(deltaPx: Float) {
-        val newTarget = internalOffset + deltaPx
-        val clamped = if (abs(newTarget) > thresholdPx) {
-            val overflow = abs(newTarget) - thresholdPx
+        rawOffset += deltaPx
+        val absRaw = abs(rawOffset)
+        internalOffset = if (absRaw > thresholdPx) {
+            val overflow = absRaw - thresholdPx
             val dampedOverflow = overflow * 0.35f
-            val directionSign = if (newTarget >= 0f) 1f else -1f
+            val directionSign = if (rawOffset >= 0f) 1f else -1f
             (directionSign * (thresholdPx + dampedOverflow)).coerceIn(-maxSwipePx, maxSwipePx)
         } else {
-            newTarget.coerceIn(-maxSwipePx, maxSwipePx)
+            rawOffset.coerceIn(-maxSwipePx, maxSwipePx)
         }
-        internalOffset = clamped
     }
 
     suspend fun onRelease(
@@ -76,6 +77,7 @@ class SwipeableSongState(
             }
         }
 
+        rawOffset = 0f
         if (kotlin.coroutines.coroutineContext[androidx.compose.runtime.MonotonicFrameClock] != null) {
             animatable.snapTo(internalOffset)
             animatable.animateTo(
@@ -92,6 +94,7 @@ class SwipeableSongState(
     }
 
     suspend fun reset() {
+        rawOffset = 0f
         animatable.snapTo(0f)
         internalOffset = 0f
     }
