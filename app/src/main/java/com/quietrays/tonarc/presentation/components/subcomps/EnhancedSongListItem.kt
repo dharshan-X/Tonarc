@@ -189,26 +189,31 @@ fun EnhancedSongListItem(
     )
     val showSelectionDecoration = selectionVisualProgress > 0.001f
 
-    val startAction = remember(onAddToQueue, colors.primaryContainer, colors.onPrimaryContainer) {
+    val addQueueLabel = stringResource(R.string.song_action_add_to_queue)
+    val favoriteLabel = stringResource(R.string.song_action_favorite)
+    val unfavoriteLabel = stringResource(R.string.song_action_unfavorite)
+
+    val startAction = remember(onAddToQueue != null, colors.primaryContainer, colors.onPrimaryContainer, addQueueLabel) {
         if (onAddToQueue != null) {
             SwipeActionConfig(
                 icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                contentDescription = "Add Queue",
+                contentDescription = addQueueLabel,
                 containerColor = colors.primaryContainer,
                 contentColor = colors.onPrimaryContainer,
-                labelText = "Add Queue"
+                labelText = addQueueLabel
             )
         } else null
     }
 
-    val endAction = remember(onToggleFavorite, song.isFavorite, colors.tertiaryContainer, colors.onTertiaryContainer) {
+    val endAction = remember(onToggleFavorite != null, song.isFavorite, colors.tertiaryContainer, colors.onTertiaryContainer, favoriteLabel, unfavoriteLabel) {
         if (onToggleFavorite != null) {
+            val label = if (song.isFavorite) unfavoriteLabel else favoriteLabel
             SwipeActionConfig(
                 icon = if (song.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = if (song.isFavorite) "Unfavorite" else "Favorite",
+                contentDescription = label,
                 containerColor = colors.tertiaryContainer,
                 contentColor = colors.onTertiaryContainer,
-                labelText = if (song.isFavorite) "Unfavorite" else "Favorite"
+                labelText = label
             )
         } else null
     }

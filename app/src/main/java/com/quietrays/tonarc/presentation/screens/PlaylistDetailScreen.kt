@@ -290,18 +290,20 @@ fun PlaylistDetailScreen(
     var lastMovedFrom by remember { mutableStateOf<Int?>(null) }
     var lastMovedTo by remember { mutableStateOf<Int?>(null) }
 
-    val handleRemoveSongFromPlaylist: (Song) -> Unit = remember(currentPlaylist, isEditablePlaylist, localReorderableSongs) {
+    val removedFromPlaylistMessage = stringResource(R.string.playlist_song_removed)
+    val undoActionLabel = stringResource(R.string.action_undo)
+
+    val handleRemoveSongFromPlaylist: (Song) -> Unit = remember(currentPlaylist, isEditablePlaylist, removedFromPlaylistMessage, undoActionLabel) {
         { songToRemove ->
             if (isEditablePlaylist) {
                 currentPlaylist?.let { playlist ->
                     val removedSong = songToRemove
-                    val removedIndex = localReorderableSongs.indexOf(songToRemove)
                     playlistViewModel.removeSongFromPlaylist(playlist.id, songToRemove.id)
                     scope.launch {
                         snackbarHostState.currentSnackbarData?.dismiss()
                         val result = snackbarHostState.showSnackbar(
-                            message = "Removed from playlist",
-                            actionLabel = "Undo"
+                            message = removedFromPlaylistMessage,
+                            actionLabel = undoActionLabel
                         )
                         if (result == SnackbarResult.ActionPerformed) {
                             playlistViewModel.addSongsToPlaylist(playlist.id, listOf(removedSong.id))

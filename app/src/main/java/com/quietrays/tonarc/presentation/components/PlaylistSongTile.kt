@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -266,39 +267,42 @@ fun PlaylistSongTile(
     val palette = remember(index) { resolvePastelBadgePalette(index) }
     val colors = MaterialTheme.colorScheme
 
-    val startAction = remember(onAddToQueue, colors.primaryContainer, colors.onPrimaryContainer) {
+    val addQueueLabel = stringResource(R.string.song_action_add_to_queue)
+    val removeLabel = stringResource(R.string.song_action_remove)
+
+    val startAction = remember(onAddToQueue != null, colors.primaryContainer, colors.onPrimaryContainer, addQueueLabel) {
         if (onAddToQueue != null) {
             SwipeActionConfig(
                 icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                contentDescription = "Add Queue",
+                contentDescription = addQueueLabel,
                 containerColor = colors.primaryContainer,
                 contentColor = colors.onPrimaryContainer,
-                labelText = "Add Queue"
+                labelText = addQueueLabel
             )
         } else null
     }
 
-    val endAction = remember(onRemoveFromPlaylist, colors.errorContainer, colors.onErrorContainer) {
+    val endAction = remember(onRemoveFromPlaylist != null, colors.errorContainer, colors.onErrorContainer, removeLabel) {
         if (onRemoveFromPlaylist != null) {
             SwipeActionConfig(
                 icon = Icons.Rounded.DeleteOutline,
-                contentDescription = "Remove",
+                contentDescription = removeLabel,
                 containerColor = colors.errorContainer,
                 contentColor = colors.onErrorContainer,
-                labelText = "Remove"
+                labelText = removeLabel
             )
         } else null
     }
 
     val tileBgColor = when {
-        isCurrentSong && isPlaying -> colors.primaryContainer.copy(alpha = 0.45f)
-        isCurrentSong -> colors.primaryContainer.copy(alpha = 0.22f)
+        isCurrentSong && isPlaying -> colors.primaryContainer.copy(alpha = 0.45f).compositeOver(colors.surfaceContainer)
+        isCurrentSong -> colors.primaryContainer.copy(alpha = 0.22f).compositeOver(colors.surfaceContainer)
         else -> colors.surfaceContainer
     }
 
     SwipeableSongActionRow(
         modifier = modifier.fillMaxWidth(),
-        enabled = !isReorderMode,
+        enabled = !isReorderMode && !isRemoveMode,
         startAction = startAction,
         endAction = endAction,
         onStartActionTriggered = { onAddToQueue?.invoke(song) },

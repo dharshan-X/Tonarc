@@ -301,4 +301,11 @@
     <string name="home_favorite_artists_mix_title">Favorite Artists Mix</string>
 
     <string name="playlist_tracklist_header">Tracklist</string>
+
+    <!-- Song Tile Swipe Actions -->
+    <string name="song_action_add_to_queue">Add Queue</string>
+    <string name="song_action_favorite">Favorite</string>
+    <string name="song_action_unfavorite">Unfavorite</string>
+    <string name="song_action_remove">Remove</string>
+    <string name="playlist_song_removed">Removed from playlist</string>
 </resources>
