@@ -63,7 +63,6 @@ import com.quietrays.tonarc.presentation.components.AutoScrollingText
 import com.quietrays.tonarc.presentation.components.ShimmerBox
 import androidx.compose.ui.res.stringResource
 import com.quietrays.tonarc.R
-import com.quietrays.tonarc.presentation.viewmodel.PlayerViewModel
 import com.quietrays.tonarc.presentation.components.SmartImage
 
 @Immutable

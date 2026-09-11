@@ -714,7 +714,7 @@ fun SearchResultsList(
             Box(modifier = Modifier.padding(bottom = 8.dp)) {
                 when (item) {
                     is SearchResultItem.SongItem -> {
-                        val isItemFavorite = favoriteSongIds.contains(item.song.id) || item.song.isFavorite
+                        val isItemFavorite = favoriteSongIds.contains(item.song.id)
                         val songItem = if (item.song.isFavorite != isItemFavorite) item.song.copy(isFavorite = isItemFavorite) else item.song
                         EnhancedSongListItem(
                             song = songItem,

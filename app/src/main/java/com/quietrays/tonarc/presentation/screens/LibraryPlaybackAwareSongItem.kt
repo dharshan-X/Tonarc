@@ -51,7 +51,7 @@ internal fun LibraryPlaybackAwareSongItem(
     }.collectAsStateWithLifecycle(initialValue = LibrarySongPlaybackUiState())
 
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
-    val isFavorite = favoriteSongIds.contains(song.id) || song.isFavorite
+    val isFavorite = favoriteSongIds.contains(song.id)
     val resolvedSong = if (song.isFavorite != isFavorite) song.copy(isFavorite = isFavorite) else song
 
     EnhancedSongListItem(
