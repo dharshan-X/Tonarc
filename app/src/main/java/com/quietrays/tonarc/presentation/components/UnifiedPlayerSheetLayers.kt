@@ -36,6 +36,7 @@ import com.quietrays.tonarc.data.preferences.FullPlayerLoadingTweaks
 import com.quietrays.tonarc.data.preferences.PlayerDesignStyle
 import com.quietrays.tonarc.presentation.components.player.FullPlayerContent
 import com.quietrays.tonarc.presentation.components.player.VinylWaveformPlayerContent
+import com.quietrays.tonarc.presentation.components.player.WaveCardPlayerContent
 import com.quietrays.tonarc.presentation.components.scoped.FullPlayerVisualState
 import com.quietrays.tonarc.presentation.components.scoped.rememberFullPlayerRuntimePolicy
 import com.quietrays.tonarc.presentation.viewmodel.PlayerSheetState
@@ -193,35 +194,65 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                     val onRepeatToggle = remember(playerViewModel) { playerViewModel::cycleRepeatMode }
                     val onFavoriteToggle = remember(playerViewModel) { playerViewModel::toggleFavorite }
 
-                    if (playerDesignStyle == PlayerDesignStyle.VINYL_WAVEFORM) {
-                        VinylWaveformPlayerContent(
-                            currentSong = currentSongNonNull,
-                            currentPlaybackQueue = currentPlaybackQueue,
-                            currentQueueSourceName = currentQueueSourceName,
-                            currentMediaItemIndex = infrequentPlayerState.currentMediaItemIndex,
-                            isShuffleEnabled = infrequentPlayerState.isShuffleEnabled,
-                            repeatMode = infrequentPlayerState.repeatMode,
-                            expansionFractionProvider = expansionFractionProvider,
-                            currentSheetState = currentSheetContentState,
-                            playerViewModel = playerViewModel,
-                            currentPositionProvider = currentPositionProvider,
-                            isPlayingProvider = isPlayingProvider,
-                            totalDurationProvider = totalDurationProvider,
-                            isFavoriteProvider = isFavoriteProvider,
-                            onPlayPause = onPlayPause,
-                            onSeek = onSeek,
-                            onNext = onNext,
-                            onPrevious = onPrevious,
-                            onCollapse = onCollapse,
-                            onShowQueueClicked = onShowQueueClicked,
-                            onShuffleToggle = onShuffleToggle,
-                            onRepeatToggle = onRepeatToggle,
-                            onFavoriteToggle = onFavoriteToggle,
-                            lyricsProvider = lyricsProvider,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        FullPlayerContent(
+                    when (playerDesignStyle) {
+                        PlayerDesignStyle.VINYL_WAVEFORM -> {
+                            VinylWaveformPlayerContent(
+                                currentSong = currentSongNonNull,
+                                currentPlaybackQueue = currentPlaybackQueue,
+                                currentQueueSourceName = currentQueueSourceName,
+                                currentMediaItemIndex = infrequentPlayerState.currentMediaItemIndex,
+                                isShuffleEnabled = infrequentPlayerState.isShuffleEnabled,
+                                repeatMode = infrequentPlayerState.repeatMode,
+                                expansionFractionProvider = expansionFractionProvider,
+                                currentSheetState = currentSheetContentState,
+                                playerViewModel = playerViewModel,
+                                currentPositionProvider = currentPositionProvider,
+                                isPlayingProvider = isPlayingProvider,
+                                totalDurationProvider = totalDurationProvider,
+                                isFavoriteProvider = isFavoriteProvider,
+                                onPlayPause = onPlayPause,
+                                onSeek = onSeek,
+                                onNext = onNext,
+                                onPrevious = onPrevious,
+                                onCollapse = onCollapse,
+                                onShowQueueClicked = onShowQueueClicked,
+                                onShuffleToggle = onShuffleToggle,
+                                onRepeatToggle = onRepeatToggle,
+                                onFavoriteToggle = onFavoriteToggle,
+                                lyricsProvider = lyricsProvider,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        PlayerDesignStyle.WAVE_CARD -> {
+                            WaveCardPlayerContent(
+                                currentSong = currentSongNonNull,
+                                currentPlaybackQueue = currentPlaybackQueue,
+                                currentQueueSourceName = currentQueueSourceName,
+                                currentMediaItemIndex = infrequentPlayerState.currentMediaItemIndex,
+                                isShuffleEnabled = infrequentPlayerState.isShuffleEnabled,
+                                repeatMode = infrequentPlayerState.repeatMode,
+                                expansionFractionProvider = expansionFractionProvider,
+                                currentSheetState = currentSheetContentState,
+                                playerViewModel = playerViewModel,
+                                currentPositionProvider = currentPositionProvider,
+                                isPlayingProvider = isPlayingProvider,
+                                totalDurationProvider = totalDurationProvider,
+                                isFavoriteProvider = isFavoriteProvider,
+                                onPlayPause = onPlayPause,
+                                onSeek = onSeek,
+                                onNext = onNext,
+                                onPrevious = onPrevious,
+                                onCollapse = onCollapse,
+                                onShowQueueClicked = onShowQueueClicked,
+                                onShuffleToggle = onShuffleToggle,
+                                onRepeatToggle = onRepeatToggle,
+                                onFavoriteToggle = onFavoriteToggle,
+                                lyricsProvider = lyricsProvider,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        else -> {
+                            FullPlayerContent(
                             currentSong = currentSongNonNull,
                             currentPlaybackQueue = currentPlaybackQueue,
                             currentQueueSourceName = currentQueueSourceName,
@@ -264,6 +295,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
             }
         }
     }
+}
 }
 
 @OptIn(UnstableApi::class)
@@ -320,34 +352,63 @@ internal fun UnifiedPlayerPrewarmLayer(
                 val onRepeatToggle = remember(playerViewModel) { playerViewModel::cycleRepeatMode }
                 val onFavoriteToggle = remember(playerViewModel) { playerViewModel::toggleFavorite }
 
-                if (playerDesignStyle == PlayerDesignStyle.VINYL_WAVEFORM) {
-                    VinylWaveformPlayerContent(
-                        currentSong = currentSong,
-                        currentPlaybackQueue = currentPlaybackQueue,
-                        currentQueueSourceName = currentQueueSourceName,
-                        currentMediaItemIndex = infrequentPlayerState.currentMediaItemIndex,
-                        isShuffleEnabled = infrequentPlayerState.isShuffleEnabled,
-                        repeatMode = infrequentPlayerState.repeatMode,
-                        expansionFractionProvider = { 1f },
-                        currentSheetState = PlayerSheetState.EXPANDED,
-                        playerViewModel = playerViewModel,
-                        currentPositionProvider = currentPositionProvider,
-                        isPlayingProvider = isPlayingProvider,
-                        totalDurationProvider = totalDurationProvider,
-                        isFavoriteProvider = isFavoriteProvider,
-                        onPlayPause = onPlayPause,
-                        onSeek = onSeek,
-                        onNext = onNext,
-                        onPrevious = onPrevious,
-                        onCollapse = {},
-                        onShowQueueClicked = onShowQueueClicked,
-                        onShuffleToggle = onShuffleToggle,
-                        onRepeatToggle = onRepeatToggle,
-                        onFavoriteToggle = onFavoriteToggle,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    FullPlayerContent(
+                when (playerDesignStyle) {
+                    PlayerDesignStyle.VINYL_WAVEFORM -> {
+                        VinylWaveformPlayerContent(
+                            currentSong = currentSong,
+                            currentPlaybackQueue = currentPlaybackQueue,
+                            currentQueueSourceName = currentQueueSourceName,
+                            currentMediaItemIndex = infrequentPlayerState.currentMediaItemIndex,
+                            isShuffleEnabled = infrequentPlayerState.isShuffleEnabled,
+                            repeatMode = infrequentPlayerState.repeatMode,
+                            expansionFractionProvider = { 1f },
+                            currentSheetState = PlayerSheetState.EXPANDED,
+                            playerViewModel = playerViewModel,
+                            currentPositionProvider = currentPositionProvider,
+                            isPlayingProvider = isPlayingProvider,
+                            totalDurationProvider = totalDurationProvider,
+                            isFavoriteProvider = isFavoriteProvider,
+                            onPlayPause = onPlayPause,
+                            onSeek = onSeek,
+                            onNext = onNext,
+                            onPrevious = onPrevious,
+                            onCollapse = {},
+                            onShowQueueClicked = onShowQueueClicked,
+                            onShuffleToggle = onShuffleToggle,
+                            onRepeatToggle = onRepeatToggle,
+                            onFavoriteToggle = onFavoriteToggle,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    PlayerDesignStyle.WAVE_CARD -> {
+                        WaveCardPlayerContent(
+                            currentSong = currentSong,
+                            currentPlaybackQueue = currentPlaybackQueue,
+                            currentQueueSourceName = currentQueueSourceName,
+                            currentMediaItemIndex = infrequentPlayerState.currentMediaItemIndex,
+                            isShuffleEnabled = infrequentPlayerState.isShuffleEnabled,
+                            repeatMode = infrequentPlayerState.repeatMode,
+                            expansionFractionProvider = { 1f },
+                            currentSheetState = PlayerSheetState.EXPANDED,
+                            playerViewModel = playerViewModel,
+                            currentPositionProvider = currentPositionProvider,
+                            isPlayingProvider = isPlayingProvider,
+                            totalDurationProvider = totalDurationProvider,
+                            isFavoriteProvider = isFavoriteProvider,
+                            onPlayPause = onPlayPause,
+                            onSeek = onSeek,
+                            onNext = onNext,
+                            onPrevious = onPrevious,
+                            onCollapse = {},
+                            onShowQueueClicked = onShowQueueClicked,
+                            onShuffleToggle = onShuffleToggle,
+                            onRepeatToggle = onRepeatToggle,
+                            onFavoriteToggle = onFavoriteToggle,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    else -> {
+                        FullPlayerContent(
                         currentSong = currentSong,
                         currentPlaybackQueue = currentPlaybackQueue,
                         currentQueueSourceName = currentQueueSourceName,
@@ -388,4 +449,5 @@ internal fun UnifiedPlayerPrewarmLayer(
             }
         }
     }
+}
 }

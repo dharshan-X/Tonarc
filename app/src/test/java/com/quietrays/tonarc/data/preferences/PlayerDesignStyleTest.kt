@@ -17,13 +17,20 @@ class PlayerDesignStyleTest {
     }
 
     @Test
-    fun playerDesignStyles_containsDefaultAndVinylWaveform() {
+    fun waveCardConstant_hasExpectedValue() {
+        assertEquals("wave_card", PlayerDesignStyle.WAVE_CARD)
+    }
+
+    @Test
+    fun playerDesignStyles_containsExpectedStyles() {
         val styles = listOf(
             PlayerDesignStyle.DEFAULT,
-            PlayerDesignStyle.VINYL_WAVEFORM
+            PlayerDesignStyle.VINYL_WAVEFORM,
+            PlayerDesignStyle.WAVE_CARD
         )
         assertTrue(styles.contains("default"))
         assertTrue(styles.contains("vinyl_waveform"))
+        assertTrue(styles.contains("wave_card"))
     }
 
     @Test

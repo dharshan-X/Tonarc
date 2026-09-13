@@ -640,7 +640,8 @@ fun SettingsCategoryScreen(
                                     description = stringResource(R.string.setcat_player_design_desc),
                                     options = mapOf(
                                         PlayerDesignStyle.DEFAULT to stringResource(R.string.setcat_player_design_default),
-                                        PlayerDesignStyle.VINYL_WAVEFORM to stringResource(R.string.setcat_player_design_vinyl_waveform)
+                                        PlayerDesignStyle.VINYL_WAVEFORM to stringResource(R.string.setcat_player_design_vinyl_waveform),
+                                        PlayerDesignStyle.WAVE_CARD to stringResource(R.string.setcat_player_design_wave_card)
                                     ),
                                     selectedKey = uiState.playerDesignStyle,
                                     onSelectionChanged = { settingsViewModel.setPlayerDesignStyle(it) },
