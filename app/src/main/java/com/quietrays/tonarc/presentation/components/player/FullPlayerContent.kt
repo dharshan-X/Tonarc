@@ -165,7 +165,7 @@ private const val SKIP_COMMAND_GUARD_MS = 96L
 
 private enum class SkipDirection { PREVIOUS, NEXT }
 
-private suspend fun validateLyricsImport(
+internal suspend fun validateLyricsImport(
     context: Context,
     uri: Uri
 ): LyricsImportValidationResult = withContext(Dispatchers.IO) {

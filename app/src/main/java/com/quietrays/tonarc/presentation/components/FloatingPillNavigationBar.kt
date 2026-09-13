@@ -113,22 +113,22 @@ fun FloatingPillNavigationBar(
 
     val targetOffset = calculatePillActiveOffset(targetIndex)
 
-    // Head spring: fast, responsive leading edge
+    // Head spring: fast, responsive leading edge with realistic fluid momentum
     val animatedHeadOffset by animateDpAsState(
         targetValue = targetOffset,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = 0.62f,
+            stiffness = 260f
         ),
         label = "FloatingPillHeadOffset"
     )
 
-    // Tail spring: lagging trailing edge with subtle inertia
+    // Tail spring: lagging trailing edge with fluid drag and subtle inertia
     val animatedTailOffset by animateDpAsState(
         targetValue = targetOffset,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = 0.72f,
+            stiffness = 160f
         ),
         label = "FloatingPillTailOffset"
     )

@@ -730,45 +730,22 @@ class PlaybackStateHolder @Inject constructor(
                             QueueUtils.buildAnchoredShuffleQueueSuspending(currentSongs, currentIndex)
                         }
 
-                        if (currentSongs.size > BULK_REPLACE_THRESHOLD) {
-                            val preservedReplacement = buildQueueSegments(
+                        val preservedReplacement = buildQueueSegments(
+                            newQueue = shuffledQueue,
+                            currentIndex = currentIndex,
+                            currentMediaItem = currentMediaItem
+                        )
+                        val replacedInPlace = preservedReplacement?.let { preparedSegments ->
+                            replacePlayerQueuePreservingCurrent(player, currentIndex, preparedSegments)
+                        } == true
+
+                        if (!replacedInPlace) {
+                            val preparedQueue = buildQueueReplacement(
                                 newQueue = shuffledQueue,
-                                currentIndex = currentIndex,
+                                targetIndex = currentIndex,
                                 currentMediaItem = currentMediaItem
                             )
-                            val replacedInPlace = preservedReplacement?.let { preparedSegments ->
-                                replacePlayerQueuePreservingCurrent(player, currentIndex, preparedSegments)
-                            } == true
-
-                            if (!replacedInPlace) {
-                                val preparedQueue = buildQueueReplacement(
-                                    newQueue = shuffledQueue,
-                                    targetIndex = currentIndex,
-                                    currentMediaItem = currentMediaItem
-                                )
-                                replacePlayerQueue(player, preparedQueue, currentPosition)
-                            }
-                        } else {
-                            val reordered = reorderQueueInPlace(player, shuffledQueue)
-                            if (!reordered) {
-                                val preservedReplacement = buildQueueSegments(
-                                    newQueue = shuffledQueue,
-                                    currentIndex = currentIndex,
-                                    currentMediaItem = currentMediaItem
-                                )
-                                val replacedInPlace = preservedReplacement?.let { preparedSegments ->
-                                    replacePlayerQueuePreservingCurrent(player, currentIndex, preparedSegments)
-                                } == true
-
-                                if (!replacedInPlace) {
-                                    val preparedQueue = buildQueueReplacement(
-                                        newQueue = shuffledQueue,
-                                        targetIndex = currentIndex,
-                                        currentMediaItem = currentMediaItem
-                                    )
-                                    replacePlayerQueue(player, preparedQueue, currentPosition)
-                                }
-                            }
+                            replacePlayerQueue(player, preparedQueue, currentPosition)
                         }
 
                         updateQueueCallback(shuffledQueue)
@@ -806,45 +783,22 @@ class PlaybackStateHolder @Inject constructor(
                             return@launch
                         }
 
-                        if (originalQueue.size > BULK_REPLACE_THRESHOLD) {
-                            val preservedReplacement = buildQueueSegments(
+                        val preservedReplacement = buildQueueSegments(
+                            newQueue = originalQueue,
+                            currentIndex = originalIndex,
+                            currentMediaItem = currentMediaItem
+                        )
+                        val replacedInPlace = preservedReplacement?.let { preparedSegments ->
+                            replacePlayerQueuePreservingCurrent(player, originalIndex, preparedSegments)
+                        } == true
+
+                        if (!replacedInPlace) {
+                            val preparedQueue = buildQueueReplacement(
                                 newQueue = originalQueue,
-                                currentIndex = originalIndex,
+                                targetIndex = originalIndex,
                                 currentMediaItem = currentMediaItem
                             )
-                            val replacedInPlace = preservedReplacement?.let { preparedSegments ->
-                                replacePlayerQueuePreservingCurrent(player, originalIndex, preparedSegments)
-                            } == true
-
-                            if (!replacedInPlace) {
-                                val preparedQueue = buildQueueReplacement(
-                                    newQueue = originalQueue,
-                                    targetIndex = originalIndex,
-                                    currentMediaItem = currentMediaItem
-                                )
-                                replacePlayerQueue(player, preparedQueue, currentPosition)
-                            }
-                        } else {
-                            val reordered = reorderQueueInPlace(player, originalQueue)
-                            if (!reordered) {
-                                val preservedReplacement = buildQueueSegments(
-                                    newQueue = originalQueue,
-                                    currentIndex = originalIndex,
-                                    currentMediaItem = currentMediaItem
-                                )
-                                val replacedInPlace = preservedReplacement?.let { preparedSegments ->
-                                    replacePlayerQueuePreservingCurrent(player, originalIndex, preparedSegments)
-                                } == true
-
-                                if (!replacedInPlace) {
-                                    val preparedQueue = buildQueueReplacement(
-                                        newQueue = originalQueue,
-                                        targetIndex = originalIndex,
-                                        currentMediaItem = currentMediaItem
-                                    )
-                                    replacePlayerQueue(player, preparedQueue, currentPosition)
-                                }
-                            }
+                            replacePlayerQueue(player, preparedQueue, currentPosition)
                         }
 
                         updateQueueCallback(originalQueue)

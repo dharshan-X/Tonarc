@@ -213,6 +213,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                             onShuffleToggle = onShuffleToggle,
                             onRepeatToggle = onRepeatToggle,
                             onFavoriteToggle = onFavoriteToggle,
+                            lyricsProvider = lyricsProvider,
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
