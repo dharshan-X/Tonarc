@@ -24,6 +24,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -77,6 +78,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -104,6 +109,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Speed
+import com.quietrays.tonarc.presentation.viewmodel.AbRepeatState
 import com.quietrays.tonarc.presentation.visualizer.AudioVisualizerView
 import com.quietrays.tonarc.presentation.visualizer.VisualizerBottomSheet
 import com.quietrays.tonarc.presentation.visualizer.VisualizerMode
@@ -243,7 +250,12 @@ fun FullPlayerContent(
     var showArtistPicker by rememberSaveable { mutableStateOf(false) }
     var showSaveBookmarkDialog by rememberSaveable { mutableStateOf(false) }
     var showVisualizerBottomSheet by rememberSaveable { mutableStateOf(false) }
+    var showAudioToolsBottomSheet by rememberSaveable { mutableStateOf(false) }
     val bookmarksViewModel: AudioBookmarksViewModel = hiltViewModel()
+
+    val abRepeatState by playerViewModel.abRepeatState.collectAsStateWithLifecycle()
+    val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
+    val playbackPitchSemitones by playerViewModel.playbackPitchSemitones.collectAsStateWithLifecycle()
 
     val visualizerEnabled by playerViewModel.visualizerEnabled.collectAsStateWithLifecycle()
     val visualizerMode by playerViewModel.visualizerMode.collectAsStateWithLifecycle()
@@ -565,7 +577,8 @@ fun FullPlayerContent(
             playerOnBaseColor = playerOnBaseColor,
             allowRealtimeUpdates = allowRealtimeUpdates,
             isSheetDragGestureActive = isSheetDragGestureActive,
-            loadingTweaks = loadingTweaks
+            loadingTweaks = loadingTweaks,
+            abRepeatState = abRepeatState
         )
     }
 
@@ -772,6 +785,24 @@ fun FullPlayerContent(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val isAudioToolsActive = abRepeatState.isLoopActive || kotlin.math.abs(playbackSpeed - 1.0f) > 0.01f || playbackPitchSemitones != 0
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isAudioToolsActive) playerAccentColor.copy(alpha = 0.25f)
+                                        else playerOnAccentColor.copy(alpha = 0.7f)
+                                    )
+                                    .clickable { showAudioToolsBottomSheet = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Speed,
+                                    contentDescription = stringResource(R.string.audio_tools_title),
+                                    tint = if (isAudioToolsActive) playerAccentColor else playerAccentColor.copy(alpha = 0.75f)
+                                )
+                            }
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
@@ -931,6 +962,26 @@ fun FullPlayerContent(
             onSelectMode = { playerViewModel.setVisualizerMode(it) },
             onSelectStyle = { playerViewModel.setVisualizerStyle(it) },
             onDismiss = { showVisualizerBottomSheet = false }
+        )
+    }
+
+    if (showAudioToolsBottomSheet) {
+        AudioToolsBottomSheet(
+            abRepeatState = abRepeatState,
+            playbackSpeed = playbackSpeed,
+            playbackPitchSemitones = playbackPitchSemitones,
+            currentPositionMs = currentPositionProvider(),
+            totalDurationMs = totalDurationValue,
+            onSetPointA = { playerViewModel.setAbRepeatPointA(it) },
+            onSetPointB = { playerViewModel.setAbRepeatPointB(it) },
+            onAdjustPointA = { playerViewModel.adjustAbRepeatPointA(it, totalDurationValue) },
+            onAdjustPointB = { playerViewModel.adjustAbRepeatPointB(it, totalDurationValue) },
+            onToggleLoop = { playerViewModel.toggleAbRepeatLoop() },
+            onClearLoop = { playerViewModel.clearAbRepeat() },
+            onPlaybackSpeedChange = { playerViewModel.setPlaybackSpeed(it) },
+            onPlaybackPitchChange = { playerViewModel.setPlaybackPitch(it) },
+            onResetAll = { playerViewModel.resetAudioTools() },
+            onDismiss = { showAudioToolsBottomSheet = false }
         )
     }
 }
@@ -1177,7 +1228,8 @@ private fun FullPlayerProgressSection(
     playerOnBaseColor: Color,
     allowRealtimeUpdates: Boolean,
     isSheetDragGestureActive: Boolean,
-    loadingTweaks: FullPlayerLoadingTweaks
+    loadingTweaks: FullPlayerLoadingTweaks,
+    abRepeatState: AbRepeatState = AbRepeatState()
 ) {
     val isMetadataForCurrentSong = playbackMetadataMediaId == song.id
     val audioMimeType = if (isMetadataForCurrentSong) {
@@ -1215,7 +1267,8 @@ private fun FullPlayerProgressSection(
         timeTextColor = playerOnBaseColor,
         allowRealtimeUpdates = allowRealtimeUpdates,
         isSheetDragGestureActive = isSheetDragGestureActive,
-        loadingTweaks = loadingTweaks
+        loadingTweaks = loadingTweaks,
+        abRepeatState = abRepeatState
     )
 }
 
@@ -1612,6 +1665,7 @@ private fun PlayerProgressBarSection(
     allowRealtimeUpdates: Boolean = true,
     isSheetDragGestureActive: Boolean = false,
     loadingTweaks: FullPlayerLoadingTweaks? = null,
+    abRepeatState: AbRepeatState = AbRepeatState(),
     modifier: Modifier = Modifier
 ) {
     val progressSectionHorizontalInset = 0.dp
@@ -1754,6 +1808,17 @@ private fun PlayerProgressBarSection(
                         detectVerticalDragGestures(onVerticalDrag = { _, _ -> })
                     }
             ) {
+                if (abRepeatState.pointA != null || abRepeatState.pointB != null) {
+                    AbRepeatTrackOverlay(
+                        abRepeatState = abRepeatState,
+                        totalDuration = durationForCalc,
+                        trackEdgePadding = progressSectionHorizontalInset,
+                        markerColor = activeTrackColor,
+                        highlightColor = activeTrackColor.copy(alpha = 0.28f),
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
+
                 EfficientSlider(
                     valueState = animatedProgressState,
                     onValueChange = { sliderDragValue = it },
@@ -1774,13 +1839,84 @@ private fun PlayerProgressBarSection(
                 )
             }
 
+            val effectiveMetaLabel = if (abRepeatState.isLoopActive && abRepeatState.pointA != null && abRepeatState.pointB != null) {
+                "A-B: " + formatDuration(abRepeatState.pointA) + " - " + formatDuration(abRepeatState.pointB)
+            } else {
+                displayAudioMetaLabel
+            }
+
             EfficientTimeLabels(
                 positionState = effectivePositionState,
                 duration = displayDurationValue,
                 isVisible = isVisible,
                 textColor = timeTextColor,
-                audioMetaLabel = displayAudioMetaLabel,
+                audioMetaLabel = effectiveMetaLabel,
                 horizontalTrackInset = progressSectionHorizontalInset
+            )
+        }
+    }
+}
+
+@Composable
+private fun AbRepeatTrackOverlay(
+    abRepeatState: AbRepeatState,
+    totalDuration: Long,
+    trackEdgePadding: Dp,
+    markerColor: Color,
+    highlightColor: Color,
+    modifier: Modifier = Modifier
+) {
+    if (totalDuration <= 0L) return
+
+    Canvas(modifier = modifier) {
+        val trackPaddingPx = trackEdgePadding.toPx()
+        val trackWidth = (size.width - 2f * trackPaddingPx).coerceAtLeast(0f)
+        if (trackWidth <= 0f) return@Canvas
+
+        val centerY = size.height / 2f
+        val fractionA = abRepeatState.pointA?.let { (it.toFloat() / totalDuration).coerceIn(0f, 1f) }
+        val fractionB = abRepeatState.pointB?.let { (it.toFloat() / totalDuration).coerceIn(0f, 1f) }
+
+        if (fractionA != null && fractionB != null && fractionB > fractionA && abRepeatState.isEnabled) {
+            val startX = trackPaddingPx + fractionA * trackWidth
+            val endX = trackPaddingPx + fractionB * trackWidth
+            drawRoundRect(
+                color = highlightColor,
+                topLeft = Offset(startX, centerY - 6.dp.toPx()),
+                size = Size(endX - startX, 12.dp.toPx()),
+                cornerRadius = CornerRadius(6.dp.toPx())
+            )
+        }
+
+        fractionA?.let { fA ->
+            val xPos = trackPaddingPx + fA * trackWidth
+            drawLine(
+                color = markerColor,
+                start = Offset(xPos, centerY - 10.dp.toPx()),
+                end = Offset(xPos, centerY + 10.dp.toPx()),
+                strokeWidth = 3.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+            drawCircle(
+                color = markerColor,
+                radius = 3.5.dp.toPx(),
+                center = Offset(xPos, centerY - 10.dp.toPx())
+            )
+        }
+
+        fractionB?.let { fB ->
+            val xPos = trackPaddingPx + fB * trackWidth
+            drawLine(
+                color = markerColor,
+                start = Offset(xPos, centerY - 10.dp.toPx()),
+                end = Offset(xPos, centerY + 10.dp.toPx()),
+                strokeWidth = 3.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+            drawCircle(
+                color = markerColor,
+                radius = 3.5.dp.toPx(),
+                center = Offset(xPos, centerY - 10.dp.toPx())
             )
         }
     }

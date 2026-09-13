@@ -37,12 +37,14 @@ class PlaybackStateHolder @Inject constructor(
     private val dualPlayerEngine: DualPlayerEngine,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val queueStateHolder: QueueStateHolder,
+    val abRepeatStateHolder: AbRepeatStateHolder = AbRepeatStateHolder(),
     @param:ApplicationContext private val appContext: Context
 ) {
     companion object {
         private const val TAG = "PlaybackStateHolder"
         private const val DURATION_MISMATCH_TOLERANCE_MS = 1500L
         private const val PAUSED_OVERRIDE_MAX_AGE_MS = 4_000L
+        private const val AB_REPEAT_TICK_MS = 50L
         private const val SLIDER_TICK_MS = 250L
         private const val MINIPLAYER_TICK_MS = 1000L
         private const val BACKGROUND_TICK_MS = 1000L
@@ -215,6 +217,7 @@ class PlaybackStateHolder @Inject constructor(
 
     fun onPlaybackOccurrenceTransition(mediaId: String?) {
         activatePlaybackOccurrence(mediaId, forceNewOccurrence = true)
+        abRepeatStateHolder.onSongChanged(mediaId)
     }
 
     fun rememberPausedPositionOverride(mediaId: String?, positionMs: Long) {
@@ -475,6 +478,8 @@ class PlaybackStateHolder @Inject constructor(
                             }
 
                             val currentPosition = controller.currentPosition.coerceAtLeast(0L)
+                            abRepeatStateHolder.checkAndLoop(controller, currentPosition)
+
                             val songDurationHint = visibleSong?.duration ?: 0L
                             val duration = resolveEffectiveDuration(
                                 reportedDurationMs = controller.duration,
@@ -513,6 +518,7 @@ class PlaybackStateHolder @Inject constructor(
     }
 
     private fun currentProgressTickMs(): Long {
+        if (abRepeatStateHolder.isLoopActive()) return AB_REPEAT_TICK_MS
         if (!powerManager.isInteractive) return BACKGROUND_TICK_MS
         return if (_sliderUiMounted.value) SLIDER_TICK_MS else MINIPLAYER_TICK_MS
     }

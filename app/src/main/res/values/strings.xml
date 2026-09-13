@@ -308,4 +308,33 @@
     <string name="song_action_unfavorite">Unfavorite</string>
     <string name="song_action_remove">Remove</string>
     <string name="playlist_song_removed">Removed from playlist</string>
+
+    <!-- Audio Tools / Practice Studio -->
+    <string name="audio_tools_title">Audio Tools</string>
+    <string name="audio_tools_subtitle">Speed, Pitch &amp; A-B Looper</string>
+    <string name="audio_tools_tab_speed_pitch">Speed &amp; Pitch</string>
+    <string name="audio_tools_tab_ab_repeat">A-B Repeat</string>
+    <string name="audio_tools_speed_title">Playback Speed</string>
+    <string name="audio_tools_speed_normal">Normal</string>
+    <string name="audio_tools_pitch_title">Pitch Shifter</string>
+    <string name="audio_tools_pitch_original">Original Key</string>
+    <string name="audio_tools_pitch_semitones">%1$+d st</string>
+    <string name="audio_tools_reset_all">Reset All</string>
+    <string name="audio_tools_reset">Reset</string>
+    <string name="audio_tools_ab_title">A-B Repeat Looper</string>
+    <string name="audio_tools_ab_desc">Set Point A and Point B to loop a practice phrase continuously.</string>
+    <string name="audio_tools_ab_point_a">Point A</string>
+    <string name="audio_tools_ab_point_b">Point B</string>
+    <string name="audio_tools_ab_set_a">Set A</string>
+    <string name="audio_tools_ab_set_b">Set B</string>
+    <string name="audio_tools_ab_current">Current</string>
+    <string name="audio_tools_ab_clear">Clear Loop</string>
+    <string name="audio_tools_ab_loop_active">Looping active</string>
+    <string name="audio_tools_ab_loop_inactive">Loop inactive</string>
+    <string name="audio_tools_ab_enable">Enable Loop</string>
+    <string name="audio_tools_ab_disable">Disable Loop</string>
+    <string name="audio_tools_ab_fine_tune_minus">-1s</string>
+    <string name="audio_tools_ab_fine_tune_plus">+1s</string>
+    <string name="audio_tools_pitch_minus">-1 st</string>
+    <string name="audio_tools_pitch_plus">+1 st</string>
 </resources>

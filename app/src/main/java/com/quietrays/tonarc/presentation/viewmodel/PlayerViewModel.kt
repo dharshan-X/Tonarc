@@ -16,6 +16,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
@@ -297,6 +298,8 @@ class PlayerViewModel @Inject constructor(
     private val uiContentCache: UiContentCache? = null
 ) : ViewModel() {
 
+    private val abRepeatStateHolder: AbRepeatStateHolder = playbackStateHolder.abRepeatStateHolder
+
     fun playSmartPlaylist(type: com.quietrays.tonarc.data.model.SmartPlaylistType) {
         viewModelScope.launch {
             val songs = smartPlaylistGenerator.generateSmartPlaylist(type)
@@ -422,6 +425,73 @@ class PlayerViewModel @Inject constructor(
      */
     val currentPlaybackPosition: StateFlow<Long> = playbackStateHolder.currentPosition
     val playbackHistory = listeningStatsTracker.playbackHistory
+
+    val abRepeatState: StateFlow<AbRepeatState> = abRepeatStateHolder.abRepeatState
+    val playbackSpeed: StateFlow<Float> = userPreferencesRepository.playbackSpeedFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.Eagerly,
+            initialValue = 1.0f
+        )
+    private val _playbackPitchSemitones = MutableStateFlow(0)
+    val playbackPitchSemitones: StateFlow<Int> = _playbackPitchSemitones.asStateFlow()
+
+    fun setAbRepeatPointA(positionMs: Long? = null) {
+        val pos = positionMs ?: playbackStateHolder.currentPosition.value
+        abRepeatStateHolder.setPointA(pos)
+    }
+
+    fun setAbRepeatPointB(positionMs: Long? = null) {
+        val pos = positionMs ?: playbackStateHolder.currentPosition.value
+        abRepeatStateHolder.setPointB(pos)
+    }
+
+    fun adjustAbRepeatPointA(deltaMs: Long, totalDuration: Long) {
+        abRepeatStateHolder.adjustPointA(deltaMs, totalDuration)
+    }
+
+    fun adjustAbRepeatPointB(deltaMs: Long, totalDuration: Long) {
+        abRepeatStateHolder.adjustPointB(deltaMs, totalDuration)
+    }
+
+    fun toggleAbRepeatLoop(): Boolean {
+        return abRepeatStateHolder.toggleLoop()
+    }
+
+    fun clearAbRepeat() {
+        abRepeatStateHolder.clear()
+    }
+
+    fun setPlaybackSpeed(speed: Float) {
+        val clampedSpeed = speed.coerceIn(0.25f, 3.0f)
+        viewModelScope.launch {
+            userPreferencesRepository.setPlaybackSpeed(clampedSpeed)
+            applyPlaybackParameters(speed = clampedSpeed)
+        }
+    }
+
+    fun setPlaybackPitch(semitones: Int) {
+        val clamped = semitones.coerceIn(-12, 12)
+        _playbackPitchSemitones.value = clamped
+        applyPlaybackParameters(pitchSemitones = clamped)
+    }
+
+    fun resetAudioTools() {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlaybackSpeed(1.0f)
+            _playbackPitchSemitones.value = 0
+            abRepeatStateHolder.clear()
+            applyPlaybackParameters(speed = 1.0f, pitchSemitones = 0)
+        }
+    }
+
+    private fun applyPlaybackParameters(speed: Float? = null, pitchSemitones: Int? = null) {
+        val effSpeed = speed ?: playbackSpeed.value
+        val effPitchSemitones = pitchSemitones ?: _playbackPitchSemitones.value
+        val pitchFactor = Math.pow(2.0, effPitchSemitones / 12.0).toFloat().coerceIn(0.5f, 2.0f)
+        val controller = mediaController ?: playbackStateHolder.mediaController
+        controller?.playbackParameters = PlaybackParameters(effSpeed, pitchFactor)
+    }
 
     private val lyricsLoadCallback = object : LyricsLoadCallback {
         override fun onLoadingStarted(songId: String) {
@@ -2024,6 +2094,7 @@ class PlayerViewModel @Inject constructor(
                     mediaController = mediaControllerFuture.get()
                     playbackStateHolder.setMediaController(mediaController)
                     _isMediaControllerReady.value = true
+                    applyPlaybackParameters()
 
 
                     setupMediaControllerListeners()
