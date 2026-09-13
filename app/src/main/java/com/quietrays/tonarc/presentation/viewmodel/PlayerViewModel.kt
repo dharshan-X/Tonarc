@@ -63,6 +63,7 @@ import com.quietrays.tonarc.data.provider.SharedArtworkContentProvider
 import com.quietrays.tonarc.data.preferences.CarouselStyle
 import com.quietrays.tonarc.data.preferences.LibraryNavigationMode
 import com.quietrays.tonarc.data.preferences.NavBarStyle
+import com.quietrays.tonarc.data.preferences.PlayerDesignStyle
 import com.quietrays.tonarc.data.preferences.FullPlayerLoadingTweaks
 import com.quietrays.tonarc.data.preferences.AlbumArtPaletteStyle
 import com.quietrays.tonarc.data.preferences.ThemePreferencesRepository
@@ -606,6 +607,19 @@ class PlayerViewModel @Inject constructor(
             started = SharingStarted.Eagerly,
             initialValue = NavBarStyle.DEFAULT
         )
+
+    val playerDesignStyle: StateFlow<String> = userPreferencesRepository.playerDesignStyleFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = PlayerDesignStyle.DEFAULT
+        )
+
+    fun setPlayerDesignStyle(style: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerDesignStyle(style)
+        }
+    }
 
     val navBarCompactMode: StateFlow<Boolean> = userPreferencesRepository.navBarCompactModeFlow
         .stateIn(
@@ -1416,7 +1430,8 @@ class PlayerViewModel @Inject constructor(
         val fullPlayerLoadingTweaks: FullPlayerLoadingTweaks = FullPlayerLoadingTweaks(),
         val tapBackgroundClosesPlayer: Boolean = false,
         val useSmoothCorners: Boolean = true,
-        val playerThemePreference: String = ThemePreference.ALBUM_ART
+        val playerThemePreference: String = ThemePreference.ALBUM_ART,
+        val playerDesignStyle: String = PlayerDesignStyle.DEFAULT
     )
 
     private val playerConfigSlicePart1 = combine(
@@ -1440,8 +1455,9 @@ class PlayerViewModel @Inject constructor(
     val playerConfigSlice: StateFlow<PlayerConfigSlice> = combine(
         playerConfigSlicePart1,
         useSmoothCorners,
-        playerThemePreference
-    ) { p1, smoothCorners, themePref ->
+        playerThemePreference,
+        playerDesignStyle
+    ) { p1, smoothCorners, themePref, designStyle ->
         PlayerConfigSlice(
             navBarCornerRadius = p1.navBarCornerRadius,
             navBarStyle = p1.navBarStyle,
@@ -1449,7 +1465,8 @@ class PlayerViewModel @Inject constructor(
             fullPlayerLoadingTweaks = p1.fullPlayerLoadingTweaks,
             tapBackgroundClosesPlayer = p1.tapBackgroundClosesPlayer,
             useSmoothCorners = smoothCorners,
-            playerThemePreference = themePref
+            playerThemePreference = themePref,
+            playerDesignStyle = designStyle
         )
     }
         .distinctUntilChanged()

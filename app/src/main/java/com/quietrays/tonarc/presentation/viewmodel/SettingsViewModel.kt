@@ -45,6 +45,7 @@ import javax.inject.Inject
 
 import com.quietrays.tonarc.R
 import com.quietrays.tonarc.data.preferences.NavBarStyle
+import com.quietrays.tonarc.data.preferences.PlayerDesignStyle
 import com.quietrays.tonarc.data.preferences.LaunchTab
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.service.player.HiFiCapabilityChecker
@@ -64,6 +65,7 @@ data class SettingsUiState(
     val mockGenresEnabled: Boolean = false,
     val navBarCornerRadius: Int = 32,
     val navBarStyle: String = NavBarStyle.DEFAULT,
+    val playerDesignStyle: String = PlayerDesignStyle.DEFAULT,
     val navBarCompactMode: Boolean = false,
     val carouselStyle: String = CarouselStyle.NO_PEEK,
     val libraryNavigationMode: String = LibraryNavigationMode.TAB_ROW,
@@ -142,6 +144,7 @@ private sealed interface SettingsUiUpdate {
         val mockGenresEnabled: Boolean,
         val navBarCornerRadius: Int,
         val navBarStyle: String,
+        val playerDesignStyle: String,
         val navBarCompactMode: Boolean,
         val libraryNavigationMode: String,
         val carouselStyle: String,
@@ -257,6 +260,7 @@ class SettingsViewModel @Inject constructor(
                 userPreferencesRepository.mockGenresEnabledFlow,
                 userPreferencesRepository.navBarCornerRadiusFlow,
                 userPreferencesRepository.navBarStyleFlow,
+                userPreferencesRepository.playerDesignStyleFlow,
                 userPreferencesRepository.navBarCompactModeFlow,
                 userPreferencesRepository.libraryNavigationModeFlow,
                 userPreferencesRepository.carouselStyleFlow,
@@ -272,11 +276,12 @@ class SettingsViewModel @Inject constructor(
                     mockGenresEnabled = values[5] as Boolean,
                     navBarCornerRadius = values[6] as Int,
                     navBarStyle = values[7] as String,
-                    navBarCompactMode = values[8] as Boolean,
-                    libraryNavigationMode = values[9] as String,
-                    carouselStyle = values[10] as String,
-                    launchTab = values[11] as String,
-                    showPlayerFileInfo = values[12] as Boolean
+                    playerDesignStyle = values[8] as String,
+                    navBarCompactMode = values[9] as Boolean,
+                    libraryNavigationMode = values[10] as String,
+                    carouselStyle = values[11] as String,
+                    launchTab = values[12] as String,
+                    showPlayerFileInfo = values[13] as Boolean
                 )
             }.collect { update ->
                 _uiState.update { state ->
@@ -289,6 +294,7 @@ class SettingsViewModel @Inject constructor(
                         mockGenresEnabled = update.mockGenresEnabled,
                         navBarCornerRadius = update.navBarCornerRadius,
                         navBarStyle = update.navBarStyle,
+                        playerDesignStyle = update.playerDesignStyle,
                         navBarCompactMode = update.navBarCompactMode,
                         libraryNavigationMode = update.libraryNavigationMode,
                         carouselStyle = update.carouselStyle,
@@ -586,6 +592,12 @@ class SettingsViewModel @Inject constructor(
     fun setNavBarStyle(style: String) {
         viewModelScope.launch {
             userPreferencesRepository.setNavBarStyle(style)
+        }
+    }
+
+    fun setPlayerDesignStyle(style: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setPlayerDesignStyle(style)
         }
     }
 

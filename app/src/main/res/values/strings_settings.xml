@@ -94,6 +94,10 @@
     <string name="setcat_player_theme_desc">Choose the appearance for the floating player.</string>
     <string name="setcat_player_theme_album_art">Album Art</string>
     <string name="setcat_player_theme_dynamic">System Dynamic</string>
+    <string name="setcat_player_design_label">Player Design Style</string>
+    <string name="setcat_player_design_desc">Choose the full player layout and controls style.</string>
+    <string name="setcat_player_design_default">Default</string>
+    <string name="setcat_player_design_vinyl_waveform">Vinyl Waveform</string>
     <string name="setcat_show_player_file_info_title">Show player file info</string>
     <string name="setcat_show_player_file_info_subtitle">Show codec, bitrate, and sample rate in the player progress section.</string>
     <string name="setcat_album_art_palette_title">Album Art Palette Style</string>

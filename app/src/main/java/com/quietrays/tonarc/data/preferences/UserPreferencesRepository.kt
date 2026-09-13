@@ -126,6 +126,7 @@ constructor(
         val NAV_BAR_STYLE = stringPreferencesKey("nav_bar_style")
         val NAV_BAR_COMPACT_MODE = booleanPreferencesKey("nav_bar_compact_mode")
         val CAROUSEL_STYLE = stringPreferencesKey("carousel_style")
+        val PLAYER_DESIGN_STYLE = stringPreferencesKey("player_design_style")
         val VISUALIZER_ENABLED = booleanPreferencesKey("visualizer_enabled")
         val VISUALIZER_MODE = stringPreferencesKey("visualizer_mode")
         val VISUALIZER_STYLE = stringPreferencesKey("visualizer_style")
@@ -1324,6 +1325,15 @@ constructor(
 
     suspend fun setCarouselStyle(style: String) {
         dataStore.edit { preferences -> preferences[PreferencesKeys.CAROUSEL_STYLE] = style }
+    }
+
+    val playerDesignStyleFlow: Flow<String> =
+        dataStore.data.map { preferences ->
+            preferences[PreferencesKeys.PLAYER_DESIGN_STYLE] ?: PlayerDesignStyle.DEFAULT
+        }
+
+    suspend fun setPlayerDesignStyle(style: String) {
+        dataStore.edit { preferences -> preferences[PreferencesKeys.PLAYER_DESIGN_STYLE] = style }
     }
 
     val visualizerEnabledFlow: Flow<Boolean> =

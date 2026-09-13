@@ -188,6 +188,7 @@ fun UnifiedPlayerSheetV2(
     val tapBackgroundClosesPlayer = playerConfig.tapBackgroundClosesPlayer
     val useSmoothCorners = playerConfig.useSmoothCorners
     val playerThemePreference = playerConfig.playerThemePreference
+    val playerDesignStyle = playerConfig.playerDesignStyle
 
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
@@ -648,6 +649,7 @@ fun UnifiedPlayerSheetV2(
                             currentQueueSourceName = currentQueueSourceName,
                             currentSheetContentState = currentSheetContentState,
                             carouselStyle = carouselStyle,
+                            playerDesignStyle = playerDesignStyle,
                             fullPlayerLoadingTweaks = fullPlayerLoadingTweaks,
                             isSheetDragGestureActive = sheetBackAndDragState.isDraggingPlayerArea,
                             playerViewModel = playerViewModel,
@@ -670,6 +672,7 @@ fun UnifiedPlayerSheetV2(
                     currentQueueSourceName = currentQueueSourceName,
                     infrequentPlayerState = infrequentPlayerState,
                     carouselStyle = carouselStyle,
+                    playerDesignStyle = playerDesignStyle,
                     fullPlayerLoadingTweaks = fullPlayerLoadingTweaks,
                     playerViewModel = playerViewModel,
                     currentPositionProvider = positionToDisplayProvider,

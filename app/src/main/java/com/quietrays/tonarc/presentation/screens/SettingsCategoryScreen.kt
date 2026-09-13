@@ -167,6 +167,7 @@ import com.quietrays.tonarc.data.preferences.CarouselStyle
 import com.quietrays.tonarc.data.preferences.LaunchTab
 import com.quietrays.tonarc.data.preferences.LibraryNavigationMode
 import com.quietrays.tonarc.data.preferences.NavBarStyle
+import com.quietrays.tonarc.data.preferences.PlayerDesignStyle
 import com.quietrays.tonarc.data.preferences.ThemePreference
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.model.LyricsSourcePreference
@@ -633,6 +634,18 @@ fun SettingsCategoryScreen(
                                     onSelectionChanged = { settingsViewModel.setCarouselStyle(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_view_carousel_24), null, tint = MaterialTheme.colorScheme.secondary) },
                                     modifier = Modifier.settingHighlight("item_appearance_carousel_style", highlightKey)
+                                )
+                                ThemeSelectorItem(
+                                    label = stringResource(R.string.setcat_player_design_label),
+                                    description = stringResource(R.string.setcat_player_design_desc),
+                                    options = mapOf(
+                                        PlayerDesignStyle.DEFAULT to stringResource(R.string.setcat_player_design_default),
+                                        PlayerDesignStyle.VINYL_WAVEFORM to stringResource(R.string.setcat_player_design_vinyl_waveform)
+                                    ),
+                                    selectedKey = uiState.playerDesignStyle,
+                                    onSelectionChanged = { settingsViewModel.setPlayerDesignStyle(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.GraphicEq, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    modifier = Modifier.settingHighlight("item_appearance_player_design", highlightKey)
                                 )
 
                                 val visualizerEnabled by settingsViewModel.visualizerEnabled.collectAsStateWithLifecycle()
