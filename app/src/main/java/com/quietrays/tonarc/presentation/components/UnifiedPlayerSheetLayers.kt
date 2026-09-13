@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
@@ -113,31 +114,34 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
             CompositionLocalProvider(
                 LocalMaterialTheme provides albumColorScheme
             ) {
-                val fullPlayerScale by remember(bottomSheetOpenFraction) {
-                    derivedStateOf { lerp(1f, 0.972f, bottomSheetOpenFraction) }
-                }
-
-                val fullPlayerZIndex by remember {
-                    derivedStateOf {
-                        if (playerContentExpansionFraction.value >= 0.5f) 1f else 0f
+                MaterialTheme(
+                    colorScheme = albumColorScheme
+                ) {
+                    val fullPlayerScale by remember(bottomSheetOpenFraction) {
+                        derivedStateOf { lerp(1f, 0.972f, bottomSheetOpenFraction) }
                     }
-                }
-                val fullPlayerOffset by remember {
-                    derivedStateOf {
-                        if (playerContentExpansionFraction.value <= 0.01f) IntOffset(0, 10000)
-                        else IntOffset.Zero
+
+                    val fullPlayerZIndex by remember {
+                        derivedStateOf {
+                            if (playerContentExpansionFraction.value >= 0.5f) 1f else 0f
+                        }
                     }
-                }
-                val fullPlayerRuntimePolicy = rememberFullPlayerRuntimePolicy(
-                    currentSheetState = currentSheetContentState,
-                    expansionFraction = playerContentExpansionFraction,
-                    bottomSheetOpenFraction = bottomSheetOpenFraction
-                )
+                    val fullPlayerOffset by remember {
+                        derivedStateOf {
+                            if (playerContentExpansionFraction.value <= 0.01f) IntOffset(0, 10000)
+                            else IntOffset.Zero
+                        }
+                    }
+                    val fullPlayerRuntimePolicy = rememberFullPlayerRuntimePolicy(
+                        currentSheetState = currentSheetContentState,
+                        expansionFraction = playerContentExpansionFraction,
+                        bottomSheetOpenFraction = bottomSheetOpenFraction
+                    )
 
-                val currentPlaybackQueue by playerViewModel.queueFlow
-                    .collectAsStateWithLifecycle()
+                    val currentPlaybackQueue by playerViewModel.queueFlow
+                        .collectAsStateWithLifecycle()
 
-                Box(
+                    Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .requiredHeight(containerHeight)
@@ -256,6 +260,7 @@ internal fun BoxScope.UnifiedPlayerMiniAndFullLayers(
                         )
                     }
                 }
+                }
             }
         }
     }
@@ -288,13 +293,16 @@ internal fun UnifiedPlayerPrewarmLayer(
         CompositionLocalProvider(
             LocalMaterialTheme provides albumColorScheme
         ) {
-            Box(
-                modifier = Modifier
-                    .height(containerHeight)
-                    .fillMaxWidth()
-                    .alpha(0f)
-                    .clipToBounds()
+            MaterialTheme(
+                colorScheme = albumColorScheme
             ) {
+                Box(
+                    modifier = Modifier
+                        .height(containerHeight)
+                        .fillMaxWidth()
+                        .alpha(0f)
+                        .clipToBounds()
+                ) {
                 val latestInfrequentPlayerState = rememberUpdatedState(infrequentPlayerState)
                 val latestIsFavorite = rememberUpdatedState(isFavorite)
                 val isPlayingProvider = remember { { latestInfrequentPlayerState.value.isPlaying } }
@@ -375,6 +383,7 @@ internal fun UnifiedPlayerPrewarmLayer(
                         onRepeatToggle = onRepeatToggle,
                         onFavoriteToggle = onFavoriteToggle
                     )
+                }
                 }
             }
         }
