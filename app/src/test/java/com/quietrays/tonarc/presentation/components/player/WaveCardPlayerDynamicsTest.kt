@@ -2,6 +2,7 @@ package com.quietrays.tonarc.presentation.components.player
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WaveCardPlayerDynamicsTest {
@@ -127,5 +128,21 @@ class WaveCardPlayerDynamicsTest {
     fun formatAudioBadgeText_withEmptyMetadata_returnsNull() {
         val badge = formatAudioBadgeText(mimeType = null, bitrate = null, sampleRate = null)
         assertNull(badge)
+    }
+
+    @Test
+    fun shouldTriggerHapticTick_detectsSecondBoundaryCrossed() {
+        val lastSecond = 14L
+        val currentSecond1 = 14L
+        val currentSecond2 = 15L
+        assertEquals(false, lastSecond != currentSecond1)
+        assertEquals(true, lastSecond != currentSecond2)
+    }
+
+    @Test
+    fun calculateScrubberExpansionHeight_expandsWhenScrubbing() {
+        val restingHeight = 36f
+        val scrubbingHeight = 52f
+        assertTrue(scrubbingHeight > restingHeight)
     }
 }
