@@ -612,7 +612,7 @@ class PlayerViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
-            initialValue = PlayerDesignStyle.DEFAULT
+            initialValue = PlayerDesignStyle.WAVE_CARD
         )
 
     fun setPlayerDesignStyle(style: String) {
@@ -1358,8 +1358,18 @@ class PlayerViewModel @Inject constructor(
         val immersiveLyricsTimeout: Long = 4000L,
         val isImmersiveTemporarilyDisabled: Boolean = false,
         val isBluetoothEnabled: Boolean = false,
-        val bluetoothName: String? = null
+        val bluetoothName: String? = null,
+        val showAudioTools: Boolean = false
     )
+
+    val showAudioTools: StateFlow<Boolean> = userPreferencesRepository.showAudioToolsFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setShowAudioTools(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setShowAudioTools(enabled)
+        }
+    }
 
     private val fullPlayerSlicePart1 = combine(
         currentSongArtists,
@@ -1382,9 +1392,10 @@ class PlayerViewModel @Inject constructor(
         immersiveLyricsEnabled,
         immersiveLyricsTimeout,
         isImmersiveTemporarilyDisabled,
-        bluetoothSlice
-    ) { immersive: Boolean, immersiveTimeout: Long, immersiveDisabled: Boolean, bt: BluetoothSlice ->
-        FullPlayerSlicePart2(immersive, immersiveTimeout, immersiveDisabled, bt.enabled, bt.name)
+        bluetoothSlice,
+        userPreferencesRepository.showAudioToolsFlow
+    ) { immersive: Boolean, immersiveTimeout: Long, immersiveDisabled: Boolean, bt: BluetoothSlice, audioTools: Boolean ->
+        FullPlayerSlicePart2(immersive, immersiveTimeout, immersiveDisabled, bt.enabled, bt.name, audioTools)
     }
 
     private data class FullPlayerSlicePart1(
@@ -1400,7 +1411,8 @@ class PlayerViewModel @Inject constructor(
         val immersiveLyricsTimeout: Long,
         val isImmersiveTemporarilyDisabled: Boolean,
         val isBluetoothEnabled: Boolean,
-        val bluetoothName: String?
+        val bluetoothName: String?,
+        val showAudioTools: Boolean
     )
 
     val fullPlayerSlice: StateFlow<FullPlayerSlice> = combine(
@@ -1417,7 +1429,8 @@ class PlayerViewModel @Inject constructor(
             immersiveLyricsTimeout = p2.immersiveLyricsTimeout,
             isImmersiveTemporarilyDisabled = p2.isImmersiveTemporarilyDisabled,
             isBluetoothEnabled = p2.isBluetoothEnabled,
-            bluetoothName = p2.bluetoothName
+            bluetoothName = p2.bluetoothName,
+            showAudioTools = p2.showAudioTools
         )
     }
         .distinctUntilChanged()

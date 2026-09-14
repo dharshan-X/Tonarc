@@ -208,6 +208,7 @@ fun VinylWaveformPlayerContent(
     val immersiveLyricsEnabled = fullPlayerSlice.immersiveLyricsEnabled
     val immersiveLyricsTimeout = fullPlayerSlice.immersiveLyricsTimeout
     val isImmersiveTemporarilyDisabled = fullPlayerSlice.isImmersiveTemporarilyDisabled
+    val showAudioTools = fullPlayerSlice.showAudioTools
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -304,6 +305,7 @@ fun VinylWaveformPlayerContent(
                 accentColor = playerAccentColor,
                 onAccentColor = playerOnAccentColor,
                 isAudioToolsActive = isAudioToolsActive,
+                showAudioTools = showAudioTools,
                 visualizerEnabled = visualizerEnabled,
                 onVisualizerBadgeClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -530,6 +532,7 @@ private fun VinylPlayerTopBar(
     accentColor: Color,
     onAccentColor: Color,
     isAudioToolsActive: Boolean,
+    showAudioTools: Boolean,
     visualizerEnabled: Boolean,
     onVisualizerBadgeClick: () -> Unit,
     onAudioToolsClick: () -> Unit,
@@ -574,13 +577,16 @@ private fun VinylPlayerTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Audio Tools button: visible only if audio tools is active/modified
-            if (isAudioToolsActive) {
+            // Audio Tools button: visible only if enabled in settings
+            if (showAudioTools) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(accentColor.copy(alpha = 0.22f))
+                        .background(
+                            if (isAudioToolsActive) accentColor.copy(alpha = 0.22f)
+                            else MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
                         .clickable(onClick = onAudioToolsClick)
                         .semantics {
                             role = Role.Button
@@ -591,7 +597,7 @@ private fun VinylPlayerTopBar(
                     Icon(
                         imageVector = Icons.Rounded.Speed,
                         contentDescription = null,
-                        tint = accentColor,
+                        tint = if (isAudioToolsActive) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                 }

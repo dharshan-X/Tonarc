@@ -83,6 +83,7 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
@@ -615,6 +616,14 @@ fun SettingsCategoryScreen(
                                     onCheckedChange = { settingsViewModel.setShowPlayerFileInfo(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_attach_file_24), null, tint = MaterialTheme.colorScheme.secondary) },
                                     modifier = Modifier.settingHighlight("item_appearance_show_player_file_info", highlightKey)
+                                )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_show_audio_tools_title),
+                                    subtitle = stringResource(R.string.setcat_show_audio_tools_subtitle),
+                                    checked = uiState.showAudioTools,
+                                    onCheckedChange = { settingsViewModel.setShowAudioTools(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.Speed, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    modifier = Modifier.settingHighlight("item_appearance_show_audio_tools", highlightKey)
                                 )
                                 SettingsItem(
                                     title = stringResource(R.string.setcat_album_art_palette_title),

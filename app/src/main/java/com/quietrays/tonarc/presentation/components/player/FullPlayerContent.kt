@@ -275,6 +275,7 @@ fun FullPlayerContent(
     val isExternalOutputActive = false
     val isBluetoothEnabled = fullPlayerSlice.isBluetoothEnabled
     val bluetoothName = fullPlayerSlice.bluetoothName
+    val showAudioTools = fullPlayerSlice.showAudioTools
     val navigationBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val queueGestureBottomExclusion = maxOf(20.dp, navigationBarBottomInset + 8.dp)
     val queueGestureBottomExclusionPx = with(LocalDensity.current) {
@@ -785,6 +786,7 @@ fun FullPlayerContent(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                        if (showAudioTools) {
                             val isAudioToolsActive = abRepeatState.isLoopActive || kotlin.math.abs(playbackSpeed - 1.0f) > 0.01f || playbackPitchSemitones != 0
                             Box(
                                 modifier = Modifier
@@ -803,6 +805,7 @@ fun FullPlayerContent(
                                     tint = if (isAudioToolsActive) playerAccentColor else playerAccentColor.copy(alpha = 0.75f)
                                 )
                             }
+                        }
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)

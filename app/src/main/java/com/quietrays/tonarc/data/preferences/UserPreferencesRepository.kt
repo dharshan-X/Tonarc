@@ -127,6 +127,7 @@ constructor(
         val NAV_BAR_COMPACT_MODE = booleanPreferencesKey("nav_bar_compact_mode")
         val CAROUSEL_STYLE = stringPreferencesKey("carousel_style")
         val PLAYER_DESIGN_STYLE = stringPreferencesKey("player_design_style")
+        val SHOW_AUDIO_TOOLS = booleanPreferencesKey("show_audio_tools")
         val VISUALIZER_ENABLED = booleanPreferencesKey("visualizer_enabled")
         val VISUALIZER_MODE = stringPreferencesKey("visualizer_mode")
         val VISUALIZER_STYLE = stringPreferencesKey("visualizer_style")
@@ -864,6 +865,17 @@ constructor(
         }
     }
 
+    val showAudioToolsFlow: Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[PreferencesKeys.SHOW_AUDIO_TOOLS] ?: false
+        }
+
+    suspend fun setShowAudioTools(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_AUDIO_TOOLS] = enabled
+        }
+    }
+
     val fullPlayerLoadingTweaksFlow: Flow<FullPlayerLoadingTweaks> = dataStore.data
         .map { preferences ->
             val delayAlbum = preferences[PreferencesKeys.FULL_PLAYER_DELAY_ALBUM] ?: true
@@ -1329,7 +1341,7 @@ constructor(
 
     val playerDesignStyleFlow: Flow<String> =
         dataStore.data.map { preferences ->
-            preferences[PreferencesKeys.PLAYER_DESIGN_STYLE] ?: PlayerDesignStyle.DEFAULT
+            preferences[PreferencesKeys.PLAYER_DESIGN_STYLE] ?: PlayerDesignStyle.WAVE_CARD
         }
 
     suspend fun setPlayerDesignStyle(style: String) {
