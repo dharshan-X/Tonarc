@@ -1031,8 +1031,6 @@ fun WaveCardPlayerContent(
     }
 }
 
-private enum class WaveCardButtonType { NONE, PREVIOUS, PLAY_PAUSE, NEXT }
-
 /**
  * Top Circular Action Button: 44.dp circle with clean outline border,
  * tactile spring bounce animation on press/click, and responsive ripple indication.
