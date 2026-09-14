@@ -131,12 +131,15 @@ class WaveCardPlayerDynamicsTest {
     }
 
     @Test
-    fun shouldTriggerHapticTick_detectsSecondBoundaryCrossed() {
-        val lastSecond = 14L
-        val currentSecond1 = 14L
-        val currentSecond2 = 15L
-        assertEquals(false, lastSecond != currentSecond1)
-        assertEquals(true, lastSecond != currentSecond2)
+    fun shouldTriggerSecondHapticTick_returnsFalseWhenUninitializedOrUnchanged() {
+        assertEquals(false, shouldTriggerSecondHapticTick(lastHapticSecond = -1L, currentSecond = 14L))
+        assertEquals(false, shouldTriggerSecondHapticTick(lastHapticSecond = 14L, currentSecond = 14L))
+    }
+
+    @Test
+    fun shouldTriggerSecondHapticTick_returnsTrueWhenCrossingSecondBoundary() {
+        assertEquals(true, shouldTriggerSecondHapticTick(lastHapticSecond = 14L, currentSecond = 15L))
+        assertEquals(true, shouldTriggerSecondHapticTick(lastHapticSecond = 14L, currentSecond = 13L))
     }
 
     @Test

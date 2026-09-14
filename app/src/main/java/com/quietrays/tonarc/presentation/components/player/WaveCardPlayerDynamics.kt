@@ -139,3 +139,10 @@ fun formatAudioBadgeText(mimeType: String?, bitrate: Int?, sampleRate: Int?): St
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" • ")
 }
+
+/**
+ * Determines whether haptic tick feedback should be triggered when crossing second boundaries during scrub.
+ */
+fun shouldTriggerSecondHapticTick(lastHapticSecond: Long, currentSecond: Long): Boolean {
+    return lastHapticSecond >= 0L && currentSecond != lastHapticSecond
+}

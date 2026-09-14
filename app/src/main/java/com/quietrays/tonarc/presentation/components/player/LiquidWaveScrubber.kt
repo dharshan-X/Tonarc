@@ -85,6 +85,8 @@ fun LiquidWaveScrubber(
     var scrubFraction by remember { mutableFloatStateOf(0f) }
     var touchXPx by remember { mutableFloatStateOf(0f) }
     var lastHapticSecond by remember { mutableLongStateOf(-1L) }
+    val primaryPath = remember { Path() }
+    val echoPath = remember { Path() }
 
     val safeDuration = totalDurationMs.coerceAtLeast(1L)
     val realFraction = (currentPositionMs.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
@@ -217,7 +219,7 @@ fun LiquidWaveScrubber(
                             scrubFraction = frac
 
                             val currentSec = (frac * safeDuration / 1000L).toLong()
-                            if (currentSec != lastHapticSecond) {
+                            if (shouldTriggerSecondHapticTick(lastHapticSecond, currentSec)) {
                                 lastHapticSecond = currentSec
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             }
@@ -263,8 +265,8 @@ fun LiquidWaveScrubber(
                     val echoWavelengthPx = primaryWavelengthPx / 1.5f
                     val echoPhaseOffset = (Math.PI / 4.0).toFloat()
 
-                    val primaryPath = Path()
-                    val echoPath = Path()
+                    primaryPath.reset()
+                    echoPath.reset()
                     var firstPoint = true
                     var x = trackStartPx
                     val stepPx = 2f
