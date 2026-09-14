@@ -8,43 +8,31 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -78,7 +66,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -122,6 +109,7 @@ import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.repository.LyricsSearchResult
 import com.quietrays.tonarc.presentation.components.LocalMaterialTheme
 import com.quietrays.tonarc.presentation.components.LyricsSheet
+import com.quietrays.tonarc.presentation.components.SongInfoBottomSheet
 import com.quietrays.tonarc.presentation.components.subcomps.FetchLyricsDialog
 import com.quietrays.tonarc.presentation.visualizer.VisualizerBottomSheet
 import com.quietrays.tonarc.presentation.viewmodel.LyricsSearchUiState
@@ -132,7 +120,6 @@ import com.quietrays.tonarc.utils.LyricsImportValidationResult
 import com.quietrays.tonarc.utils.ValidatedLyricsImport
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.sin
 
 /**
  * Wave-Card Player Content: Pixel-exact Material 3 Expressive player mirroring
@@ -185,6 +172,7 @@ fun WaveCardPlayerContent(
     var showLyricsSheet by remember { mutableStateOf(false) }
     var showFetchLyricsDialog by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
+    var showSongInfoBottomSheet by remember { mutableStateOf(false) }
 
     val abRepeatState by playerViewModel.abRepeatState.collectAsStateWithLifecycle()
     val playbackSpeed by playerViewModel.playbackSpeed.collectAsStateWithLifecycle()
@@ -205,6 +193,18 @@ fun WaveCardPlayerContent(
 
     val lyricsSearchUiState by playerViewModel.lyricsSearchUiState.collectAsStateWithLifecycle()
     val fullPlayerSlice by playerViewModel.fullPlayerSlice.collectAsStateWithLifecycle()
+    val audioBadgeText = remember(
+        currentSong.mimeType,
+        currentSong.bitrate,
+        currentSong.sampleRate,
+        fullPlayerSlice.audioMetadata
+    ) {
+        val meta = fullPlayerSlice.audioMetadata
+        val effectiveMime = meta.mimeType ?: currentSong.mimeType
+        val effectiveBitrate = meta.bitrate ?: currentSong.bitrate
+        val effectiveSampleRate = meta.sampleRate ?: currentSong.sampleRate
+        formatAudioBadgeText(effectiveMime, effectiveBitrate, effectiveSampleRate)
+    }
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val playerUiState by playerViewModel.playerUiState.collectAsStateWithLifecycle()
     val isBuffering = stablePlayerState.isBuffering
@@ -302,12 +302,6 @@ fun WaveCardPlayerContent(
 
     // Menu icons color
     val menuIconColor = if (isDark) colorScheme.onSurface else Color(0xFF141219)
-
-    // Scrubber colors
-    val scrubberWaveColor = if (isDark) colorScheme.primary else Color(0xFF141219)
-    val scrubberTrackInactiveColor = if (isDark) colorScheme.onSurface.copy(alpha = 0.25f) else Color(0xFF141219).copy(alpha = 0.22f)
-    val scrubberBorderColor = cardBorderColor
-    val scrubberThumbColor = if (isDark) colorScheme.primary else Color.White
 
     Box(
         modifier = modifier
@@ -669,16 +663,43 @@ fun WaveCardPlayerContent(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = currentSong.artist,
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 13.sp
-                                ),
-                                color = cardTextArtistColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = currentSong.artist,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 13.sp
+                                    ),
+                                    color = cardTextArtistColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                if (fullPlayerSlice.showPlayerFileInfo && audioBadgeText != null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(colorScheme.surfaceContainerHigh)
+                                            .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.6f), CircleShape)
+                                            .clickable { showSongInfoBottomSheet = true }
+                                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = audioBadgeText,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 10.sp,
+                                                letterSpacing = 0.4.sp
+                                            ),
+                                            color = colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(12.dp))
@@ -692,7 +713,7 @@ fun WaveCardPlayerContent(
                         )
                     }
 
-                    // Baseline Scrubber: Timestamps & Multi-Strand Squiggly Sine Waveform
+                    // Baseline Scrubber: Timestamps & Liquid Wave Scrubber
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -712,20 +733,22 @@ fun WaveCardPlayerContent(
                             modifier = Modifier.width(38.dp)
                         )
 
-                        // Center Squiggly Sine Wave Scrubber Canvas
-                        WaveformScrubberCanvas(
+                        // Center Liquid Wave Scrubber
+                        LiquidWaveScrubber(
                             currentPositionMs = currentPosition,
                             totalDurationMs = totalDuration,
                             isPlaying = isPlaying,
-                            waveColor = scrubberWaveColor,
-                            trackInactiveColor = scrubberTrackInactiveColor,
-                            borderColor = scrubberBorderColor,
-                            thumbColor = scrubberThumbColor,
+                            waveColor = colorScheme.primary,
+                            trackInactiveColor = colorScheme.onSurface.copy(alpha = if (isDark) 0.22f else 0.18f),
+                            bubbleContainerColor = colorScheme.surfaceContainerHighest,
+                            bubbleContentColor = colorScheme.onSurface,
+                            bubbleBorderColor = colorScheme.outlineVariant.copy(alpha = 0.7f),
+                            thumbColor = if (isDark) colorScheme.primary else Color.White,
+                            thumbBorderColor = if (isDark) Color.Transparent else colorScheme.outlineVariant,
                             onSeek = onSeek,
                             modifier = Modifier
                                 .weight(1f)
-                                .height(56.dp)
-                                .padding(horizontal = 4.dp)
+                                .padding(horizontal = 6.dp)
                         )
 
                         // Right Timestamp (-3:57)
@@ -758,79 +781,43 @@ fun WaveCardPlayerContent(
 
             val currentActiveButton = activePressedButton ?: lastClickedButton
 
-            val tactileSpring = spring<Float>(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
+            val targetWeights = resolveWaveCardButtonWeights(currentActiveButton)
+            val targetScales = resolveWaveCardButtonScales(currentActiveButton)
+            val dockSpring = spring<Float>(
+                dampingRatio = 0.82f,
+                stiffness = Spring.StiffnessMedium
             )
+            val prevWeight by animateFloatAsState(targetValue = targetWeights.previous, animationSpec = dockSpring, label = "prevWeight")
+            val playWeight by animateFloatAsState(targetValue = targetWeights.playPause, animationSpec = dockSpring, label = "playWeight")
+            val nextWeight by animateFloatAsState(targetValue = targetWeights.next, animationSpec = dockSpring, label = "nextWeight")
 
-            // Subtle, refined weight shifts (gentle tactile expansion, not extreme rubber stretch)
-            val prevTargetWeight = when (currentActiveButton) {
-                WaveCardButtonType.PREVIOUS -> 1.30f
-                WaveCardButtonType.PLAY_PAUSE -> 0.85f
-                WaveCardButtonType.NEXT -> 0.90f
-                else -> 1.0f
-            }
-            val playTargetWeight = when (currentActiveButton) {
-                WaveCardButtonType.PLAY_PAUSE -> 2.30f
-                WaveCardButtonType.PREVIOUS -> 1.75f
-                WaveCardButtonType.NEXT -> 1.75f
-                else -> 2.0f
-            }
-            val nextTargetWeight = when (currentActiveButton) {
-                WaveCardButtonType.NEXT -> 1.30f
-                WaveCardButtonType.PLAY_PAUSE -> 0.85f
-                WaveCardButtonType.PREVIOUS -> 0.90f
-                else -> 1.0f
-            }
-
-            val prevWeight by animateFloatAsState(
-                targetValue = prevTargetWeight,
-                animationSpec = tactileSpring,
-                label = "prevWeight"
-            )
-            val playWeight by animateFloatAsState(
-                targetValue = playTargetWeight,
-                animationSpec = tactileSpring,
-                label = "playWeight"
-            )
-            val nextWeight by animateFloatAsState(
-                targetValue = nextTargetWeight,
-                animationSpec = tactileSpring,
-                label = "nextWeight"
-            )
-
-            // Uniform tactile scaling on press/click without asymmetrical distortion
-            val prevScale by animateFloatAsState(
-                targetValue = if (currentActiveButton == WaveCardButtonType.PREVIOUS) 0.95f else 1.0f,
-                animationSpec = tactileSpring,
-                label = "prevScale"
-            )
-            val playScale by animateFloatAsState(
-                targetValue = if (currentActiveButton == WaveCardButtonType.PLAY_PAUSE) 0.95f else 1.0f,
-                animationSpec = tactileSpring,
-                label = "playScale"
-            )
-            val nextScale by animateFloatAsState(
-                targetValue = if (currentActiveButton == WaveCardButtonType.NEXT) 0.95f else 1.0f,
-                animationSpec = tactileSpring,
-                label = "nextScale"
-            )
+            val prevScale by animateFloatAsState(targetValue = targetScales.previous, animationSpec = dockSpring, label = "prevScale")
+            val playScale by animateFloatAsState(targetValue = targetScales.playPause, animationSpec = dockSpring, label = "playScale")
+            val nextScale by animateFloatAsState(targetValue = targetScales.next, animationSpec = dockSpring, label = "nextScale")
 
             val prevIconScale by animateFloatAsState(
                 targetValue = if (currentActiveButton == WaveCardButtonType.PREVIOUS) 1.08f else 1.0f,
-                animationSpec = tactileSpring,
+                animationSpec = dockSpring,
                 label = "prevIconScale"
             )
             val playIconScale by animateFloatAsState(
                 targetValue = if (currentActiveButton == WaveCardButtonType.PLAY_PAUSE) 1.08f else 1.0f,
-                animationSpec = tactileSpring,
+                animationSpec = dockSpring,
                 label = "playIconScale"
             )
             val nextIconScale by animateFloatAsState(
                 targetValue = if (currentActiveButton == WaveCardButtonType.NEXT) 1.08f else 1.0f,
-                animationSpec = tactileSpring,
+                animationSpec = dockSpring,
                 label = "nextIconScale"
             )
+
+            val prevNextContainerColor = if (isDark) colorScheme.surfaceContainerHigh else Color(0xFFE5E4E7)
+            val prevNextContentColor = if (isDark) colorScheme.onSurface else Color(0xFF141219)
+            val prevNextBorderColor = if (isDark) colorScheme.outlineVariant.copy(alpha = 0.4f) else Color(0xFF141219)
+
+            val playContainerColor = colorScheme.primaryContainer
+            val playContentColor = colorScheme.onPrimaryContainer
+            val playBorderColor = if (isDark) colorScheme.primary.copy(alpha = 0.5f) else Color(0xFF141219)
 
             Box(
                 modifier = Modifier
@@ -848,7 +835,7 @@ fun WaveCardPlayerContent(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Previous Track: Squircle Button (gentle flex expansion 1.0 -> 1.30)
+                    // Previous Track: Squircle Button (height 58.dp, rounded corners 20.dp)
                     AnimeExpressiveButton(
                         onClick = {
                             lastClickedButton = WaveCardButtonType.PREVIOUS
@@ -856,11 +843,11 @@ fun WaveCardPlayerContent(
                         },
                         modifier = Modifier
                             .weight(prevWeight)
-                            .height(64.dp),
+                            .height(58.dp),
                         shape = RoundedCornerShape(20.dp),
-                        containerColor = buttonBgColor,
-                        contentColor = buttonOnColor,
-                        borderColor = buttonBorderColor,
+                        containerColor = prevNextContainerColor,
+                        contentColor = prevNextContentColor,
+                        borderColor = prevNextBorderColor,
                         onPressedChange = { pressed ->
                             activePressedButton = if (pressed) WaveCardButtonType.PREVIOUS else null
                         },
@@ -878,7 +865,7 @@ fun WaveCardPlayerContent(
                         )
                     }
 
-                    // Play/Pause Track: Stadium Pill Button (gentle flex expansion 2.0 -> 2.30) with Loading Indicator
+                    // Play/Pause Track: Stadium Pill Button (height 64.dp, CircleShape) with Loading Indicator
                     AnimeExpressiveButton(
                         onClick = {
                             lastClickedButton = WaveCardButtonType.PLAY_PAUSE
@@ -888,9 +875,9 @@ fun WaveCardPlayerContent(
                             .weight(playWeight)
                             .height(64.dp),
                         shape = CircleShape,
-                        containerColor = buttonBgColor,
-                        contentColor = buttonOnColor,
-                        borderColor = buttonBorderColor,
+                        containerColor = playContainerColor,
+                        contentColor = playContentColor,
+                        borderColor = playBorderColor,
                         onPressedChange = { pressed ->
                             activePressedButton = if (pressed) WaveCardButtonType.PLAY_PAUSE else null
                         },
@@ -911,12 +898,12 @@ fun WaveCardPlayerContent(
                                 if (loading) {
                                     LoadingIndicator(
                                         modifier = Modifier.size(30.dp),
-                                        color = buttonOnColor
+                                        color = playContentColor
                                     )
                                 } else {
                                     MorphingPlayPauseIcon(
                                         isPlaying = isPlaying,
-                                        tint = buttonOnColor,
+                                        tint = playContentColor,
                                         size = 32.dp
                                     )
                                 }
@@ -924,7 +911,7 @@ fun WaveCardPlayerContent(
                         }
                     }
 
-                    // Next Track: Squircle Button (gentle flex expansion 1.0 -> 1.30)
+                    // Next Track: Squircle Button (height 58.dp, rounded corners 20.dp)
                     AnimeExpressiveButton(
                         onClick = {
                             lastClickedButton = WaveCardButtonType.NEXT
@@ -932,11 +919,11 @@ fun WaveCardPlayerContent(
                         },
                         modifier = Modifier
                             .weight(nextWeight)
-                            .height(64.dp),
+                            .height(58.dp),
                         shape = RoundedCornerShape(20.dp),
-                        containerColor = buttonBgColor,
-                        contentColor = buttonOnColor,
-                        borderColor = buttonBorderColor,
+                        containerColor = prevNextContainerColor,
+                        contentColor = prevNextContentColor,
+                        borderColor = prevNextBorderColor,
                         onPressedChange = { pressed ->
                             activePressedButton = if (pressed) WaveCardButtonType.NEXT else null
                         },
@@ -1065,6 +1052,16 @@ fun WaveCardPlayerContent(
                 }
             )
         }
+    }
+
+    // Song Info Bottom Sheet
+    if (showSongInfoBottomSheet) {
+        SongInfoBottomSheet(
+            song = currentSong,
+            isFavorite = isFavorite,
+            onToggleFavorite = onFavoriteToggle,
+            onDismiss = { showSongInfoBottomSheet = false }
+        )
     }
 }
 
@@ -1266,179 +1263,7 @@ private fun AnimeExpressiveButton(
     }
 }
 
-/**
- * Waveform Scrubber Canvas: Renders the multi-strand squiggly sine wave track for
- * the played progress, a clean outlined capsule thumb, and a straight inactive track.
- */
-@Composable
-private fun WaveformScrubberCanvas(
-    currentPositionMs: Long,
-    totalDurationMs: Long,
-    isPlaying: Boolean,
-    waveColor: Color,
-    trackInactiveColor: Color,
-    borderColor: Color,
-    thumbColor: Color = Color.White,
-    onSeek: (Long) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var isScrubbing by remember { mutableStateOf(false) }
-    var scrubFraction by remember { mutableFloatStateOf(0f) }
 
-    val safeDuration = totalDurationMs.coerceAtLeast(1L)
-    val realFraction = (currentPositionMs.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
-    val displayFraction = if (isScrubbing) scrubFraction else realFraction
-
-    val infiniteTransition = rememberInfiniteTransition(label = "waveScrubberRibbons")
-    val phase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (isPlaying) 2800 else 12000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wavePhase"
-    )
-
-    Canvas(
-        modifier = modifier
-            .pointerInput(safeDuration) {
-                detectTapGestures { offset ->
-                    val frac = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
-                    onSeek((frac * safeDuration).toLong())
-                }
-            }
-            .pointerInput(safeDuration) {
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        isScrubbing = true
-                        scrubFraction = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
-                    },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        scrubFraction = (change.position.x / size.width.toFloat()).coerceIn(0f, 1f)
-                    },
-                    onDragEnd = {
-                        isScrubbing = false
-                        onSeek((scrubFraction * safeDuration).toLong())
-                    },
-                    onDragCancel = {
-                        isScrubbing = false
-                    }
-                )
-            }
-    ) {
-        val w = size.width
-        val h = size.height
-        val centerY = h / 2f
-
-        val trackMarginPx = 4.dp.toPx()
-        val trackStart = trackMarginPx
-        val trackEnd = w - trackMarginPx
-        val trackWidth = (trackEnd - trackStart).coerceAtLeast(1f)
-
-        val thumbX = trackStart + displayFraction * trackWidth
-        val thumbWPx = if (isScrubbing) 8.dp.toPx() else 6.dp.toPx()
-        val thumbHPx = if (isScrubbing) 24.dp.toPx() else 20.dp.toPx()
-        val gapPx = 6.dp.toPx()
-
-        // 1. Inactive Track (Unplayed)
-        val inactStart = thumbX + (thumbWPx / 2f) + gapPx
-        if (inactStart < trackEnd) {
-            drawLine(
-                color = trackInactiveColor,
-                start = Offset(inactStart, centerY),
-                end = Offset(trackEnd, centerY),
-                strokeWidth = 4.5.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-        }
-
-        // 2. Active Track (Played): Animated Multi-Strand Squiggly Sine Waves
-        val actEnd = thumbX - (thumbWPx / 2f) - gapPx
-        if (actEnd > trackStart) {
-            if (isPlaying && !isScrubbing) {
-                val strands = listOf(
-                    Triple(26.dp.toPx(), 5.5.dp.toPx(), 0f),
-                    Triple(36.dp.toPx(), 4.2.dp.toPx(), 2.2f),
-                    Triple(52.dp.toPx(), 3.0.dp.toPx(), 4.2f)
-                )
-
-                strands.forEachIndexed { idx, (wl, amp, phaseOffset) ->
-                    val path = Path()
-                    var first = true
-                    var x = trackStart
-                    val step = 2f
-
-                    while (x <= actEnd) {
-                        val distFromEnds = kotlin.math.min(x - trackStart, actEnd - x)
-                        val env = (distFromEnds / 8.dp.toPx()).coerceIn(0f, 1f)
-                        val angle = ((x - trackStart) / wl) * 2 * Math.PI - phase + phaseOffset
-                        val waveY = centerY + (sin(angle).toFloat() * amp * env)
-
-                        if (first) {
-                            path.moveTo(x, waveY)
-                            first = false
-                        } else {
-                            path.lineTo(x, waveY)
-                        }
-                        x += step
-                    }
-
-                    val alpha = when (idx) {
-                        0 -> 0.98f
-                        1 -> 0.75f
-                        else -> 0.52f
-                    }
-                    val strokeW = when (idx) {
-                        0 -> 3.5.dp.toPx()
-                        1 -> 2.6.dp.toPx()
-                        else -> 1.8.dp.toPx()
-                    }
-
-                    drawPath(
-                        path = path,
-                        color = waveColor.copy(alpha = alpha),
-                        style = Stroke(width = strokeW, cap = StrokeCap.Round)
-                    )
-                }
-            } else {
-                // Paused or scrubbing: Clean solid horizontal line
-                drawLine(
-                    color = waveColor,
-                    start = Offset(trackStart, centerY),
-                    end = Offset(actEnd, centerY),
-                    strokeWidth = 4.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-            }
-        }
-
-        // 3. Capsule Thumb with Clean Outline (no neobrutalism shadow)
-        val thumbLeft = thumbX - thumbWPx / 2f
-        val thumbTop = centerY - thumbHPx / 2f
-        val radiusPx = 3.dp.toPx()
-
-        // Thumb Surface Fill
-        drawRoundRect(
-            color = thumbColor,
-            topLeft = Offset(thumbLeft, thumbTop),
-            size = androidx.compose.ui.geometry.Size(thumbWPx, thumbHPx),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(radiusPx, radiusPx)
-        )
-
-        // Thumb Solid Outline Border (light mode only)
-        if (borderColor != Color.Transparent) {
-            drawRoundRect(
-                color = borderColor,
-                topLeft = Offset(thumbLeft, thumbTop),
-                size = androidx.compose.ui.geometry.Size(thumbWPx, thumbHPx),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(radiusPx, radiusPx),
-                style = Stroke(width = 1.8.dp.toPx())
-            )
-        }
-    }
-}
 
 /**
  * Format milliseconds into m:ss time string.
