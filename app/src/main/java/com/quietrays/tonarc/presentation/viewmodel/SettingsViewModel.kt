@@ -65,7 +65,7 @@ data class SettingsUiState(
     val mockGenresEnabled: Boolean = false,
     val navBarCornerRadius: Int = 32,
     val navBarStyle: String = NavBarStyle.DEFAULT,
-    val playerDesignStyle: String = PlayerDesignStyle.DEFAULT,
+    val playerDesignStyle: String = PlayerDesignStyle.WAVE_CARD,
     val navBarCompactMode: Boolean = false,
     val carouselStyle: String = CarouselStyle.NO_PEEK,
     val libraryNavigationMode: String = LibraryNavigationMode.TAB_ROW,

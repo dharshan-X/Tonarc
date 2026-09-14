@@ -64,11 +64,12 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -146,7 +147,7 @@ import kotlin.math.sin
  *    expressive buttons (Squircle Previous, Stadium Pill Play/Pause, Squircle Next) rendered with
  *    solid black anime ink borders, 3.5.dp offset cel shadows, and bouncy spring interactions.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun WaveCardPlayerContent(
     currentSong: Song,
@@ -871,9 +872,8 @@ fun WaveCardPlayerContent(
                                 label = "playLoadingCrossfade"
                             ) { loading ->
                                 if (loading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(28.dp),
-                                        strokeWidth = 2.8.dp,
+                                    LoadingIndicator(
+                                        modifier = Modifier.size(30.dp),
                                         color = buttonOnColor
                                     )
                                 } else {

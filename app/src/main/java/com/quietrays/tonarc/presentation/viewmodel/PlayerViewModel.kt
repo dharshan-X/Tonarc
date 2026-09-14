@@ -1444,7 +1444,7 @@ class PlayerViewModel @Inject constructor(
         val tapBackgroundClosesPlayer: Boolean = false,
         val useSmoothCorners: Boolean = true,
         val playerThemePreference: String = ThemePreference.ALBUM_ART,
-        val playerDesignStyle: String = PlayerDesignStyle.DEFAULT
+        val playerDesignStyle: String = PlayerDesignStyle.WAVE_CARD
     )
 
     private val playerConfigSlicePart1 = combine(
