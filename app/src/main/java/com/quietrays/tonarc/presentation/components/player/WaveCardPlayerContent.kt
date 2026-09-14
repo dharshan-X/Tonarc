@@ -89,6 +89,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
@@ -278,10 +279,10 @@ fun WaveCardPlayerContent(
     val isSystemDark = isSystemInDarkTheme()
     val isDark = isSystemDark || colorScheme.surface.luminance() < 0.5f
 
-    // Outline & Border colors (clean outlines only in light mode, transparent in dark mode)
+    // Outline & Border colors
     val cardBorderColor = if (isDark) Color.Transparent else Color(0xFF141219)
     val buttonBorderColor = if (isDark) Color.Transparent else Color(0xFF141219)
-    val topCircleBorderColor = if (isDark) Color.Transparent else Color(0xFF141219)
+    val topCircleBorderColor = if (isDark) colorScheme.outlineVariant.copy(alpha = 0.5f) else Color(0xFF141219)
 
     // Background surfaces
     val bottomBgColor = if (isDark) colorScheme.surfaceContainerLowest else Color(0xFFFAF8FC)
@@ -323,18 +324,40 @@ fun WaveCardPlayerContent(
                     .weight(1f)
                     .background(cardBgColor)
             ) {
-                // High-Resolution Album Artwork Layer: Direct alpha mask fade (fades album art itself, no color overlay)
+                // Ambient Radial Bloom bleeding extracted palette color into background
+                val bloomAlpha = if (isDark) 0.18f else 0.08f
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    colorScheme.primary.copy(alpha = bloomAlpha),
+                                    colorScheme.surfaceContainerLowest
+                                ),
+                                radius = 700f
+                            )
+                        )
+                )
+
+                // High-Resolution Album Artwork Layer: Cubic-eased 4-stop alpha gradient fade
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                         .drawWithContent {
                             drawContent()
-                            val fadeHeightPx = 96.dp.toPx()
+                            val fadeHeightPx = 110.dp.toPx()
+                            val startY = (size.height - fadeHeightPx).coerceAtLeast(0f)
                             drawRect(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(Color.Black, Color.Transparent),
-                                    startY = (size.height - fadeHeightPx).coerceAtLeast(0f),
+                                    colorStops = arrayOf(
+                                        0.0f to Color.Black,
+                                        0.4f to Color.Black.copy(alpha = 0.85f),
+                                        0.75f to Color.Black.copy(alpha = 0.40f),
+                                        1.0f to Color.Transparent
+                                    ),
+                                    startY = startY,
                                     endY = size.height
                                 ),
                                 blendMode = BlendMode.DstIn
@@ -531,11 +554,11 @@ fun WaveCardPlayerContent(
                     .height(176.dp)
                     .drawBehind {
                         val cornerRadiusPx = 38.dp.toPx()
-                        val strokeWidthPx = 2.dp.toPx()
+                        val strokeWidthPx = 1.5.dp.toPx()
                         val w = size.width
                         val h = size.height
 
-                        // 1. Card fill path with rounded bottom corners
+                        // 1. Card fill path with rounded bottom corners (frosted vertical gradient)
                         val cardFillPath = Path().apply {
                             moveTo(0f, 0f)
                             lineTo(0f, h - cornerRadiusPx)
@@ -565,43 +588,57 @@ fun WaveCardPlayerContent(
                             lineTo(w, 0f)
                             close()
                         }
-                        drawPath(path = cardFillPath, color = cardBgColor)
+                        val cardBrush = Brush.verticalGradient(
+                            colors = listOf(colorScheme.surfaceContainerLow, colorScheme.surfaceContainer)
+                        )
+                        drawPath(path = cardFillPath, brush = cardBrush)
 
-                        // 2. Clean outline around the bottom curve (in light mode only, no grey border in dark mode)
-                        if (!isDark) {
-                            val borderStrokePath = Path().apply {
-                                moveTo(0f, (h - cornerRadiusPx).coerceAtLeast(0f))
-                                arcTo(
-                                    rect = Rect(
-                                        left = 0f,
-                                        top = h - 2 * cornerRadiusPx,
-                                        right = 2 * cornerRadiusPx,
-                                        bottom = h
-                                    ),
-                                    startAngleDegrees = 180f,
-                                    sweepAngleDegrees = -90f,
-                                    forceMoveTo = false
-                                )
-                                lineTo(w - cornerRadiusPx, h)
-                                arcTo(
-                                    rect = Rect(
-                                        left = w - 2 * cornerRadiusPx,
-                                        top = h - 2 * cornerRadiusPx,
-                                        right = w,
-                                        bottom = h
-                                    ),
-                                    startAngleDegrees = 90f,
-                                    sweepAngleDegrees = -90f,
-                                    forceMoveTo = false
-                                )
-                                lineTo(w, (h - cornerRadiusPx).coerceAtLeast(0f))
-                            }
-                            drawPath(
-                                path = borderStrokePath,
-                                color = cardBorderColor,
-                                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Square)
-                            )
+                        // 2. 1.dp specular hairline highlight along the top edge of the card
+                        drawLine(
+                            color = colorScheme.onSurface.copy(alpha = if (isDark) 0.15f else 0.25f),
+                            start = Offset(0f, 0.5f),
+                            end = Offset(w, 0.5f),
+                            strokeWidth = 1.dp.toPx()
+                        )
+
+                        // 3. Card outline border around the bottom curve
+                        val cardBottomBorderColor = if (isDark) {
+                            colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        } else {
+                            cardBorderColor
                         }
+                        val borderStrokePath = Path().apply {
+                            moveTo(0f, (h - cornerRadiusPx).coerceAtLeast(0f))
+                            arcTo(
+                                rect = Rect(
+                                    left = 0f,
+                                    top = h - 2 * cornerRadiusPx,
+                                    right = 2 * cornerRadiusPx,
+                                    bottom = h
+                                ),
+                                startAngleDegrees = 180f,
+                                sweepAngleDegrees = -90f,
+                                forceMoveTo = false
+                            )
+                            lineTo(w - cornerRadiusPx, h)
+                            arcTo(
+                                rect = Rect(
+                                    left = w - 2 * cornerRadiusPx,
+                                    top = h - 2 * cornerRadiusPx,
+                                    right = w,
+                                    bottom = h
+                                ),
+                                startAngleDegrees = 90f,
+                                sweepAngleDegrees = -90f,
+                                forceMoveTo = false
+                            )
+                            lineTo(w, (h - cornerRadiusPx).coerceAtLeast(0f))
+                        }
+                        drawPath(
+                            path = borderStrokePath,
+                            color = cardBottomBorderColor,
+                            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Square)
+                        )
                     }
                     .padding(start = 22.dp, end = 22.dp, top = 20.dp, bottom = 26.dp)
             ) {
@@ -1075,6 +1112,7 @@ private fun AnimeCircleButton(
                 scaleX = scaleAnim.value
                 scaleY = scaleAnim.value
             }
+            .shadow(2.dp, CircleShape, clip = false)
             .clip(CircleShape)
             .background(containerColor)
             .border(1.5.dp, borderColor, CircleShape)

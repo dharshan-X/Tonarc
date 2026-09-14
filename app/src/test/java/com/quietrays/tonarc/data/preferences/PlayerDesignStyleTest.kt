@@ -34,14 +34,14 @@ class PlayerDesignStyleTest {
     }
 
     @Test
-    fun playerConfigSlice_defaultsToPlayerDesignStyleDefault() {
+    fun playerConfigSlice_defaultsToPlayerDesignStyleWaveCard() {
         val config = com.quietrays.tonarc.presentation.viewmodel.PlayerViewModel.PlayerConfigSlice()
-        assertEquals(PlayerDesignStyle.DEFAULT, config.playerDesignStyle)
+        assertEquals(PlayerDesignStyle.WAVE_CARD, config.playerDesignStyle)
     }
 
     @Test
-    fun settingsUiState_defaultsToPlayerDesignStyleDefault() {
+    fun settingsUiState_defaultsToPlayerDesignStyleWaveCard() {
         val state = com.quietrays.tonarc.presentation.viewmodel.SettingsUiState()
-        assertEquals(PlayerDesignStyle.DEFAULT, state.playerDesignStyle)
+        assertEquals(PlayerDesignStyle.WAVE_CARD, state.playerDesignStyle)
     }
 }
