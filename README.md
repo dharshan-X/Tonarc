@@ -2,10 +2,6 @@
 # Tonarc
 
 <p align="center">
-  <img src="assets/pixelplayeross_header.png" alt="Tonarc Header" width="100%"/>
-</p>
-
-<p align="center">
   <a href="https://github.com/dharshan-X/Tonarc/releases/latest">
     <img src="https://img.shields.io/github/v/release/dharshan-X/Tonarc?include_prereleases&logo=github&style=for-the-badge&label=Latest%20Release" alt="Latest Release">
   </a>
