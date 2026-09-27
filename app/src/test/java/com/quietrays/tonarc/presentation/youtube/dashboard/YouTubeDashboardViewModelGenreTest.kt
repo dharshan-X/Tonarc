@@ -65,6 +65,10 @@ class YouTubeDashboardViewModelGenreTest {
         coEvery { engagementDao.getTopPlayedSongs(any()) } returns emptyList()
         coEvery { engagementDao.getRecentlyPlayedSongs(any()) } returns emptyList()
         coEvery { musicRepository.getAllSongsOnce() } returns emptyList()
+        coEvery { adaptiveWeightTuner.computeTunedWeights(any()) } returns PersonalizedRanker.RankingWeights()
+        coEvery { candidateAggregator.collect(any(), any(), any()) } returns emptyList()
+        coEvery { personalizedRanker.rank(any(), any(), any(), any(), any()) } returns emptyList()
+        coEvery { personalizedRanker.pickWithDiversity(any(), any(), any()) } returns emptyList()
 
         viewModel = YouTubeDashboardViewModel(
             youTubeRepository = youTubeRepository,
@@ -73,11 +77,14 @@ class YouTubeDashboardViewModelGenreTest {
             adaptiveWeightTuner = adaptiveWeightTuner,
             engagementDao = engagementDao,
             musicRepository = musicRepository
-        )
+        ).apply {
+            ioDispatcher = kotlinx.coroutines.test.StandardTestDispatcher()
+        }
     }
 
     @Test
-    fun `availableGenres contains all catalog items`() {
+    fun `availableGenres contains all catalog items`() = runTest {
+        advanceUntilIdle()
         assertEquals(YouTubeGenreCatalog.all.size, viewModel.availableGenres.size)
         assertTrue(viewModel.availableGenres.any { it.title == "Pop" })
         assertTrue(viewModel.availableGenres.any { it.title == "Rock & Alt" })
@@ -85,7 +92,7 @@ class YouTubeDashboardViewModelGenreTest {
 
     @Test
     fun `selecting genre triggers YouTubeRepository explore and updates state`() = runTest {
-        val testGenre = YouTubeGenre(id = "pop", title = "Pop", subtitle = "Hits", colorHex = 0xFFE91E63, iconEmoji = "🎤")
+        val testGenre = YouTubeGenre(id = "pop", title = "Pop", subtitle = "Hits", colorHex = 0xFFE91E63)
         val sampleSongs = listOf(
             createSong("youtube_1", "Levitating", "Dua Lipa")
         )
@@ -116,7 +123,7 @@ class YouTubeDashboardViewModelGenreTest {
 
     @Test
     fun `deselecting genre clears genreExploreResult`() = runTest {
-        val testGenre = YouTubeGenre(id = "rock", title = "Rock & Alt", subtitle = "Riffs", colorHex = 0xFF9C27B0, iconEmoji = "🎸")
+        val testGenre = YouTubeGenre(id = "rock", title = "Rock & Alt", subtitle = "Riffs", colorHex = 0xFF9C27B0)
         coEvery { youTubeRepository.getYouTubeGenreExplore(testGenre) } returns YouTubeGenreExploreResult(
             genre = testGenre,
             topSongs = emptyList(),

@@ -76,8 +76,11 @@ import com.quietrays.tonarc.data.network.youtube.YouTubeGenre
 import com.quietrays.tonarc.data.network.youtube.YouTubeGenreCatalog
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Surface
+import androidx.compose.ui.graphics.Color
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -326,10 +329,20 @@ private fun YouTubeGenreItemCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = genre.iconEmoji,
-                    style = MaterialTheme.typography.titleLarge
-                )
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(genre.colorHex).copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (genre.category == "Mood") Icons.Rounded.GraphicEq else Icons.Rounded.MusicNote,
+                        contentDescription = null,
+                        tint = Color(genre.colorHex),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)

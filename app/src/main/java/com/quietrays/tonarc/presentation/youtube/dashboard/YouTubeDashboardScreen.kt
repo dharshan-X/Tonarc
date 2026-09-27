@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -53,12 +55,15 @@ import com.quietrays.tonarc.data.network.youtube.InnertubeTrack
 import com.quietrays.tonarc.data.network.youtube.YouTubeGenre
 import com.quietrays.tonarc.data.network.youtube.YouTubeGenreExploreResult
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.AssistChip
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -198,7 +203,7 @@ private fun DashboardContent(
                             onClick = {
                                 if (isSelected) onGenreSelect(null) else onGenreSelect(genre)
                             },
-                            label = { Text("${genre.iconEmoji} ${genre.title}") },
+                            label = { Text(genre.title) },
                             shape = RoundedCornerShape(16.dp)
                         )
                     }
@@ -232,10 +237,20 @@ private fun DashboardContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text(
-                                    text = selectedGenre.iconEmoji,
-                                    style = MaterialTheme.typography.headlineMedium
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(selectedGenre.colorHex).copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (selectedGenre.category == "Mood") Icons.Rounded.GraphicEq else Icons.Rounded.MusicNote,
+                                        contentDescription = null,
+                                        tint = Color(selectedGenre.colorHex),
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                                 Column {
                                     Text(
                                         text = selectedGenre.title,

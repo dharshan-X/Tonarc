@@ -65,7 +65,7 @@ class GenreDetailViewModelYouTubeTest {
 
     @Test
     fun `initializing GenreDetailViewModel loads YouTube Music genre explore in parallel`() = runTest {
-        val testGenre = YouTubeGenre(id = "pop", title = "Pop", colorHex = 0xFFE91E63, iconEmoji = "🎤")
+        val testGenre = YouTubeGenre(id = "pop", title = "Pop", colorHex = 0xFFE91E63)
         val sampleSongs = listOf(
             createSong("youtube_pop_1", "Blinding Lights", "The Weeknd")
         )

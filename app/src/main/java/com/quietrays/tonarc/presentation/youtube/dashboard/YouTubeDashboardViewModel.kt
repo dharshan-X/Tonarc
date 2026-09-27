@@ -48,6 +48,8 @@ class YouTubeDashboardViewModel @Inject constructor(
     private val musicRepository: MusicRepository
 ) : ViewModel() {
 
+    internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO
+
     private val _uiState = MutableStateFlow<YouTubeDashboardUiState>(YouTubeDashboardUiState.Loading)
     val uiState = _uiState.asStateFlow()
 
@@ -141,7 +143,7 @@ class YouTubeDashboardViewModel @Inject constructor(
                             )
                         }
 
-                        withContext(Dispatchers.IO) {
+                        withContext(ioDispatcher) {
                             runCatching {
                                 val allEngagements = engagementDao.getAllEngagements()
                                 cachedEngagements = allEngagements.associateBy { it.songId }
@@ -183,14 +185,16 @@ class YouTubeDashboardViewModel @Inject constructor(
             return cachedCharts.take(20)
         }
 
-        val ranked = personalizedRanker.rank(
-            candidates = cachedCandidates,
-            engagements = cachedEngagements,
-            favoriteSongIds = emptySet(),
-            weights = cachedTunedWeights,
-            mood = mood
-        )
-        val selected = personalizedRanker.pickWithDiversity(ranked, emptySet(), limit = 20)
-        return if (selected.isNotEmpty()) selected else cachedCharts.take(20)
+        return runCatching {
+            val ranked = personalizedRanker.rank(
+                candidates = cachedCandidates,
+                engagements = cachedEngagements,
+                favoriteSongIds = emptySet(),
+                weights = cachedTunedWeights,
+                mood = mood
+            )
+            val selected = personalizedRanker.pickWithDiversity(ranked, emptySet(), limit = 20)
+            if (selected.isNotEmpty()) selected else cachedCharts.take(20)
+        }.getOrDefault(cachedCharts.take(20))
     }
 }
