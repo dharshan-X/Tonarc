@@ -172,4 +172,80 @@ class PlaylistViewModelTest {
 
         coVerify { youTubeLibrarySyncEngine.syncLibrary(true) }
     }
+
+    private fun createTestSong(id: String, title: String, videoId: String = id): Song {
+        return Song(
+            id = id,
+            title = title,
+            artist = "Artist $id",
+            artistId = 1L,
+            album = "Album $id",
+            albumId = 1L,
+            path = "/music/$id.mp3",
+            contentUriString = "content://music/$id",
+            albumArtUriString = "https://img.jpg",
+            duration = 180000L,
+            genre = "Pop",
+            dateAdded = 1000L,
+            mimeType = "audio/mp3",
+            bitrate = 320,
+            sampleRate = 44100,
+            youtubeId = videoId
+        )
+    }
+
+    @Test
+    fun `extractYouTubePlaylistId handles urls and raw ids`() {
+        assertEquals("PL12345", viewModel.extractYouTubePlaylistId("PL12345"))
+        assertEquals("PL12345", viewModel.extractYouTubePlaylistId("https://music.youtube.com/playlist?list=PL12345"))
+        assertEquals("PL12345", viewModel.extractYouTubePlaylistId("https://www.youtube.com/playlist?list=PL12345&si=abc"))
+        assertEquals("VLPL12345", viewModel.extractYouTubePlaylistId("VLPL12345"))
+    }
+
+    @Test
+    fun `previewYouTubePlaylist populates preview state on success`() = runTest {
+        val sampleSong = createTestSong("youtube_test1", "Imported Song", "test1")
+        val samplePlaylist = Playlist(
+            id = "PL999",
+            name = "Awesome Mix",
+            songIds = listOf("youtube_test1"),
+            coverImageUri = "https://img.jpg",
+            source = "YOUTUBE"
+        )
+
+        coEvery { youTubeRepository.getPlaylist("PL999") } returns Pair(samplePlaylist, listOf(sampleSong))
+
+        viewModel.previewYouTubePlaylist("https://music.youtube.com/playlist?list=PL999")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.youtubeImportState.value
+        assert(state is YouTubeImportState.Preview)
+        val preview = state as YouTubeImportState.Preview
+        assertEquals("PL999", preview.playlistId)
+        assertEquals("Awesome Mix", preview.title)
+        assertEquals(1, preview.trackCount)
+    }
+
+    @Test
+    fun `saveYouTubePlaylist saves entities into youTubeDao`() = runTest {
+        val sampleSong = createTestSong("youtube_test1", "Imported Song", "test1")
+        val samplePlaylist = Playlist(
+            id = "PL999",
+            name = "Awesome Mix",
+            songIds = listOf("youtube_test1"),
+            coverImageUri = "https://img.jpg",
+            source = "YOUTUBE"
+        )
+
+        coEvery { youTubeRepository.getPlaylist("PL999") } returns Pair(samplePlaylist, listOf(sampleSong))
+
+        viewModel.saveYouTubePlaylist("PL999", customTitle = "My Custom Mix", saveAsLocal = false)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { youTubeDao.insertPlaylist(match { it.id == "PL999" && it.name == "My Custom Mix" }) }
+        coVerify { youTubeDao.insertSongs(match { it.size == 1 && it[0].videoId == "test1" }) }
+
+        val state = viewModel.youtubeImportState.value
+        assert(state is YouTubeImportState.Success)
+    }
 }

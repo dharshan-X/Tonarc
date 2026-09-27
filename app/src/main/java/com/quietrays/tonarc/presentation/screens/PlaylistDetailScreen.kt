@@ -46,12 +46,15 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -915,6 +918,29 @@ fun PlaylistDetailScreen(
                         m3uExportLauncher.launch("$sanitizedName.m3u")
                     }
                 )
+                if (currentPlaylist?.source == "YOUTUBE") {
+                    PlaylistActionItem(
+                        icon = rememberVectorPainter(Icons.AutoMirrored.Rounded.PlaylistAdd),
+                        label = stringResource(R.string.youtube_save_to_local),
+                        onClick = {
+                            showPlaylistOptionsSheet = false
+                            currentPlaylist.name.let { name ->
+                                playlistViewModel.cloneYouTubePlaylistToLocal(
+                                    playlistName = name,
+                                    songs = songsInPlaylist
+                                )
+                            }
+                        }
+                    )
+                    PlaylistActionItem(
+                        icon = rememberVectorPainter(Icons.Rounded.Refresh),
+                        label = stringResource(R.string.youtube_refresh_playlist),
+                        onClick = {
+                            showPlaylistOptionsSheet = false
+                            playlistViewModel.loadPlaylistDetails(playlistId)
+                        }
+                    )
+                }
             }
         }
     }

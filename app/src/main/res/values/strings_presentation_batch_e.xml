@@ -64,5 +64,20 @@
     <string name="presentation_batch_e_cd_reset_presets_default">Reset to default</string>
     <string name="presentation_batch_e_cd_visible">Visible</string>
     <string name="presentation_batch_e_cd_hidden">Hidden</string>
+    <string name="presentation_batch_e_creation_mode_youtube">Import YouTube Playlist</string>
+    <string name="presentation_batch_e_creation_mode_youtube_subtitle">Save any YouTube or YouTube Music playlist by URL or ID to your library.</string>
+    <string name="youtube_import_dialog_title">Import YouTube Playlist</string>
+    <string name="youtube_import_dialog_subtitle">Paste a YouTube or YouTube Music playlist link or ID to save it to your Library.</string>
+    <string name="youtube_import_url_hint">https://music.youtube.com/playlist?list=PL...</string>
+    <string name="youtube_import_fetch_btn">Fetch Playlist</string>
+    <string name="youtube_import_save_btn">Save to Library</string>
+    <string name="youtube_import_save_local_checkbox">Also save as local offline playlist</string>
+    <string name="youtube_import_success">Playlist saved to Library</string>
+    <string name="youtube_import_error_empty">Please enter a valid YouTube playlist link or ID.</string>
+    <string name="youtube_import_error_fetch">Could not load playlist. Please check the link or ID.</string>
+    <string name="youtube_save_to_local">Clone to Local Playlists</string>
+    <string name="youtube_refresh_playlist">Sync with YouTube</string>
+    <string name="youtube_playlist_saved_toast">YouTube playlist saved to Library</string>
+    <string name="youtube_playlist_cloned_toast">Cloned to local playlists</string>
 
 </resources>

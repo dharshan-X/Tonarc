@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### 1. YouTube Music Library & Liked Songs Two-Way Sync
 - Unified Library: Synced YouTube Music cloud playlists and Liked Music directly into the Library screen alongside local media.
 - Pinned Liked Music Hero Card: Quick access to all your liked songs with one tap.
+- YouTube Playlist Import: Import and save any YouTube or YouTube Music playlist by URL or ID directly to your Library Playlists section, with preview and local cloning options.
 - Bidirectional Like Synchronization: Toggling favorite in the player optimistically updates local storage and syncs to YouTube Music via authenticated Innertube mutations.
 - Offline Caching: Room database caching for instant offline playlist browsing.
 

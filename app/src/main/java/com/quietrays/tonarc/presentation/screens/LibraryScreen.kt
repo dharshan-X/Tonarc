@@ -171,6 +171,7 @@ import com.quietrays.tonarc.presentation.components.AlbumMultiSelectionOptionShe
 import com.quietrays.tonarc.presentation.components.PlaylistMultiSelectionBottomSheet
 import com.quietrays.tonarc.presentation.components.DescribePlaylistDialog
 import com.quietrays.tonarc.presentation.components.PlaylistCreationTypeDialog
+import com.quietrays.tonarc.presentation.components.ImportYouTubePlaylistDialog
 import com.quietrays.tonarc.presentation.components.TasteProfileCard
 import com.quietrays.tonarc.presentation.components.subcomps.SelectionActionRow
 import com.quietrays.tonarc.presentation.components.subcomps.SelectionCountPill
@@ -374,6 +375,7 @@ fun LibraryScreen(
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showPlaylistCreationTypeDialog by remember { mutableStateOf(false) }
     var showDescribePlaylistDialog by remember { mutableStateOf(false) }
+    var showImportYouTubePlaylistDialog by remember { mutableStateOf(false) }
 
     val m3uImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -1467,7 +1469,17 @@ fun LibraryScreen(
         onDescribeSelected = {
             showPlaylistCreationTypeDialog = false
             showDescribePlaylistDialog = true
+        },
+        onYouTubeSelected = {
+            showPlaylistCreationTypeDialog = false
+            showImportYouTubePlaylistDialog = true
         }
+    )
+
+    ImportYouTubePlaylistDialog(
+        visible = showImportYouTubePlaylistDialog,
+        playlistViewModel = playlistViewModel,
+        onDismiss = { showImportYouTubePlaylistDialog = false }
     )
 
     val nlpPlaylistPreviewState by playlistViewModel.nlpPlaylistPreviewState.collectAsStateWithLifecycle()

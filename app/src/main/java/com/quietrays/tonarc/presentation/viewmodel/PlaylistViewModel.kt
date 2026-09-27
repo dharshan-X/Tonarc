@@ -131,6 +131,9 @@ class PlaylistViewModel @Inject constructor(
     private val _nlpPlaylistPreviewState = MutableStateFlow(NlpPlaylistPreviewState())
     val nlpPlaylistPreviewState: StateFlow<NlpPlaylistPreviewState> = _nlpPlaylistPreviewState.asStateFlow()
 
+    private val _youtubeImportState = MutableStateFlow<YouTubeImportState>(YouTubeImportState.Idle)
+    val youtubeImportState: StateFlow<YouTubeImportState> = _youtubeImportState.asStateFlow()
+
     private val _playlistCreationEvent = MutableSharedFlow<Boolean>(
         extraBufferCapacity = 1,
         onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
@@ -1327,4 +1330,129 @@ class PlaylistViewModel @Inject constructor(
             }
         }
     }
+
+    fun extractYouTubePlaylistId(input: String): String {
+        val trimmed = input.trim()
+        if (trimmed.contains("list=")) {
+            val listParam = trimmed.substringAfter("list=").substringBefore("&").substringBefore("#").trim()
+            if (listParam.isNotBlank()) return listParam
+        }
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            val lastSegment = trimmed.substringAfterLast("/").substringBefore("?").substringBefore("#").trim()
+            if (lastSegment.isNotBlank() && (lastSegment.startsWith("PL") || lastSegment.startsWith("VL") || lastSegment.startsWith("RD"))) {
+                return lastSegment
+            }
+        }
+        return trimmed
+    }
+
+    fun previewYouTubePlaylist(urlOrId: String) {
+        val playlistId = extractYouTubePlaylistId(urlOrId)
+        if (playlistId.isBlank()) {
+            _youtubeImportState.value = YouTubeImportState.Error("Please enter a valid YouTube playlist URL or ID.")
+            return
+        }
+        viewModelScope.launch {
+            _youtubeImportState.value = YouTubeImportState.Loading
+            try {
+                val result = youTubeRepository.getPlaylist(playlistId)
+                if (result != null) {
+                    val (playlist, songs) = result
+                    _youtubeImportState.value = YouTubeImportState.Preview(
+                        playlistId = playlistId,
+                        title = playlist.name,
+                        author = null,
+                        trackCount = songs.size,
+                        thumbnailUrl = playlist.coverImageUri,
+                        songs = songs
+                    )
+                } else {
+                    _youtubeImportState.value = YouTubeImportState.Error("Could not load YouTube playlist. Make sure the playlist is public or unlisted.")
+                }
+            } catch (e: Exception) {
+                _youtubeImportState.value = YouTubeImportState.Error(e.message ?: "Failed to load playlist")
+            }
+        }
+    }
+
+    fun saveYouTubePlaylist(
+        playlistId: String,
+        customTitle: String? = null,
+        saveAsLocal: Boolean = false
+    ) {
+        val currentPreview = _youtubeImportState.value as? YouTubeImportState.Preview
+        viewModelScope.launch {
+            _youtubeImportState.value = YouTubeImportState.Loading
+            try {
+                val songs = currentPreview?.songs ?: youTubeRepository.getPlaylist(playlistId)?.second ?: emptyList()
+
+                val title = customTitle?.takeIf { it.isNotBlank() } ?: currentPreview?.title ?: "YouTube Playlist"
+                val coverUrl = currentPreview?.thumbnailUrl ?: songs.firstOrNull()?.albumArtUriString
+                val now = System.currentTimeMillis()
+
+                val songEntities = songs.map { s ->
+                    val vid = s.youtubeId ?: s.id.removePrefix("youtube_")
+                    YouTubeSongEntity(
+                        id = s.id,
+                        videoId = vid,
+                        playlistId = playlistId,
+                        title = s.title,
+                        artist = s.artist,
+                        album = s.album,
+                        duration = s.duration,
+                        thumbnailUrl = s.albumArtUriString,
+                        year = s.year,
+                        dateAdded = now
+                    )
+                }
+
+                youTubeDao.deleteSongsByPlaylist(playlistId)
+                youTubeDao.insertSongs(songEntities)
+                youTubeDao.insertPlaylist(
+                    YouTubePlaylistEntity(
+                        id = playlistId,
+                        name = title,
+                        songCount = songs.size,
+                        thumbnailUrl = coverUrl,
+                        dateAdded = now,
+                        dateModified = now
+                    )
+                )
+                if (saveAsLocal) {
+                    val songIds = songs.map { it.id }
+                    createPlaylist(name = title, songIds = songIds)
+                }
+                _youtubeImportState.value = YouTubeImportState.Success(title = title, trackCount = songs.size)
+                runCatching { Toast.makeText(context, context.getString(R.string.youtube_playlist_saved_toast), Toast.LENGTH_SHORT).show() }
+            } catch (e: Exception) {
+                _youtubeImportState.value = YouTubeImportState.Error(e.message ?: "Failed to save playlist")
+            }
+        }
+    }
+
+    fun cloneYouTubePlaylistToLocal(playlistName: String, songs: List<Song>) {
+        viewModelScope.launch {
+            createPlaylist(name = playlistName, songIds = songs.map { it.id })
+            runCatching { Toast.makeText(context, context.getString(R.string.youtube_playlist_cloned_toast), Toast.LENGTH_SHORT).show() }
+        }
+    }
+
+    fun resetYouTubeImportState() {
+        _youtubeImportState.value = YouTubeImportState.Idle
+    }
+}
+
+sealed interface YouTubeImportState {
+    data object Idle : YouTubeImportState
+    data object Loading : YouTubeImportState
+    data class Preview(
+        val playlistId: String,
+        val title: String,
+        val author: String?,
+        val trackCount: Int,
+        val thumbnailUrl: String?,
+        val songs: List<Song>
+    ) : YouTubeImportState
+    data class Success(val title: String, val trackCount: Int) : YouTubeImportState
+    data class Error(val message: String) : YouTubeImportState
 }

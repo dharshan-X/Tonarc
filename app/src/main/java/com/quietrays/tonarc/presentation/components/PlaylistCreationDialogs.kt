@@ -110,7 +110,8 @@ fun PlaylistCreationTypeDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
     onManualSelected: () -> Unit,
-    onDescribeSelected: () -> Unit
+    onDescribeSelected: () -> Unit,
+    onYouTubeSelected: () -> Unit
 ) {
     if (!visible) return
 
@@ -192,6 +193,22 @@ fun PlaylistCreationTypeDialog(
                     enabled = true,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+
+                CreationModeCard(
+                    title = stringResource(R.string.presentation_batch_e_creation_mode_youtube),
+                    subtitle = stringResource(R.string.presentation_batch_e_creation_mode_youtube_subtitle),
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    },
+                    onClick = onYouTubeSelected,
+                    enabled = true,
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                 )
             }
         }
