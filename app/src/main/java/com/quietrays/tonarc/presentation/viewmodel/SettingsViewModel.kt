@@ -20,6 +20,8 @@ import com.quietrays.tonarc.data.preferences.CarouselStyle
 import com.quietrays.tonarc.data.preferences.LibraryNavigationMode
 import com.quietrays.tonarc.data.preferences.ThemePreference
 import com.quietrays.tonarc.data.preferences.UserPreferencesRepository
+import com.quietrays.tonarc.presentation.visualizer.VisualizerMode
+import com.quietrays.tonarc.presentation.visualizer.VisualizerStyle
 import com.quietrays.tonarc.data.preferences.AlbumArtQuality
 import com.quietrays.tonarc.data.preferences.AlbumArtColorAccuracy
 import com.quietrays.tonarc.data.preferences.AlbumArtPaletteStyle
@@ -440,6 +442,33 @@ class SettingsViewModel @Inject constructor(
             userPreferencesRepository.replayGainUseAlbumGainFlow.collect { useAlbum ->
                 _uiState.update { it.copy(replayGainUseAlbumGain = useAlbum) }
             }
+        }
+    }
+
+    val visualizerEnabled: StateFlow<Boolean> = userPreferencesRepository.visualizerEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val visualizerMode: StateFlow<VisualizerMode> = userPreferencesRepository.visualizerModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), VisualizerMode.SPECTRUM_BARS)
+
+    val visualizerStyle: StateFlow<VisualizerStyle> = userPreferencesRepository.visualizerStyleFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), VisualizerStyle.ACCENT)
+
+    fun setVisualizerEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setVisualizerEnabled(enabled)
+        }
+    }
+
+    fun setVisualizerMode(mode: VisualizerMode) {
+        viewModelScope.launch {
+            userPreferencesRepository.setVisualizerMode(mode)
+        }
+    }
+
+    fun setVisualizerStyle(style: VisualizerStyle) {
+        viewModelScope.launch {
+            userPreferencesRepository.setVisualizerStyle(style)
         }
     }
 

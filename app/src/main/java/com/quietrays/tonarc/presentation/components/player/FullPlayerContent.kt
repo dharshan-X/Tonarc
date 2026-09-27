@@ -103,6 +103,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.GraphicEq
+import com.quietrays.tonarc.presentation.visualizer.AudioVisualizerView
+import com.quietrays.tonarc.presentation.visualizer.VisualizerBottomSheet
+import com.quietrays.tonarc.presentation.visualizer.VisualizerMode
+import com.quietrays.tonarc.presentation.visualizer.VisualizerStyle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.quietrays.tonarc.presentation.viewmodel.AudioBookmarksViewModel
 import androidx.compose.material3.Slider
@@ -237,7 +242,12 @@ fun FullPlayerContent(
     var showLyricsSheet by remember { mutableStateOf(false) }
     var showArtistPicker by rememberSaveable { mutableStateOf(false) }
     var showSaveBookmarkDialog by rememberSaveable { mutableStateOf(false) }
+    var showVisualizerBottomSheet by rememberSaveable { mutableStateOf(false) }
     val bookmarksViewModel: AudioBookmarksViewModel = hiltViewModel()
+
+    val visualizerEnabled by playerViewModel.visualizerEnabled.collectAsStateWithLifecycle()
+    val visualizerMode by playerViewModel.visualizerMode.collectAsStateWithLifecycle()
+    val visualizerStyle by playerViewModel.visualizerStyle.collectAsStateWithLifecycle()
     
     val lyricsSearchUiState by playerViewModel.lyricsSearchUiState.collectAsStateWithLifecycle()
 
@@ -527,6 +537,12 @@ fun FullPlayerContent(
                 playerViewModel.triggerAlbumNavigationFromPlayer(albumSong.albumId)
             },
             onSeekRelative = { delta -> playerViewModel.seekRelative(delta) },
+            visualizerEnabled = visualizerEnabled,
+            visualizerMode = visualizerMode,
+            visualizerStyle = visualizerStyle,
+            currentPositionProvider = currentPositionProvider,
+            visualizerAccentColor = playerAccentColor,
+            visualizerContainerColor = playerOnAccentColor,
             modifier = modifier
         )
     }
@@ -760,6 +776,23 @@ fun FullPlayerContent(
                                 modifier = Modifier
                                     .size(42.dp)
                                     .clip(CircleShape)
+                                    .background(
+                                        if (visualizerEnabled) playerAccentColor.copy(alpha = 0.25f)
+                                        else playerOnAccentColor.copy(alpha = 0.7f)
+                                    )
+                                    .clickable { showVisualizerBottomSheet = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.GraphicEq,
+                                    contentDescription = stringResource(R.string.visualizer_cd_toggle),
+                                    tint = if (visualizerEnabled) playerAccentColor else playerAccentColor.copy(alpha = 0.75f)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
                                     .background(playerOnAccentColor.copy(alpha = 0.7f))
                                     .clickable { showSaveBookmarkDialog = true },
                                 contentAlignment = Alignment.Center
@@ -886,6 +919,20 @@ fun FullPlayerContent(
             }
         )
     }
+
+    if (showVisualizerBottomSheet) {
+        VisualizerBottomSheet(
+            isEnabled = visualizerEnabled,
+            selectedMode = visualizerMode,
+            selectedStyle = visualizerStyle,
+            isPlaying = isPlayingProvider(),
+            currentPositionMs = currentPositionProvider(),
+            onToggleEnabled = { playerViewModel.setVisualizerEnabled(it) },
+            onSelectMode = { playerViewModel.setVisualizerMode(it) },
+            onSelectStyle = { playerViewModel.setVisualizerStyle(it) },
+            onDismiss = { showVisualizerBottomSheet = false }
+        )
+    }
 }
 
 
@@ -909,6 +956,12 @@ private fun FullPlayerAlbumCoverSection(
     onSongSelected: (Song, Int) -> Unit,
     onAlbumClick: (Song) -> Unit,
     onSeekRelative: (Long) -> Unit = {},
+    visualizerEnabled: Boolean = false,
+    visualizerMode: VisualizerMode = VisualizerMode.SPECTRUM_BARS,
+    visualizerStyle: VisualizerStyle = VisualizerStyle.ACCENT,
+    currentPositionProvider: () -> Long = { 0L },
+    visualizerAccentColor: Color = Color.Unspecified,
+    visualizerContainerColor: Color = Color.Unspecified,
     modifier: Modifier = Modifier
 ) {
     val shouldDelay = loadingTweaks.delayAll || loadingTweaks.delayAlbumCarousel
@@ -929,6 +982,26 @@ private fun FullPlayerAlbumCoverSection(
             CarouselStyle.ONE_PEEK -> maxWidth * 0.8f
             CarouselStyle.TWO_PEEK -> maxWidth * 0.6f
             else -> maxWidth * 0.8f
+        }
+
+        if (visualizerEnabled) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(carouselHeight)
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                AudioVisualizerView(
+                    mode = visualizerMode,
+                    style = visualizerStyle,
+                    isPlaying = isPlayingProvider(),
+                    currentPositionMs = currentPositionProvider(),
+                    modifier = Modifier.fillMaxSize(),
+                    accentColor = if (visualizerAccentColor != Color.Unspecified) visualizerAccentColor else MaterialTheme.colorScheme.primary,
+                    containerColor = if (visualizerContainerColor != Color.Unspecified) visualizerContainerColor else MaterialTheme.colorScheme.primaryContainer
+                )
+            }
         }
 
         DelayedContent(
@@ -986,6 +1059,9 @@ private fun FullPlayerAlbumCoverSection(
                     .graphicsLayer {
                         scaleX = albumArtScale
                         scaleY = albumArtScale
+                        if (visualizerEnabled && visualizerMode == VisualizerMode.VINYL_TURNTABLE) {
+                            alpha = 0.25f
+                        }
                     },
                 albumArtQuality = albumArtQuality
             )

@@ -88,5 +88,19 @@
     <string name="youtube_genre_play_all">Play All</string>
     <string name="youtube_genre_start_radio">Start Radio</string>
     <string name="youtube_empty_genre_tracks">No online tracks found for this genre</string>
+    <string name="visualizer_title">Audio Visualizer</string>
+    <string name="visualizer_subtitle">Render real-time reactive visuals on Now Playing</string>
+    <string name="visualizer_enable_switch">Enable Audio Visualizer</string>
+    <string name="visualizer_mode_spectrum">Spectrum Bars</string>
+    <string name="visualizer_mode_wave">Fluid Wave</string>
+    <string name="visualizer_mode_pulse">Circular Pulse</string>
+    <string name="visualizer_mode_turntable">Vinyl Turntable</string>
+    <string name="visualizer_style_title">Visualizer Style</string>
+    <string name="visualizer_style_accent">Theme Accent</string>
+    <string name="visualizer_style_gradient">Dynamic Gradient</string>
+    <string name="visualizer_style_monochrome">Monochrome</string>
+    <string name="visualizer_cd_toggle">Toggle Audio Visualizer</string>
+    <string name="visualizer_sheet_title">Visualizer Effects</string>
+    <string name="visualizer_sheet_subtitle">Select visualizer animation and styling</string>
 
 </resources>

@@ -21,6 +21,8 @@ import com.quietrays.tonarc.data.model.LyricsSourcePreference
 import com.quietrays.tonarc.data.model.TransitionSettings
 import com.quietrays.tonarc.data.equalizer.EqualizerPreset
 import com.quietrays.tonarc.data.model.StorageFilter
+import com.quietrays.tonarc.presentation.visualizer.VisualizerMode
+import com.quietrays.tonarc.presentation.visualizer.VisualizerStyle
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.text.get
@@ -124,6 +126,9 @@ constructor(
         val NAV_BAR_STYLE = stringPreferencesKey("nav_bar_style")
         val NAV_BAR_COMPACT_MODE = booleanPreferencesKey("nav_bar_compact_mode")
         val CAROUSEL_STYLE = stringPreferencesKey("carousel_style")
+        val VISUALIZER_ENABLED = booleanPreferencesKey("visualizer_enabled")
+        val VISUALIZER_MODE = stringPreferencesKey("visualizer_mode")
+        val VISUALIZER_STYLE = stringPreferencesKey("visualizer_style")
         val LIBRARY_NAVIGATION_MODE = stringPreferencesKey("library_navigation_mode")
         val LAUNCH_TAB = stringPreferencesKey("launch_tab")
 
@@ -1317,6 +1322,33 @@ constructor(
 
     suspend fun setCarouselStyle(style: String) {
         dataStore.edit { preferences -> preferences[PreferencesKeys.CAROUSEL_STYLE] = style }
+    }
+
+    val visualizerEnabledFlow: Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[PreferencesKeys.VISUALIZER_ENABLED] ?: false
+        }
+
+    suspend fun setVisualizerEnabled(enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[PreferencesKeys.VISUALIZER_ENABLED] = enabled }
+    }
+
+    val visualizerModeFlow: Flow<VisualizerMode> =
+        dataStore.data.map { preferences ->
+            VisualizerMode.fromStorageKey(preferences[PreferencesKeys.VISUALIZER_MODE])
+        }
+
+    suspend fun setVisualizerMode(mode: VisualizerMode) {
+        dataStore.edit { preferences -> preferences[PreferencesKeys.VISUALIZER_MODE] = mode.storageKey }
+    }
+
+    val visualizerStyleFlow: Flow<VisualizerStyle> =
+        dataStore.data.map { preferences ->
+            VisualizerStyle.fromStorageKey(preferences[PreferencesKeys.VISUALIZER_STYLE])
+        }
+
+    suspend fun setVisualizerStyle(style: VisualizerStyle) {
+        dataStore.edit { preferences -> preferences[PreferencesKeys.VISUALIZER_STYLE] = style.storageKey }
     }
 
     val launchTabFlow: Flow<String> =

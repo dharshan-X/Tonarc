@@ -58,4 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fastlane Store Metadata: Updated store descriptions, tags, and icons.
 - F-Droid Recipe: Created metadata build recipe for com.quietrays.tonarc with NonFreeNet anti-feature disclosure.
 
+#### 8. Real-Time Audio-Reactive Visualizers
+- 4 Hardware-Accelerated Modes:
+  - Spectrum Bars: 32-band dynamic equalizer frequency bars with peak hold decay.
+  - Fluid Wave: Multi-layer organic fluid sine wave responding to playback rhythm.
+  - Circular Pulse: Radial expanding acoustic aura around the album art.
+  - Vinyl Turntable: Realistic rotating vinyl disc with concentric micro-grooves and tonearm.
+- Custom Color Styling: Theme Accent, Dynamic Gradient, and Monochrome options.
+- 1-Tap Quick Control: Dedicated visualizer button in Now Playing action bar to toggle on/off or open the visualizer effects bottom sheet.
+- Settings Integration: Appearance settings toggle and mode selector under Now Playing.
+
 ---

@@ -62,6 +62,8 @@ class YouTubeDashboardViewModelGenreTest {
     fun setUp() {
         coEvery { youTubeRepository.getExploreSections() } returns flowOf(emptyList())
         coEvery { engagementDao.getAllEngagements() } returns emptyList()
+        coEvery { engagementDao.getTopPlayedSongs(any()) } returns emptyList()
+        coEvery { engagementDao.getRecentlyPlayedSongs(any()) } returns emptyList()
         coEvery { musicRepository.getAllSongsOnce() } returns emptyList()
 
         viewModel = YouTubeDashboardViewModel(

@@ -48,6 +48,8 @@ import com.quietrays.tonarc.data.network.youtube.InnertubeApiService
 import com.quietrays.tonarc.data.media.CoverArtUpdate
 import com.quietrays.tonarc.data.model.Album
 import com.quietrays.tonarc.data.model.Artist
+import com.quietrays.tonarc.presentation.visualizer.VisualizerMode
+import com.quietrays.tonarc.presentation.visualizer.VisualizerStyle
 import com.quietrays.tonarc.data.model.FolderSource
 import com.quietrays.tonarc.data.model.Genre
 import com.quietrays.tonarc.data.model.Lyrics
@@ -553,6 +555,51 @@ class PlayerViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = CarouselStyle.NO_PEEK
         )
+
+    val visualizerEnabled: StateFlow<Boolean> = userPreferencesRepository.visualizerEnabledFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    val visualizerMode: StateFlow<VisualizerMode> = userPreferencesRepository.visualizerModeFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = VisualizerMode.SPECTRUM_BARS
+        )
+
+    val visualizerStyle: StateFlow<VisualizerStyle> = userPreferencesRepository.visualizerStyleFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = VisualizerStyle.ACCENT
+        )
+
+    fun toggleVisualizer() {
+        viewModelScope.launch {
+            userPreferencesRepository.setVisualizerEnabled(!visualizerEnabled.value)
+        }
+    }
+
+    fun setVisualizerEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setVisualizerEnabled(enabled)
+        }
+    }
+
+    fun setVisualizerMode(mode: VisualizerMode) {
+        viewModelScope.launch {
+            userPreferencesRepository.setVisualizerMode(mode)
+        }
+    }
+
+    fun setVisualizerStyle(style: VisualizerStyle) {
+        viewModelScope.launch {
+            userPreferencesRepository.setVisualizerStyle(style)
+        }
+    }
 
     val fullPlayerLoadingTweaks: StateFlow<FullPlayerLoadingTweaks> = userPreferencesRepository.fullPlayerLoadingTweaksFlow
         .stateIn(

@@ -2,6 +2,8 @@ package com.quietrays.tonarc.presentation.screens
 
 import com.quietrays.tonarc.presentation.navigation.navigateSafely
 import com.quietrays.tonarc.presentation.components.BackupModuleSelectionDialog
+import com.quietrays.tonarc.presentation.visualizer.VisualizerMode
+import com.quietrays.tonarc.presentation.visualizer.VisualizerStyle
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
@@ -76,6 +78,7 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Science
@@ -631,6 +634,45 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_view_carousel_24), null, tint = MaterialTheme.colorScheme.secondary) },
                                     modifier = Modifier.settingHighlight("item_appearance_carousel_style", highlightKey)
                                 )
+
+                                val visualizerEnabled by settingsViewModel.visualizerEnabled.collectAsStateWithLifecycle()
+                                val visualizerMode by settingsViewModel.visualizerMode.collectAsStateWithLifecycle()
+                                val visualizerStyle by settingsViewModel.visualizerStyle.collectAsStateWithLifecycle()
+
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.visualizer_title),
+                                    subtitle = stringResource(R.string.visualizer_subtitle),
+                                    checked = visualizerEnabled,
+                                    onCheckedChange = { settingsViewModel.setVisualizerEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Rounded.GraphicEq, null, tint = MaterialTheme.colorScheme.secondary) },
+                                    modifier = Modifier.settingHighlight("item_appearance_audio_visualizer", highlightKey)
+                                )
+
+                                if (visualizerEnabled) {
+                                    ThemeSelectorItem(
+                                        label = "Visualizer Mode",
+                                        description = "Visual animation style on player screen",
+                                        options = VisualizerMode.entries.associate { it.storageKey to it.displayName },
+                                        selectedKey = visualizerMode.storageKey,
+                                        onSelectionChanged = { key ->
+                                            settingsViewModel.setVisualizerMode(VisualizerMode.fromStorageKey(key))
+                                        },
+                                        leadingIcon = { Icon(Icons.Rounded.GraphicEq, null, tint = MaterialTheme.colorScheme.secondary) },
+                                        modifier = Modifier.settingHighlight("item_appearance_visualizer_mode", highlightKey)
+                                    )
+
+                                    ThemeSelectorItem(
+                                        label = stringResource(R.string.visualizer_style_title),
+                                        description = "Color palette for the visualizer",
+                                        options = VisualizerStyle.entries.associate { it.storageKey to it.displayName },
+                                        selectedKey = visualizerStyle.storageKey,
+                                        onSelectionChanged = { key ->
+                                            settingsViewModel.setVisualizerStyle(VisualizerStyle.fromStorageKey(key))
+                                        },
+                                        leadingIcon = { Icon(Icons.Outlined.Style, null, tint = MaterialTheme.colorScheme.secondary) },
+                                        modifier = Modifier.settingHighlight("item_appearance_visualizer_style", highlightKey)
+                                    )
+                                }
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_home_collage)) {
