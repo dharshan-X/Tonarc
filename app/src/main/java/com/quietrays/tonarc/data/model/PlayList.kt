@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 data class Playlist(
     val id: String,
     val name: String,
-    val songIds: List<String>,
+    val songIds: List<String> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val lastModified: Long = System.currentTimeMillis(),
     val isQueueGenerated: Boolean = false,
@@ -21,7 +21,8 @@ data class Playlist(
     val coverShapeDetail2: Float? = null,
     val coverShapeDetail3: Float? = null,
     val coverShapeDetail4: Float? = null,
-    val source: String = "LOCAL"
+    val source: String = "LOCAL",
+    val songCount: Int = songIds.size
 )
 
 enum class PlaylistShapeType {

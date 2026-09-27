@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -96,6 +97,8 @@ fun GenreDetailScreen(
     playlistViewModel: com.quietrays.tonarc.presentation.viewmodel.PlaylistViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val youtubeContent by viewModel.youtubeContent.collectAsStateWithLifecycle()
+    val isYouTubeLoading by viewModel.isYouTubeLoading.collectAsStateWithLifecycle()
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
@@ -330,6 +333,170 @@ fun GenreDetailScreen(
                                     .padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
                                 HorizontalDivider(modifier = Modifier.alpha(0.3f))
+                            }
+                        }
+                    }
+                }
+
+                // YouTube Music Online Section
+                item(key = "genre_youtube_explore_section") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, bottom = 8.dp)
+                    ) {
+                        if (isYouTubeLoading) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Loading $genreDisplayName on YouTube Music...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else if (youtubeContent != null) {
+                            val ytSongs = youtubeContent?.topSongs ?: emptyList()
+                            val ytPlaylists = youtubeContent?.playlists ?: emptyList()
+
+                            if (ytSongs.isNotEmpty()) {
+                                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Trending on YouTube Music",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        FilledTonalButton(
+                                            onClick = {
+                                                ytSongs.firstOrNull()?.let { firstSong ->
+                                                    playerViewModel.showAndPlaySong(firstSong, ytSongs, "$genreDisplayName on YouTube")
+                                                }
+                                            },
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.PlayArrow,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Play Online Hits")
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        items(ytSongs, key = { it.id }) { song ->
+                                            Card(
+                                                modifier = Modifier
+                                                    .width(140.dp)
+                                                    .clickable {
+                                                        playerViewModel.showAndPlaySong(song, ytSongs, "$genreDisplayName on YouTube")
+                                                    },
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                                )
+                                            ) {
+                                                Column(modifier = Modifier.padding(8.dp)) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(124.dp)
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                    ) {
+                                                        AsyncImage(
+                                                            model = song.albumArtUriString ?: song.path,
+                                                            contentDescription = song.title,
+                                                            contentScale = ContentScale.Crop,
+                                                            modifier = Modifier.fillMaxSize()
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.height(6.dp))
+                                                    Text(
+                                                        text = song.title,
+                                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                    Text(
+                                                        text = song.artist,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (ytPlaylists.isNotEmpty()) {
+                                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                    Text(
+                                        text = "Curated Playlists",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        items(ytPlaylists, key = { it.id }) { playlist ->
+                                            Card(
+                                                modifier = Modifier.width(140.dp),
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                                )
+                                            ) {
+                                                Column(modifier = Modifier.padding(8.dp)) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(124.dp)
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                    ) {
+                                                        AsyncImage(
+                                                            model = playlist.coverImageUri,
+                                                            contentDescription = playlist.name,
+                                                            contentScale = ContentScale.Crop,
+                                                            modifier = Modifier.fillMaxSize()
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.height(6.dp))
+                                                    Text(
+                                                        text = playlist.name,
+                                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                    Text(
+                                                        text = "${playlist.songCount} tracks",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

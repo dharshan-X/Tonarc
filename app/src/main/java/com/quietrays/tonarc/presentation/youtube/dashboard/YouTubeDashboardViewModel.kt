@@ -5,7 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.quietrays.tonarc.data.database.EngagementDao
 import com.quietrays.tonarc.data.database.SongEngagementEntity
 import com.quietrays.tonarc.data.model.Song
+import com.quietrays.tonarc.data.model.Playlist
 import com.quietrays.tonarc.data.network.youtube.InnertubeBrowseSection
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenre
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenreCatalog
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenreExploreResult
 import com.quietrays.tonarc.data.recommendation.AdaptiveWeightTuner
 import com.quietrays.tonarc.data.recommendation.CandidateAggregator
 import com.quietrays.tonarc.data.recommendation.PersonalizedRanker
@@ -50,6 +54,17 @@ class YouTubeDashboardViewModel @Inject constructor(
     private val _selectedMood = MutableStateFlow(PersonalizedRanker.RecommendationMood.ALL)
     val selectedMood = _selectedMood.asStateFlow()
 
+    val availableGenres: List<YouTubeGenre> = YouTubeGenreCatalog.all
+
+    private val _selectedGenre = MutableStateFlow<YouTubeGenre?>(null)
+    val selectedGenre = _selectedGenre.asStateFlow()
+
+    private val _genreExploreResult = MutableStateFlow<YouTubeGenreExploreResult?>(null)
+    val genreExploreResult = _genreExploreResult.asStateFlow()
+
+    private val _isGenreExploreLoading = MutableStateFlow(false)
+    val isGenreExploreLoading = _isGenreExploreLoading.asStateFlow()
+
     private var cachedCandidates: List<RecommendationCandidate> = emptyList()
     private var cachedEngagements: Map<String, SongEngagementEntity> = emptyMap()
     private var cachedTunedWeights: PersonalizedRanker.RankingWeights = PersonalizedRanker.RankingWeights()
@@ -69,6 +84,26 @@ class YouTubeDashboardViewModel @Inject constructor(
                 forYou = forYou,
                 selectedMood = mood
             )
+        }
+    }
+
+    fun selectGenre(genre: YouTubeGenre?) {
+        _selectedGenre.value = genre
+        if (genre == null) {
+            _genreExploreResult.value = null
+            _isGenreExploreLoading.value = false
+            return
+        }
+        viewModelScope.launch {
+            _isGenreExploreLoading.value = true
+            try {
+                val result = youTubeRepository.getYouTubeGenreExplore(genre)
+                _genreExploreResult.value = result
+            } catch (e: Exception) {
+                Timber.tag("YouTubeDashboardVM").e(e, "Failed to explore genre ${genre.title}")
+            } finally {
+                _isGenreExploreLoading.value = false
+            }
         }
     }
 

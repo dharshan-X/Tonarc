@@ -47,8 +47,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.network.youtube.InnertubeAlbum
+import com.quietrays.tonarc.data.model.Playlist
 import com.quietrays.tonarc.data.network.youtube.InnertubeBrowseSection
 import com.quietrays.tonarc.data.network.youtube.InnertubeTrack
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenre
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenreExploreResult
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.AssistChip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +68,9 @@ fun YouTubeDashboardScreen(
     viewModel: YouTubeDashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedGenre by viewModel.selectedGenre.collectAsStateWithLifecycle()
+    val genreExploreResult by viewModel.genreExploreResult.collectAsStateWithLifecycle()
+    val isGenreExploreLoading by viewModel.isGenreExploreLoading.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -120,7 +133,12 @@ fun YouTubeDashboardScreen(
                         forYou = state.forYou,
                         sections = state.sections,
                         selectedMood = state.selectedMood,
+                        availableGenres = viewModel.availableGenres,
+                        selectedGenre = selectedGenre,
+                        genreExploreResult = genreExploreResult,
+                        isGenreExploreLoading = isGenreExploreLoading,
                         onMoodSelect = { viewModel.selectMood(it) },
+                        onGenreSelect = { viewModel.selectGenre(it) },
                         onSongClick = onSongClick
                     )
                 }
@@ -135,13 +153,197 @@ private fun DashboardContent(
     forYou: List<Song>,
     sections: List<InnertubeBrowseSection>,
     selectedMood: com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RecommendationMood,
+    availableGenres: List<YouTubeGenre>,
+    selectedGenre: YouTubeGenre?,
+    genreExploreResult: YouTubeGenreExploreResult?,
+    isGenreExploreLoading: Boolean,
     onMoodSelect: (com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RecommendationMood) -> Unit,
+    onGenreSelect: (YouTubeGenre?) -> Unit,
     onSongClick: (Song) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
+        // 1. Browse by Genre & Mood Section
+        item(key = "genre_and_mood_chips") {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 12.dp)
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Text(
+                        text = "Browse by Genre & Mood",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Explore curated hits and playlists from YouTube Music",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(availableGenres, key = { it.id }) { genre ->
+                        val isSelected = genre.id == selectedGenre?.id
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                if (isSelected) onGenreSelect(null) else onGenreSelect(genre)
+                            },
+                            label = { Text("${genre.iconEmoji} ${genre.title}") },
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Active Genre Explore Expansion
+        if (selectedGenre != null) {
+            item(key = "active_genre_explore_${selectedGenre.id}") {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    text = selectedGenre.iconEmoji,
+                                    style = MaterialTheme.typography.headlineMedium
+                                )
+                                Column {
+                                    Text(
+                                        text = selectedGenre.title,
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    selectedGenre.subtitle?.let {
+                                        Text(
+                                            text = it,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            IconButton(onClick = { onGenreSelect(null) }) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = "Close"
+                                )
+                            }
+                        }
+
+                        if (isGenreExploreLoading) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.5.dp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Loading ${selectedGenre.title} from YouTube Music...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else if (genreExploreResult != null) {
+                            val songs = genreExploreResult.topSongs
+                            val playlists = genreExploreResult.playlists
+
+                            if (songs.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Top Tracks",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    FilledTonalButton(
+                                        onClick = { songs.firstOrNull()?.let(onSongClick) },
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.PlayArrow,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Play All")
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    items(songs, key = { it.id }) { song ->
+                                        ForYouSongCard(song = song, onClick = { onSongClick(song) })
+                                    }
+                                }
+                            }
+
+                            if (playlists.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Featured Playlists",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    items(playlists, key = { it.id }) { playlist ->
+                                        PlaylistCard(
+                                            playlist = playlist,
+                                            onClick = {
+                                                // Start playback of first track or navigate
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. For You Section
         if (forYou.isNotEmpty()) {
             item(key = "for_you_section") {
                 Column(
@@ -170,7 +372,7 @@ private fun DashboardContent(
                     ) {
                         items(com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RecommendationMood.entries.toTypedArray()) { mood ->
                             val isSelected = mood == selectedMood
-                            androidx.compose.material3.FilterChip(
+                            FilterChip(
                                 selected = isSelected,
                                 onClick = { onMoodSelect(mood) },
                                 label = { Text(mood.displayName) }
@@ -392,6 +594,51 @@ private fun AlbumCard(
             )
             Text(
                 text = album.artist,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaylistCard(
+    playlist: Playlist,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .width(140.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(124.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            ) {
+                AsyncImage(
+                    model = playlist.coverImageUri,
+                    contentDescription = playlist.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = playlist.name,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "${playlist.songCount} tracks",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

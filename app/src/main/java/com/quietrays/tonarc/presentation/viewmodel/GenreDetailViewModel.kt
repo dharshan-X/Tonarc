@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quietrays.tonarc.data.model.Genre
 import com.quietrays.tonarc.data.model.Song
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenreCatalog
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenreExploreResult
 import com.quietrays.tonarc.data.repository.MusicRepository
+import com.quietrays.tonarc.data.youtube.YouTubeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +19,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.quietrays.tonarc.di.DispatcherProvider
+import timber.log.Timber
 import javax.inject.Inject
 
 enum class SortOption { ARTIST, ALBUM, TITLE }
@@ -100,6 +104,7 @@ data class GenreDetailUiState(
 @HiltViewModel
 class GenreDetailViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
+    private val youTubeRepository: YouTubeRepository,
     private val savedStateHandle: SavedStateHandle,
     private val dispatchers: DispatcherProvider
 ) : ViewModel() {
@@ -107,14 +112,37 @@ class GenreDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(GenreDetailUiState())
     val uiState: StateFlow<GenreDetailUiState> = _uiState.asStateFlow()
 
+    private val _youtubeContent = MutableStateFlow<YouTubeGenreExploreResult?>(null)
+    val youtubeContent: StateFlow<YouTubeGenreExploreResult?> = _youtubeContent.asStateFlow()
+
+    private val _isYouTubeLoading = MutableStateFlow(false)
+    val isYouTubeLoading: StateFlow<Boolean> = _isYouTubeLoading.asStateFlow()
+
     private var artistMap: Map<String, String?> = emptyMap()
 
     init {
         savedStateHandle.get<String>("genreId")?.let { genreId ->
             val decodedGenreId = java.net.URLDecoder.decode(genreId, "UTF-8")
             loadGenreDetails(decodedGenreId)
+            loadYouTubeGenreContent(decodedGenreId)
         } ?: run {
             _uiState.update { it.copy(error = "Genre ID not found", isLoadingGenreName = false, isLoadingSongs = false) }
+        }
+    }
+
+    fun loadYouTubeGenreContent(genreName: String) {
+        viewModelScope.launch {
+            _isYouTubeLoading.value = true
+            try {
+                val matchedGenre = YouTubeGenreCatalog.findGenreOrMood(genreName)
+                val result = youTubeRepository.getYouTubeGenreExplore(matchedGenre)
+                _youtubeContent.value = result
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Timber.tag("GenreDetailVM").e(e, "Failed to load YouTube genre content for $genreName")
+            } finally {
+                _isYouTubeLoading.value = false
+            }
         }
     }
 

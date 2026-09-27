@@ -30,7 +30,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -70,6 +72,13 @@ import kotlinx.collections.immutable.persistentListOf
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import kotlinx.collections.immutable.ImmutableList
 
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenre
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenreCatalog
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Surface
+
 @OptIn(UnstableApi::class)
 @Composable
 fun GenreCategoriesGrid(
@@ -82,14 +91,10 @@ fun GenreCategoriesGrid(
     playerViewModel: PlayerViewModel,
     modifier: Modifier = Modifier
 ) {
-    if (genres.isEmpty() && searchHistory.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize().padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(stringResource(R.string.no_genres_available), style = MaterialTheme.typography.bodyLarge)
-        }
-        return
+    var selectedSource by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("LIBRARY") }
+
+    if (genres.isEmpty() && searchHistory.isEmpty() && selectedSource == "LIBRARY") {
+        selectedSource = "YOUTUBE"
     }
 
     val systemNavBarHeight = getNavigationBarHeight()
@@ -199,46 +204,163 @@ fun GenreCategoriesGrid(
             }
         }
 
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            androidx.compose.foundation.layout.Row(
+        // Header & Tab Selection
+        item(span = { GridItemSpan(maxLineSpan) }, key = "genre_header_and_tabs") {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 6.dp, top = 6.dp, bottom = 6.dp, end = 0.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(start = 4.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    text = stringResource(R.string.browse_by_genre),
-                    style = MaterialTheme.typography.titleLarge
-                )
-                
-                val shape = androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = if (!isGridView) 12f else 50f,
-                    label = "shapeAnimation"
-                )
-                
-                androidx.compose.material3.FilledIconButton(
-                    onClick = { playerViewModel.toggleGenreViewMode() },
-                    colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ),
-                    shape = RoundedCornerShape(shape.value.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                androidx.compose.material3.Icon(
-                        imageVector = if (isGridView) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
-                        contentDescription = stringResource(R.string.cd_toggle_grid_list)
+                    Text(
+                        text = stringResource(R.string.browse_by_genre),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                    
+                    val shape = androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = if (!isGridView) 12f else 50f,
+                        label = "shapeAnimation"
+                    )
+                    
+                    androidx.compose.material3.FilledIconButton(
+                        onClick = { playerViewModel.toggleGenreViewMode() },
+                        colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        shape = RoundedCornerShape(shape.value.dp)
+                    ) {
+                        androidx.compose.material3.Icon(
+                            imageVector = if (isGridView) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
+                            contentDescription = stringResource(R.string.cd_toggle_grid_list)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedSource == "LIBRARY",
+                        onClick = { selectedSource = "LIBRARY" },
+                        label = { Text("Local Library (${genres.size})") },
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    FilterChip(
+                        selected = selectedSource == "YOUTUBE",
+                        onClick = { selectedSource = "YOUTUBE" },
+                        label = { Text("YouTube Music (${YouTubeGenreCatalog.all.size})") },
+                        shape = RoundedCornerShape(16.dp)
                     )
                 }
             }
         }
-        items(genres, key = { it.id }) { genre ->
-            GenreCard(
-                genre = genre,
-                customIcons = customGenreIcons,
-                onClick = { onGenreClick(genre) },
-                isGridView = isGridView
-            )
+
+        if (selectedSource == "LIBRARY") {
+            items(genres, key = { "local_${it.id}" }) { genre ->
+                GenreCard(
+                    genre = genre,
+                    customIcons = customGenreIcons,
+                    onClick = { onGenreClick(genre) },
+                    isGridView = isGridView
+                )
+            }
+        } else {
+            items(YouTubeGenreCatalog.all, key = { "yt_${it.id}" }) { ytGenre ->
+                YouTubeGenreItemCard(
+                    genre = ytGenre,
+                    onClick = {
+                        val syntheticGenre = Genre(
+                            id = ytGenre.title,
+                            name = ytGenre.title,
+                            lightColorHex = "#9E9E9E",
+                            onLightColorHex = "#000000",
+                            darkColorHex = "#616161",
+                            onDarkColorHex = "#FFFFFF"
+                        )
+                        onGenreClick(syntheticGenre)
+                    },
+                    isGridView = isGridView
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YouTubeGenreItemCard(
+    genre: YouTubeGenre,
+    onClick: () -> Unit,
+    isGridView: Boolean
+) {
+    val shape = RoundedCornerShape(20.dp)
+    val cardModifier = if (isGridView) {
+        Modifier.aspectRatio(1.2f)
+    } else {
+        Modifier.fillMaxWidth().height(96.dp)
+    }
+
+    Card(
+        modifier = cardModifier
+            .clip(shape)
+            .clickable(onClick = onClick),
+        shape = shape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = genre.iconEmoji,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = "YT",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Column {
+                Text(
+                    text = genre.title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                genre.subtitle?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

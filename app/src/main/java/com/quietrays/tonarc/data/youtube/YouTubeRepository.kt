@@ -3,6 +3,7 @@ package com.quietrays.tonarc.data.youtube
 import com.quietrays.tonarc.data.database.YouTubeDao
 import com.quietrays.tonarc.data.database.YouTubePlaylistEntity
 import com.quietrays.tonarc.data.database.YouTubeSongEntity
+import com.quietrays.tonarc.data.model.Playlist
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.network.youtube.InnertubeAlbum
 import com.quietrays.tonarc.data.network.youtube.InnertubeArtist
@@ -11,6 +12,8 @@ import com.quietrays.tonarc.data.network.youtube.InnertubeBrowseSection
 import com.quietrays.tonarc.data.network.youtube.InnertubePlaylist
 import com.quietrays.tonarc.data.network.youtube.InnertubeSearchResult
 import com.quietrays.tonarc.data.network.youtube.InnertubeTrack
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenre
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenreExploreResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
@@ -242,6 +245,50 @@ class YouTubeRepository @Inject constructor(
         val sections = innertubeApiService.getBrowse("FEmusic_home")
         emit(sections)
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * Fetches top tracks and curated playlists for a YouTube Music genre or mood.
+     */
+    suspend fun getYouTubeGenreExplore(genre: YouTubeGenre): YouTubeGenreExploreResult = withContext(Dispatchers.IO) {
+        val songsDeferred = async {
+            runCatching {
+                innertubeApiService.search(
+                    query = "${genre.title} hits",
+                    params = InnertubeApiService.YTM_FILTER_SONGS
+                )
+            }.getOrNull()
+        }
+
+        val playlistsDeferred = async {
+            runCatching {
+                innertubeApiService.search(
+                    query = "${genre.title} playlist",
+                    params = InnertubeApiService.YTM_FILTER_PLAYLISTS
+                )
+            }.getOrNull()
+        }
+
+        val songsResult = songsDeferred.await()
+        val playlistsResult = playlistsDeferred.await()
+
+        val songs = songsResult?.songs?.map { it.toDomainSong() } ?: emptyList()
+        val playlists = playlistsResult?.playlists?.map { p ->
+            Playlist(
+                id = p.playlistId,
+                name = p.title,
+                songIds = emptyList(),
+                coverImageUri = p.thumbnailUri,
+                source = "YOUTUBE",
+                songCount = p.trackCount
+            )
+        } ?: emptyList()
+
+        YouTubeGenreExploreResult(
+            genre = genre,
+            topSongs = songs,
+            playlists = playlists
+        )
+    }
 
     /**
      * Resolves the direct audio stream URL for a given YouTube video ID.

@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Initial Alpha Milestone Release
 
-#### 1. YouTube Music Library & Liked Songs Two-Way Sync
+#### 1. YouTube Music Library, Liked Songs Two-Way Sync & Genre Browsing
 - Unified Library: Synced YouTube Music cloud playlists and Liked Music directly into the Library screen alongside local media.
 - Pinned Liked Music Hero Card: Quick access to all your liked songs with one tap.
 - YouTube Playlist Import: Import and save any YouTube or YouTube Music playlist by URL or ID directly to your Library Playlists section, with preview and local cloning options.
+- YouTube Music Genre & Mood Browsing: Explore and stream YouTube Music curated hits, trending tracks, and playlists across popular genres (Pop, Rock, Hip-Hop, Electronic, R&B, Indie, Jazz, Classical, Metal, K-Pop, Latin, Lofi, etc.) and moods (Chill, Workout, Focus, Sleep, Energy, Party, Romance).
+- Multi-Source Genre Search: Toggle seamlessly between local library genres and YouTube Music online catalog in Search and Explore views.
+- Online Genre Exploration: Genre details view features online trending songs and curated YouTube playlists with one-tap playback and radio launch.
 - Bidirectional Like Synchronization: Toggling favorite in the player optimistically updates local storage and syncs to YouTube Music via authenticated Innertube mutations.
 - Offline Caching: Room database caching for instant offline playlist browsing.
 

@@ -79,5 +79,14 @@
     <string name="youtube_refresh_playlist">Sync with YouTube</string>
     <string name="youtube_playlist_saved_toast">YouTube playlist saved to Library</string>
     <string name="youtube_playlist_cloned_toast">Cloned to local playlists</string>
+    <string name="youtube_browse_by_genre_title">Browse by Genre &amp; Mood</string>
+    <string name="youtube_browse_by_genre_subtitle">Explore curated hits and playlists from YouTube Music</string>
+    <string name="youtube_genre_top_tracks">Top Tracks</string>
+    <string name="youtube_genre_featured_playlists">Featured Playlists</string>
+    <string name="youtube_tab_local">Local Media</string>
+    <string name="youtube_tab_online">YouTube Music</string>
+    <string name="youtube_genre_play_all">Play All</string>
+    <string name="youtube_genre_start_radio">Start Radio</string>
+    <string name="youtube_empty_genre_tracks">No online tracks found for this genre</string>
 
 </resources>
