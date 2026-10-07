@@ -9,11 +9,16 @@ import kotlin.math.min
 object FuzzySearchMatcher {
 
     private const val DEFAULT_MATCH_THRESHOLD = 0.50f
+    private val WORD_SPLIT_REGEX = Regex("[\\s\\-_/.,;:'\"()\\[\\]]+")
 
     /**
      * Calculates the Damerau-Levenshtein distance (supports insertion, deletion, substitution, and transposition).
+     * Optimized to use 3 one-dimensional IntArrays instead of a full 2D matrix allocation,
+     * reducing memory allocations from O(lenA) objects to O(1).
      */
     fun damerauLevenshteinDistance(s1: String, s2: String): Int {
+        if (s1 == s2 || s1.equals(s2, ignoreCase = true)) return 0
+
         val a = s1.lowercase()
         val b = s2.lowercase()
         val lenA = a.length
@@ -22,27 +27,39 @@ object FuzzySearchMatcher {
         if (lenA == 0) return lenB
         if (lenB == 0) return lenA
 
-        val d = Array(lenA + 1) { IntArray(lenB + 1) }
-
-        for (i in 0..lenA) d[i][0] = i
-        for (j in 0..lenB) d[0][j] = j
+        var prevPrevRow = IntArray(lenB + 1)
+        var prevRow = IntArray(lenB + 1) { it }
+        var currRow = IntArray(lenB + 1)
 
         for (i in 1..lenA) {
-            for (j in 1..lenB) {
-                val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+            currRow[0] = i
+            val charA = a[i - 1]
+            val prevCharA = if (i > 1) a[i - 2] else '\u0000'
 
-                d[i][j] = min(
-                    min(d[i - 1][j] + 1, d[i][j - 1] + 1),
-                    d[i - 1][j - 1] + cost
+            for (j in 1..lenB) {
+                val charB = b[j - 1]
+                val cost = if (charA == charB) 0 else 1
+
+                var minCost = min(
+                    min(prevRow[j] + 1, currRow[j - 1] + 1),
+                    prevRow[j - 1] + cost
                 )
 
                 // Transposition check
-                if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1]) {
-                    d[i][j] = min(d[i][j], d[i - 2][j - 2] + 1)
+                if (i > 1 && j > 1 && charA == b[j - 2] && prevCharA == charB) {
+                    minCost = min(minCost, prevPrevRow[j - 2] + 1)
                 }
+
+                currRow[j] = minCost
             }
+
+            val temp = prevPrevRow
+            prevPrevRow = prevRow
+            prevRow = currRow
+            currRow = temp
         }
-        return d[lenA][lenB]
+
+        return prevRow[lenB]
     }
 
     /**
@@ -76,8 +93,8 @@ object FuzzySearchMatcher {
             return if (normalizedCandidate.startsWith(normalizedQuery)) 0.95f else 0.85f
         }
 
-        val candidateWords = normalizedCandidate.split(Regex("[\\s\\-_/.,;:'\"()\\[\\]]+")).filter { it.isNotBlank() }
-        val queryWords = normalizedQuery.split(Regex("[\\s\\-_/.,;:'\"()\\[\\]]+")).filter { it.isNotBlank() }
+        val candidateWords = WORD_SPLIT_REGEX.split(normalizedCandidate).filter { it.isNotBlank() }
+        val queryWords = WORD_SPLIT_REGEX.split(normalizedQuery).filter { it.isNotBlank() }
 
         if (queryWords.isEmpty() || candidateWords.isEmpty()) return 0.0f
 
