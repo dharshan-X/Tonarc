@@ -154,9 +154,16 @@ class DailyMixStateHolder @Inject constructor(
             }
 
             val favoriteIds = favoriteSongIdsFlow.first()
+            val recommendationSeedPool = (localSongs + ytCachedSongs + allYtDiscovered).distinctBy { it.id }
 
-            val aggregatedCandidates = if (candidateAggregator != null && localSongs.isNotEmpty()) {
-                val seedSongs = localSongs.filter { it.id in favoriteIds }.shuffled().take(5).ifEmpty { localSongs.take(5) }
+            val favoriteSeedSongs = recommendationSeedPool.filter { song ->
+                song.id in favoriteIds ||
+                    song.id.removePrefix("youtube_") in favoriteIds ||
+                    (song.youtubeId != null && song.youtubeId in favoriteIds)
+            }
+
+            val aggregatedCandidates = if (candidateAggregator != null) {
+                val seedSongs = favoriteSeedSongs.shuffled().take(5).ifEmpty { recommendationSeedPool.shuffled().take(5) }
                 runCatching { candidateAggregator.collect(seedSongs = seedSongs, limit = 80) }.getOrDefault(emptyList())
             } else emptyList()
 

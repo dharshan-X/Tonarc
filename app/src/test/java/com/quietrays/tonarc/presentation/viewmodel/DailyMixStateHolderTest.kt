@@ -7,6 +7,9 @@ import com.quietrays.tonarc.data.database.YouTubeDao
 import com.quietrays.tonarc.data.database.YouTubeSongEntity
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.preferences.UserPreferencesRepository
+import com.quietrays.tonarc.data.recommendation.CandidateAggregator
+import com.quietrays.tonarc.data.recommendation.CandidateSourceType
+import com.quietrays.tonarc.data.recommendation.RecommendationCandidate
 import com.quietrays.tonarc.data.repository.MusicRepository
 import com.quietrays.tonarc.data.youtube.YouTubeRepository
 import io.mockk.coEvery
@@ -234,5 +237,63 @@ class DailyMixStateHolderTest {
 
         assertEquals(1, dailyMixStateHolder.dailyMixSongs.value.size)
         assertEquals("1", dailyMixStateHolder.dailyMixSongs.value[0].id)
+    }
+
+    @Test
+    fun `updateDailyMix uses YouTube seeds for candidate aggregation when local songs are empty`() = testScope.runTest {
+        val mockCandidateAggregator: CandidateAggregator = mockk(relaxed = true)
+        val holder = DailyMixStateHolder(
+            dailyMixManager = mockDailyMixManager,
+            userPreferencesRepository = mockUserPreferencesRepository,
+            musicRepository = mockMusicRepository,
+            youTubeRepository = mockYouTubeRepository,
+            youTubeDao = mockYouTubeDao,
+            candidateAggregator = mockCandidateAggregator,
+            personalizedRanker = null,
+            uiContentCache = null
+        ).also {
+            it.ioDispatcher = testDispatcher
+            it.initialize(testScope)
+        }
+
+        val ytSeed = createTestSong("youtube_vid2", "Quick Pick Track", "Popular Artist", youtubeId = "vid2")
+        val ytCached = YouTubeSongEntity(
+            id = "youtube_vid1",
+            videoId = "vid1",
+            title = "Cached YouTube Track",
+            artist = "YT Artist",
+            duration = 210L
+        )
+        val aggregatedSong = createTestSong("youtube_vid3", "Recommended Track", "Reco Artist", youtubeId = "vid3")
+
+        coEvery { mockMusicRepository.getAllSongsOnce() } returns emptyList()
+        coEvery { mockYouTubeDao.getAllYouTubeSongsList() } returns listOf(ytCached)
+        coEvery { mockYouTubeRepository.getHomeRecommendations() } returns YouTubeRepository.HomeRecommendations(
+            quickPicks = listOf(ytSeed)
+        )
+        every { mockUserPreferencesRepository.favoriteArtistsFlow } returns flowOf(emptySet())
+        coEvery { mockCandidateAggregator.collect(any(), any(), any()) } returns listOf(
+            RecommendationCandidate(
+                song = aggregatedSong,
+                sourceType = CandidateSourceType.YT_RADIO,
+                sourceStrength = 0.9,
+                seedSongId = ytSeed.id
+            )
+        )
+        coEvery { mockDailyMixManager.generateDailyMix(any(), any()) } answers { firstArg<List<Song>>() }
+        coEvery { mockDailyMixManager.generateYourMix(any(), any()) } answers { firstArg<List<Song>>() }
+        coEvery { mockDailyMixManager.generateAllContextualMixes(any(), any()) } returns emptyList()
+
+        holder.updateDailyMix(flowOf(setOf("vid2")))
+        advanceUntilIdle()
+
+        assertEquals(true, holder.dailyMixSongs.value.any { it.id == "youtube_vid3" })
+        coVerify {
+            mockCandidateAggregator.collect(
+                match { seeds -> seeds.any { it.id == "youtube_vid2" } },
+                80,
+                any()
+            )
+        }
     }
 }
