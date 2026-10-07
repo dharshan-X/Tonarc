@@ -85,4 +85,28 @@ class CandidateAggregatorTest {
         assertThat(deduplicated).hasSize(1)
         assertThat(deduplicated.first().sourceStrength).isEqualTo(0.95)
     }
+
+    @Test
+    fun `deduplicateCandidates handles YT_HOME_DISCOVERY source type`() {
+        val song1 = testSong("youtube_home1", "Home Track", "Artist H").copy(youtubeId = "home1")
+
+        val candidateHome = RecommendationCandidate(
+            song = song1,
+            sourceType = CandidateSourceType.YT_HOME_DISCOVERY,
+            sourceStrength = 0.85
+        )
+
+        val aggregator = CandidateAggregator(
+            youTubeRepository = mockk<YouTubeRepository>(relaxed = true),
+            listenBrainzRepository = mockk<ListenBrainzRepository>(relaxed = true),
+            musicRepository = mockk<MusicRepository>(relaxed = true),
+            itemEmbeddingStore = mockk<ItemEmbeddingStore>(relaxed = true),
+            userPreferencesRepository = mockk(relaxed = true)
+        )
+
+        val deduplicated = aggregator.deduplicateCandidates(listOf(candidateHome))
+        assertThat(deduplicated).hasSize(1)
+        assertThat(deduplicated.first().sourceType).isEqualTo(CandidateSourceType.YT_HOME_DISCOVERY)
+        assertThat(deduplicated.first().sourceStrength).isEqualTo(0.85)
+    }
 }

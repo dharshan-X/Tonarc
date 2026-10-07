@@ -19,10 +19,11 @@ import javax.inject.Singleton
  * Stage 1 of recommendation engine: aggregates candidate tracks across multiple sources in parallel.
  * Sources:
  * 1. Innertube radio graph (YT_RADIO)
- * 2. ListenBrainz Labs similar-artists graph (LB_SIMILAR_ARTIST)
- * 3. Library genre taxonomy expansion (GENRE_EXPANSION)
- * 4. On-device session co-occurrences (LIBRARY_COOCCURRENCE)
- * 5. Selected favorite artists
+ * 2. Innertube browse/home discovery recommendations (YT_HOME_DISCOVERY)
+ * 3. ListenBrainz Labs similar-artists graph (LB_SIMILAR_ARTIST)
+ * 4. Library genre taxonomy expansion (GENRE_EXPANSION)
+ * 5. On-device session co-occurrences (LIBRARY_COOCCURRENCE)
+ * 6. Selected favorite artists
  */
 @Singleton
 class CandidateAggregator @Inject constructor(
@@ -52,6 +53,7 @@ class CandidateAggregator @Inject constructor(
 
         val topSeeds = validSeeds.take(5)
         val ytDeferred = async { collectYouTubeRadioCandidates(topSeeds) }
+        val ytHomeDeferred = async { collectYouTubeHomeCandidates() }
         val lbDeferred = async { collectListenBrainzCandidates(topSeeds) }
         val genreDeferred = async { collectGenreCandidates(topSeeds) }
         val cooccurDeferred = async { collectCooccurrenceCandidates(topSeeds) }
@@ -59,6 +61,10 @@ class CandidateAggregator @Inject constructor(
 
         val ytCandidates = runCatching { ytDeferred.await() }
             .onFailure { Timber.tag(TAG).w(it, "YouTube candidate collection failed") }
+            .getOrDefault(emptyList())
+
+        val ytHomeCandidates = runCatching { ytHomeDeferred.await() }
+            .onFailure { Timber.tag(TAG).w(it, "YouTube home candidate collection failed") }
             .getOrDefault(emptyList())
 
         val lbCandidates = runCatching { lbDeferred.await() }
@@ -77,7 +83,7 @@ class CandidateAggregator @Inject constructor(
             .onFailure { Timber.tag(TAG).w(it, "Favorite artist candidate collection failed") }
             .getOrDefault(emptyList())
 
-        val allCandidates = favCandidates + cooccurCandidates + ytCandidates + lbCandidates + genreCandidates
+        val allCandidates = favCandidates + cooccurCandidates + ytCandidates + ytHomeCandidates + lbCandidates + genreCandidates
         val deduplicated = deduplicateCandidates(allCandidates, excludedSongIds)
 
         // Deterministic Fallback: If co-occurrence and seed queries return fewer than target minimum (10), pad with fallback
@@ -131,17 +137,31 @@ class CandidateAggregator @Inject constructor(
             }
         }
 
-        // 3. Fallback online charts / recommendations if available
-        val trendingSongs = runCatching { youTubeRepository.getCharts().first() }.getOrDefault(emptyList())
-        trendingSongs.filterNot { it.id in excludedSongIds }.take(15).forEach { song ->
-            candidates.add(
-                RecommendationCandidate(
-                    song = song,
-                    sourceType = CandidateSourceType.YT_RADIO,
-                    sourceStrength = 0.65,
-                    seedSongId = null
+        // 3. Fallback online quick picks / community recommendations / charts if available
+        val homeRecs = runCatching { youTubeRepository.getHomeRecommendations() }.getOrNull()
+        if (homeRecs != null && (homeRecs.quickPicks.isNotEmpty() || homeRecs.fromCommunity.isNotEmpty())) {
+            (homeRecs.quickPicks + homeRecs.fromCommunity).distinctBy { it.id }.filterNot { it.id in excludedSongIds }.take(15).forEach { song ->
+                candidates.add(
+                    RecommendationCandidate(
+                        song = song,
+                        sourceType = CandidateSourceType.YT_HOME_DISCOVERY,
+                        sourceStrength = 0.70,
+                        seedSongId = null
+                    )
                 )
-            )
+            }
+        } else {
+            val trendingSongs = runCatching { youTubeRepository.getCharts().first() }.getOrDefault(emptyList())
+            trendingSongs.filterNot { it.id in excludedSongIds }.take(15).forEach { song ->
+                candidates.add(
+                    RecommendationCandidate(
+                        song = song,
+                        sourceType = CandidateSourceType.YT_RADIO,
+                        sourceStrength = 0.65,
+                        seedSongId = null
+                    )
+                )
+            }
         }
 
         return deduplicateCandidates(candidates, excludedSongIds).take(limit)
@@ -183,6 +203,32 @@ class CandidateAggregator @Inject constructor(
                     )
                 )
             }
+        }
+        return results
+    }
+
+    private suspend fun collectYouTubeHomeCandidates(): List<RecommendationCandidate> {
+        val homeRecs = runCatching { youTubeRepository.getHomeRecommendations() }.getOrDefault(YouTubeRepository.HomeRecommendations())
+        val results = mutableListOf<RecommendationCandidate>()
+        homeRecs.quickPicks.take(15).forEach { song ->
+            results.add(
+                RecommendationCandidate(
+                    song = song,
+                    sourceType = CandidateSourceType.YT_HOME_DISCOVERY,
+                    sourceStrength = 0.85,
+                    seedSongId = null
+                )
+            )
+        }
+        homeRecs.fromCommunity.take(20).forEach { song ->
+            results.add(
+                RecommendationCandidate(
+                    song = song,
+                    sourceType = CandidateSourceType.YT_HOME_DISCOVERY,
+                    sourceStrength = 0.75,
+                    seedSongId = null
+                )
+            )
         }
         return results
     }

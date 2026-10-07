@@ -33,7 +33,11 @@ import javax.inject.Singleton
 class YouTubeRepository @Inject constructor(
     private val innertubeApiService: InnertubeApiService,
     private val youTubeExtractorManager: com.quietrays.tonarc.data.network.youtube.YouTubeExtractorManager,
-    private val youTubeDao: YouTubeDao
+    private val youTubeDao: YouTubeDao,
+    private val candidateAggregator: javax.inject.Provider<com.quietrays.tonarc.data.recommendation.CandidateAggregator>? = null,
+    private val personalizedRanker: javax.inject.Provider<com.quietrays.tonarc.data.recommendation.PersonalizedRanker>? = null,
+    private val adaptiveWeightTuner: javax.inject.Provider<com.quietrays.tonarc.data.recommendation.AdaptiveWeightTuner>? = null,
+    private val engagementDao: javax.inject.Provider<com.quietrays.tonarc.data.database.EngagementDao>? = null
 ) {
     private companion object {
         private const val TAG = "YouTubeRepository"
@@ -70,6 +74,44 @@ class YouTubeRepository @Inject constructor(
         val newAlbums: List<com.quietrays.tonarc.data.model.Album> = emptyList(),
         val quickPicks: List<Song> = emptyList()
     )
+
+    /**
+     * Generates personalized YouTube Music recommendations using the recommendation engine pipeline.
+     */
+    suspend fun getPersonalizedRecommendations(
+        seedSongs: List<Song> = emptyList(),
+        limit: Int = 20,
+        mood: com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RecommendationMood = com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RecommendationMood.ALL,
+        excludedSongIds: Set<String> = emptySet()
+    ): List<Song> = withContext(Dispatchers.IO) {
+        val aggregator = candidateAggregator?.get() ?: return@withContext getHomeRecommendations().quickPicks.take(limit)
+        val ranker = personalizedRanker?.get()
+        val tuner = adaptiveWeightTuner?.get()
+        val engDao = engagementDao?.get()
+
+        val candidates = runCatching { aggregator.collect(seedSongs, limit = limit * 3, excludedSongIds = excludedSongIds) }.getOrDefault(emptyList())
+        if (candidates.isEmpty()) {
+            return@withContext getHomeRecommendations().quickPicks.take(limit)
+        }
+
+        if (ranker != null && engDao != null) {
+            val allEngagements = runCatching { engDao.getAllEngagements() }.getOrDefault(emptyList())
+            val engagementMap = allEngagements.associateBy { it.songId }
+            val weights = tuner?.computeTunedWeights(allEngagements) ?: com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RankingWeights()
+
+            val ranked = ranker.rank(
+                candidates = candidates,
+                engagements = engagementMap,
+                favoriteSongIds = emptySet(),
+                weights = weights,
+                mood = mood
+            )
+            val selected = ranker.pickWithDiversity(ranked, excludedSongIds, limit = limit)
+            if (selected.isNotEmpty()) return@withContext selected
+        }
+
+        candidates.map { it.song }.filterNot { it.id in excludedSongIds }.take(limit)
+    }
 
     /**
      * Searches YouTube Music for songs matching the query with continuation support.
