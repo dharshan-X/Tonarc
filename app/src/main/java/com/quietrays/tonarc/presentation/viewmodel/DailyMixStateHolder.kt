@@ -7,6 +7,8 @@ import com.quietrays.tonarc.data.database.YouTubeDao
 import com.quietrays.tonarc.data.database.YouTubeSongEntity
 import com.quietrays.tonarc.data.model.Song
 import com.quietrays.tonarc.data.preferences.UserPreferencesRepository
+import com.quietrays.tonarc.data.recommendation.CandidateAggregator
+import com.quietrays.tonarc.data.recommendation.PersonalizedRanker
 import com.quietrays.tonarc.data.repository.MusicRepository
 import com.quietrays.tonarc.data.youtube.YouTubeRepository
 import kotlinx.collections.immutable.ImmutableList
@@ -43,6 +45,8 @@ class DailyMixStateHolder @Inject constructor(
     private val musicRepository: MusicRepository,
     private val youTubeRepository: YouTubeRepository,
     private val youTubeDao: YouTubeDao,
+    private val candidateAggregator: CandidateAggregator? = null,
+    private val personalizedRanker: PersonalizedRanker? = null,
     private val uiContentCache: UiContentCache? = null
 ) {
     internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO
@@ -54,7 +58,16 @@ class DailyMixStateHolder @Inject constructor(
         youTubeRepository: YouTubeRepository,
         youTubeDao: YouTubeDao,
         ioDispatcher: kotlinx.coroutines.CoroutineDispatcher
-    ) : this(dailyMixManager, userPreferencesRepository, musicRepository, youTubeRepository, youTubeDao, null) {
+    ) : this(
+        dailyMixManager,
+        userPreferencesRepository,
+        musicRepository,
+        youTubeRepository,
+        youTubeDao,
+        null,
+        null,
+        null
+    ) {
         this.ioDispatcher = ioDispatcher
     }
     private var scope: CoroutineScope? = null
@@ -140,11 +153,17 @@ class DailyMixStateHolder @Inject constructor(
                 runCatching { youTubeDao.insertSongs(entities) }
             }
 
-            val allCandidateSongs = (localSongs + ytCachedSongs + allYtDiscovered).distinctBy { it.id }
+            val favoriteIds = favoriteSongIdsFlow.first()
+
+            val aggregatedCandidates = if (candidateAggregator != null && localSongs.isNotEmpty()) {
+                val seedSongs = localSongs.filter { it.id in favoriteIds }.shuffled().take(5).ifEmpty { localSongs.take(5) }
+                runCatching { candidateAggregator.collect(seedSongs = seedSongs, limit = 80) }.getOrDefault(emptyList())
+            } else emptyList()
+
+            val aggregatedSongs = aggregatedCandidates.map { it.song }
+            val allCandidateSongs = (localSongs + ytCachedSongs + allYtDiscovered + aggregatedSongs).distinctBy { it.id }
 
             if (allCandidateSongs.isNotEmpty()) {
-                val favoriteIds = favoriteSongIdsFlow.first()
-
                 val mix = dailyMixManager.generateDailyMix(allCandidateSongs, favoriteIds)
                 _dailyMixSongs.value = mix.toImmutableList()
                 userPreferencesRepository.saveDailyMixSongIds(mix.map { it.id })
