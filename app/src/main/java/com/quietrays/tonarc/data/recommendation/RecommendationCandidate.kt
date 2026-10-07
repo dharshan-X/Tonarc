@@ -7,6 +7,7 @@ import com.quietrays.tonarc.data.model.Song
  */
 enum class CandidateSourceType {
     YT_RADIO,
+    YT_HOME_DISCOVERY,
     LB_SIMILAR_ARTIST,
     LIBRARY_COOCCURRENCE,
     GENRE_EXPANSION
