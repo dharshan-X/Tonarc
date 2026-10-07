@@ -123,6 +123,8 @@ import com.quietrays.tonarc.presentation.viewmodel.StatsViewModel
 import com.quietrays.tonarc.ui.theme.ExpTitleTypography
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.foundation.lazy.LazyRow
+import com.quietrays.tonarc.data.network.youtube.YouTubeGenreCatalog
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
@@ -285,6 +287,22 @@ fun HomeScreen(
         }
     }
 
+    val displayRecentlyPlayedSongs = remember(filteredRecentlyPlayedSongs, yourMixSongs, keepListeningSongs) {
+        if (filteredRecentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
+            filteredRecentlyPlayedSongs.toImmutableList()
+        } else {
+            val fallbackSongs = (filteredRecentlyPlayedSongs.map { it.song } + keepListeningSongs + yourMixSongs)
+                .distinctBy { it.id }
+                .take(10)
+            fallbackSongs.map {
+                com.quietrays.tonarc.presentation.model.RecentlyPlayedSongUiModel(
+                    song = it,
+                    lastPlayedTimestamp = System.currentTimeMillis()
+                )
+            }.toImmutableList()
+        }
+    }
+
     val filteredKeepListeningSongs = remember(keepListeningSongs, selectedHomeFilter) {
         when (selectedHomeFilter) {
             HomeFilter.ALL -> keepListeningSongs
@@ -400,6 +418,9 @@ fun HomeScreen(
                     onNavigationIconClick = {
                         navController.navigateSafely(Screen.Settings.route)
                     },
+                    onProfileClick = {
+                        navController.navigateSafely(Screen.Accounts.route)
+                    },
                     onMoreOptionsClick = {
                         showChangelogBottomSheet = true
                     },
@@ -499,6 +520,19 @@ fun HomeScreen(
                             Text("Local Only", style = MaterialTheme.typography.labelMedium)
                         }
                     }
+                }
+
+                item(
+                    key = "genres_and_moods_section",
+                    contentType = "genres_and_moods_section"
+                ) {
+                    GenresAndMoodsSection(
+                        onGenreClick = { genreTitle ->
+                            navController.navigateSafely(
+                                Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(genreTitle, "UTF-8"))
+                            )
+                        }
+                    )
                 }
 
                 if (selectedHomeFilter != HomeFilter.YOUTUBE_MUSIC) {
@@ -754,22 +788,22 @@ fun HomeScreen(
                     }
                 }
 
-                if (filteredRecentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
+                if (displayRecentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
                     item(
                         key = "recently_played_section",
                         contentType = "recently_played_section"
                     ) {
-                        val recentlyPlayedFilteredQueue = remember(filteredRecentlyPlayedSongs) {
-                            filteredRecentlyPlayedSongs.map { it.song }.toImmutableList()
+                        val recentlyPlayedFilteredQueue = remember(displayRecentlyPlayedSongs) {
+                            displayRecentlyPlayedSongs.map { it.song }.toImmutableList()
                         }
                         RecentlyPlayedSection(
-                            songs = remember(filteredRecentlyPlayedSongs) { filteredRecentlyPlayedSongs.toImmutableList() },
+                            songs = displayRecentlyPlayedSongs,
                             onSongClick = { song ->
                                 if (recentlyPlayedFilteredQueue.isNotEmpty()) {
                                     playerViewModel.playSongs(
                                         songsToPlay = recentlyPlayedFilteredQueue,
                                         startSong = song,
-                                        queueName = "Recently Played"
+                                        queueName = "Quick Access / Recently Played"
                                     )
                                 }
                             },
@@ -1234,6 +1268,97 @@ fun SongListItemFavsWrapper(
     )
 }
 
+
+@Composable
+fun GenresAndMoodsSection(
+    onGenreClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val items = remember {
+        listOf(
+            YouTubeGenreCatalog.findGenreOrMood("pop"),
+            YouTubeGenreCatalog.findGenreOrMood("rock"),
+            YouTubeGenreCatalog.findGenreOrMood("lofi"),
+            YouTubeGenreCatalog.findGenreOrMood("classical"),
+            YouTubeGenreCatalog.findGenreOrMood("hiphop"),
+            YouTubeGenreCatalog.findGenreOrMood("jazz"),
+            YouTubeGenreCatalog.findGenreOrMood("electronic"),
+            YouTubeGenreCatalog.findGenreOrMood("chill")
+        )
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = "New Releases & Genres",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Explore music by mood, style & genre",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(items, key = { it.id }) { genre ->
+                Card(
+                    modifier = Modifier
+                        .size(width = 150.dp, height = 90.dp)
+                        .clip(AbsoluteSmoothCornerShape(18.dp, 60))
+                        .clickable { onGenreClick(genre.title) },
+                    shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(genre.colorHex).copy(alpha = 0.85f),
+                        contentColor = Color.White
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        contentAlignment = Alignment.BottomStart
+                    ) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = genre.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            genre.subtitle?.let {
+                                Text(
+                                    text = it,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalTextApi::class)
 @Composable
