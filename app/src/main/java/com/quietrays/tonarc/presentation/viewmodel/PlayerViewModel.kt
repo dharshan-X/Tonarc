@@ -295,6 +295,8 @@ class PlayerViewModel @Inject constructor(
     private val mediaControllerFactory: com.quietrays.tonarc.data.media.MediaControllerFactory,
     private val smartRadioEngine: com.quietrays.tonarc.data.recommendation.SmartRadioEngine,
     private val tasteProfileManager: TasteProfileManager,
+    private val candidateAggregator: com.quietrays.tonarc.data.recommendation.CandidateAggregator? = null,
+    private val personalizedRanker: com.quietrays.tonarc.data.recommendation.PersonalizedRanker? = null,
     private val dailyMixManager: DailyMixManager = dailyMixStateHolder.dailyMixManager,
     private val uiContentCache: UiContentCache? = null
 ) : ViewModel() {
@@ -1491,6 +1493,48 @@ class PlayerViewModel @Inject constructor(
     val yourMixSongs: StateFlow<ImmutableList<Song>> = dailyMixStateHolder.yourMixSongs
     val contextualMixes: StateFlow<List<ContextualMix>> = dailyMixStateHolder.contextualMixes
     val selectedMood: StateFlow<MixMood> = dailyMixStateHolder.selectedMood
+
+    private val _selectedRecommendationMood = MutableStateFlow(com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RecommendationMood.ALL)
+    val selectedRecommendationMood: StateFlow<com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RecommendationMood> = _selectedRecommendationMood.asStateFlow()
+
+    fun selectRecommendationMood(mood: com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RecommendationMood) {
+        _selectedRecommendationMood.value = mood
+    }
+
+    fun getPersonalizedRecommendations(
+        seeds: List<Song>,
+        mood: com.quietrays.tonarc.data.recommendation.PersonalizedRanker.RecommendationMood = _selectedRecommendationMood.value,
+        limit: Int = 30
+    ): Flow<List<Song>> = kotlinx.coroutines.flow.flow {
+        val aggregator = candidateAggregator
+        val ranker = personalizedRanker
+        if (aggregator != null && ranker != null) {
+            val candidates = aggregator.collect(seedSongs = seeds, limit = limit * 2)
+            val engagements = runCatching { dailyMixManager.getAllEngagementStats() }.getOrDefault(emptyMap())
+            val engagementEntities = engagements.mapValues { (id, stats) ->
+                com.quietrays.tonarc.data.database.SongEngagementEntity(
+                    songId = id,
+                    playCount = stats.playCount,
+                    totalPlayDurationMs = stats.totalPlayDurationMs,
+                    lastPlayedTimestamp = stats.lastPlayedTimestamp
+                )
+            }
+            val ranked = ranker.rank(
+                candidates = candidates,
+                engagements = engagementEntities,
+                favoriteSongIds = favoriteSongIds.value,
+                mood = mood
+            )
+            val picked = ranker.pickWithDiversity(
+                rankedCandidates = ranked,
+                favoriteSongIds = favoriteSongIds.value,
+                limit = limit
+            )
+            emit(picked)
+        } else {
+            emit(seeds.take(limit))
+        }
+    }
 
     private val _fromCommunitySongs = MutableStateFlow<ImmutableList<Song>>(persistentListOf())
     val fromCommunitySongs = _fromCommunitySongs.asStateFlow()
