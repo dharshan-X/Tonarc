@@ -233,16 +233,17 @@ fun DailyMixSection(
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
+        Spacer(Modifier.height(16.dp))
         MoodFilterChipsRow(
             selectedMood = selectedMood,
             onMoodSelected = { playerViewModel.selectMood(it) },
             modifier = Modifier.padding(bottom = 12.dp),
-            contentPadding = PaddingValues(horizontal = 20.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp)
         )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 16.dp)
         ) {
             DailyMixCard(
                 songs = displaySongs,
