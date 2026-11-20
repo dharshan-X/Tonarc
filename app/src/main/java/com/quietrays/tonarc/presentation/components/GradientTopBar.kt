@@ -207,17 +207,6 @@ fun HomeGradientTopBar(
                             modifier = Modifier.size(19.dp)
                         )
                     }
-                    FilledIconButton(
-                        modifier = Modifier.size(38.dp),
-                        colors = actionButtonColors,
-                        onClick = onNavigationIconClick
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.rounded_settings_24),
-                            contentDescription = stringResource(R.string.settings_top_bar_title),
-                            modifier = Modifier.size(19.dp)
-                        )
-                    }
                 }
             },
             colors = topAppBarColors(
