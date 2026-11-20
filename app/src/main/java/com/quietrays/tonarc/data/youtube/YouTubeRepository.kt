@@ -172,6 +172,12 @@ class YouTubeRepository @Inject constructor(
             val homeSections = homeDeferred.await()
             val exploreSections = exploreDeferred.await()
             val sections = homeSections + exploreSections
+            // Home-feed sections are the personalized ones when logged in; Explore is generic.
+            val personalizedKeywords = listOf(
+                "quick pick", "start radio", "listen again", "forgotten favorite", "speed dial",
+                "similar to", "because you", "based on", "recommended", "picked for you",
+                "your ", "more from", "from your"
+            )
 
             val communitySongs = mutableListOf<Song>()
             val trendingPlaylists = mutableListOf<com.quietrays.tonarc.data.model.Playlist>()
@@ -187,7 +193,8 @@ class YouTubeRepository @Inject constructor(
                 section.albums.forEach { newAlbums.add(it.toDomainAlbum()) }
 
                 when {
-                    titleLower.contains("quick pick") || titleLower.contains("start radio") || titleLower.contains("listen again") || titleLower.contains("forgotten favorite") || titleLower.contains("speed dial") || titleLower.contains("similar to") -> {
+                    (section in homeSections && personalizedKeywords.any { titleLower.contains(it) } && section.tracks.isNotEmpty()) ||
+                        titleLower.contains("quick pick") || titleLower.contains("start radio") || titleLower.contains("listen again") || titleLower.contains("forgotten favorite") || titleLower.contains("speed dial") || titleLower.contains("similar to") -> {
                         val songs = section.tracks.map { it.toDomainSong() }
                         quickPicks.addAll(songs)
                         communitySongs.addAll(songs)
@@ -224,7 +231,12 @@ class YouTubeRepository @Inject constructor(
                 }
             }
 
-            val finalQuickPicks = if (quickPicks.isNotEmpty()) quickPicks else communitySongs.take(10)
+            val finalQuickPicks = if (quickPicks.isNotEmpty()) quickPicks else {
+                // Prefer tracks from the (personalized) home feed over Explore/generic ones.
+                homeSections.flatMap { it.tracks }.map { it.toDomainSong() }
+                    .ifEmpty { communitySongs.take(10) }
+                    .take(16)
+            }
 
             HomeRecommendations(
                 fromCommunity = communitySongs.distinctBy { it.id },
