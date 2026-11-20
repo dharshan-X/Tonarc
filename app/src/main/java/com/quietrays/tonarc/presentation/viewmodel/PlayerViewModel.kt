@@ -111,6 +111,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -2246,6 +2247,26 @@ class PlayerViewModel @Inject constructor(
                 }
             }
             loadHomeRecommendations()
+
+            // Re-fetch personalized feeds whenever the YouTube Music account changes (login/logout).
+            viewModelScope.launch {
+                userPreferencesRepository.youTubeAuthCookiesFlow
+                    .map { !it.isNullOrBlank() }
+                    .distinctUntilChanged()
+                    .drop(1)
+                    .collect {
+                        // Let InnertubeApiService pick up the new cookies first.
+                        delay(750)
+                        homeRecommendationsJob?.cancel()
+                        _fromCommunitySongs.value = persistentListOf()
+                        _trendingCommunityPlaylists.value = persistentListOf()
+                        _featuredPlaylists.value = persistentListOf()
+                        _mixedForYouPlaylists.value = persistentListOf()
+                        _newAlbums.value = persistentListOf()
+                        _quickPicks.value = persistentListOf()
+                        loadHomeRecommendations(forceRefresh = true)
+                    }
+            }
 
             viewModelScope.launch {
                 combine(
