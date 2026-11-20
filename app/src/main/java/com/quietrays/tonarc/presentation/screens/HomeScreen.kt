@@ -5,6 +5,10 @@ import com.quietrays.tonarc.presentation.navigation.navigateSafelyReplacing
 
 import android.content.Intent
 import androidx.activity.compose.ReportDrawnWhen
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,19 +17,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
@@ -36,7 +45,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeExtendedFloatingActionButton
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -64,6 +72,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -98,14 +107,15 @@ import com.quietrays.tonarc.presentation.navidrome.dashboard.NavidromeDashboardV
 import com.quietrays.tonarc.presentation.components.DailyMixSection
 import com.quietrays.tonarc.presentation.components.HomeGradientTopBar
 import com.quietrays.tonarc.presentation.components.HomeOptionsBottomSheet
+import com.quietrays.tonarc.presentation.components.HomeSectionHeader
 import com.quietrays.tonarc.presentation.components.HorizontalAlbumCarouselSection
 import com.quietrays.tonarc.presentation.components.HorizontalAlbumCarouselSkeletonSection
 import com.quietrays.tonarc.presentation.components.HorizontalArtistCarouselSection
-import com.quietrays.tonarc.presentation.components.HorizontalArtistCarouselSkeletonSection
 import com.quietrays.tonarc.presentation.components.HorizontalPlaylistCarouselSection
 import com.quietrays.tonarc.presentation.components.HorizontalSongCarouselSection
-import com.quietrays.tonarc.presentation.components.HorizontalSongCarouselSkeletonSection
 import com.quietrays.tonarc.presentation.components.MiniPlayerHeight
+import com.quietrays.tonarc.presentation.components.QuickPicksShelfSection
+import com.quietrays.tonarc.presentation.components.QuickPicksShelfSkeletonSection
 import com.quietrays.tonarc.presentation.components.RecentlyPlayedSection
 import com.quietrays.tonarc.presentation.components.RecentlyPlayedSectionMinSongsToShow
 import com.quietrays.tonarc.presentation.components.ShimmerBox
@@ -120,17 +130,15 @@ import com.quietrays.tonarc.presentation.components.StreamingProviderSheet
 import com.quietrays.tonarc.presentation.viewmodel.PlayerViewModel
 import com.quietrays.tonarc.presentation.viewmodel.SettingsViewModel
 import com.quietrays.tonarc.presentation.viewmodel.StatsViewModel
-import com.quietrays.tonarc.ui.theme.ExpTitleTypography
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.foundation.lazy.LazyRow
 import com.quietrays.tonarc.data.network.youtube.YouTubeGenreCatalog
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import com.quietrays.tonarc.ui.theme.RoundedSans
 import com.quietrays.tonarc.ui.theme.ShapeCache
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.res.stringResource
@@ -350,7 +358,7 @@ fun HomeScreen(
 
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
     val density = LocalDensity.current
-    val scrollThresholdPx = remember(density) { with(density) { 180.dp.toPx() } }
+    val scrollThresholdPx = remember(density) { with(density) { 72.dp.toPx() } }
     val isScrolledPastThreshold = remember {
         derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > scrollThresholdPx }
     }
@@ -408,11 +416,53 @@ fun HomeScreen(
         }
     }
 
+    val ambientGradientAlpha by animateFloatAsState(
+        targetValue = if (isScrolledPastThreshold.value) 0f else 1f,
+        animationSpec = tween(durationMillis = 320),
+        label = "home_ambient_gradient_alpha"
+    )
+    val basePattern = settingsUiState.collagePattern
+    val isAutoRotate = settingsUiState.collageAutoRotate
+    val collagePatterns = remember { CollagePattern.entries }
+    val activeCollagePattern = if (isAutoRotate) {
+        var rotationIndex by rememberSaveable { mutableIntStateOf(-1) }
+        LaunchedEffect(Unit) { rotationIndex++ }
+        remember(rotationIndex) {
+            collagePatterns[rotationIndex.coerceAtLeast(0) % collagePatterns.size]
+        }
+    } else {
+        basePattern
+    }
+    val heroYouTubeSongs = remember(quickPicks, yourMixSongs) {
+        if (quickPicks.isNotEmpty()) quickPicks else yourMixSongs
+    }
+    val inlineFavoriteArtistSections = remember(favoriteArtistSections) {
+        favoriteArtistSections.take(2)
+    }
+
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f * ambientGradientAlpha),
+                            0.45f to MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.12f * ambientGradientAlpha),
+                            1.0f to Color.Transparent
+                        )
+                    )
+                )
+        )
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
             topBar = {
                 HomeGradientTopBar(
                     onNavigationIconClick = {
@@ -428,7 +478,7 @@ fun HomeScreen(
                         showBetaInfoBottomSheet = true
                     },
                     onStreamingClick = {
-                          showStreamingProviderSheet = true
+                        showStreamingProviderSheet = true
                     },
                     onMenuClick = {
                     },
@@ -455,448 +505,409 @@ fun HomeScreen(
             ) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
+                        top = 4.dp,
                         bottom = paddingValuesParent.calculateBottomPadding()
                                 + 38.dp + bottomPadding
                     ),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                    verticalArrangement = Arrangement.spacedBy(26.dp)
                 ) {
-                item(
-                    key = "home_filter_chips_row",
-                    contentType = "home_filter_chips_row"
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    item(
+                        key = "home_filter_chips_row",
+                        contentType = "home_filter_chips_row"
                     ) {
-                        ToggleButton(
-                            checked = selectedHomeFilter == HomeFilter.ALL,
-                            onCheckedChange = { selectedHomeFilter = HomeFilter.ALL },
-                            colors = ToggleButtonDefaults.toggleButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        ) {
-                            Text("All", style = MaterialTheme.typography.labelMedium)
-                        }
-
-                        ToggleButton(
-                            checked = selectedHomeFilter == HomeFilter.YOUTUBE_MUSIC,
-                            onCheckedChange = { selectedHomeFilter = HomeFilter.YOUTUBE_MUSIC },
-                            colors = ToggleButtonDefaults.toggleButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.MusicNote,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text("YouTube Music", style = MaterialTheme.typography.labelMedium)
-                        }
-
-                        ToggleButton(
-                            checked = selectedHomeFilter == HomeFilter.LOCAL_ONLY,
-                            onCheckedChange = { selectedHomeFilter = HomeFilter.LOCAL_ONLY },
-                            colors = ToggleButtonDefaults.toggleButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        ) {
-                            Text("Local Only", style = MaterialTheme.typography.labelMedium)
-                        }
+                        HomeSourceFilterRow(
+                            selectedFilter = selectedHomeFilter,
+                            onFilterSelected = { selectedHomeFilter = it }
+                        )
                     }
-                }
 
-                item(
-                    key = "genres_and_moods_section",
-                    contentType = "genres_and_moods_section"
-                ) {
-                    GenresAndMoodsSection(
-                        onGenreClick = { genreTitle ->
-                            navController.navigateSafely(
-                                Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(genreTitle, "UTF-8"))
-                            )
-                        }
-                    )
-                }
-
-                if (selectedHomeFilter != HomeFilter.YOUTUBE_MUSIC) {
-                    if (yourMixSongs.isEmpty()) {
-                        item(
-                            key = "your_mix_placeholder",
-                            contentType = "your_mix_placeholder"
-                        ) {
-                            if (shouldShowYourMixLoadingPlaceholder) {
-                                YourMixLoadingPlaceholder()
-                            } else {
-                                YourMixEmptyPlaceholder(
-                                    onRefresh = {
-                                        homePlaceholderRefreshGeneration++
-                                        settingsViewModel.refreshLibrary()
-                                        playerViewModel.forceUpdateDailyMix()
+                    if (selectedHomeFilter == HomeFilter.YOUTUBE_MUSIC) {
+                        if (heroYouTubeSongs.isNotEmpty()) {
+                            item(
+                                key = "youtube_mix_hero",
+                                contentType = "your_mix_hero"
+                            ) {
+                                YourMixHeroCard(
+                                    eyebrow = "YOUTUBE MUSIC",
+                                    title = "YouTube Mix",
+                                    subtitle = "Instant radio & picks tailored for you",
+                                    songs = heroYouTubeSongs,
+                                    pattern = activeCollagePattern,
+                                    isShuffleEnabled = isShuffleEnabled,
+                                    onPlayShuffled = {
+                                        playerViewModel.playSongsShuffled(
+                                            songsToPlay = heroYouTubeSongs,
+                                            queueName = "YouTube Mix",
+                                            startAtZero = true
+                                        )
+                                    },
+                                    onSongClick = { song ->
+                                        playerViewModel.playSongWithSmartQueue(song, "YouTube Mix")
                                     }
                                 )
+                            }
+                        } else if (isHomeRecommendationsLoading) {
+                            item(
+                                key = "your_mix_placeholder",
+                                contentType = "your_mix_placeholder"
+                            ) {
+                                YourMixLoadingPlaceholder()
                             }
                         }
                     } else {
+                        if (yourMixSongs.isEmpty()) {
+                            item(
+                                key = "your_mix_placeholder",
+                                contentType = "your_mix_placeholder"
+                            ) {
+                                if (shouldShowYourMixLoadingPlaceholder) {
+                                    YourMixLoadingPlaceholder()
+                                } else {
+                                    YourMixEmptyPlaceholder(
+                                        onRefresh = {
+                                            homePlaceholderRefreshGeneration++
+                                            settingsViewModel.refreshLibrary()
+                                            playerViewModel.forceUpdateDailyMix()
+                                        }
+                                    )
+                                }
+                            }
+                        } else {
+                            item(
+                                key = "your_mix_hero",
+                                contentType = "your_mix_hero"
+                            ) {
+                                YourMixHeroCard(
+                                    eyebrow = if (selectedHomeFilter == HomeFilter.LOCAL_ONLY) "LOCAL LIBRARY" else "PERSONALIZED MIX",
+                                    title = stringResource(R.string.home_your_mix_title),
+                                    subtitle = yourMixSong,
+                                    songs = yourMixSongs,
+                                    pattern = activeCollagePattern,
+                                    isShuffleEnabled = isShuffleEnabled,
+                                    onPlayShuffled = {
+                                        if (usesFallbackHomeMix) {
+                                            playerViewModel.shuffleAllSongs(queueName = "Your Mix")
+                                        } else {
+                                            playerViewModel.playSongsShuffled(
+                                                songsToPlay = yourMixSongs,
+                                                queueName = "Your Mix",
+                                                startAtZero = true,
+                                            )
+                                        }
+                                    },
+                                    onSongClick = { song ->
+                                        if (usesFallbackHomeMix) {
+                                            playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
+                                        } else {
+                                            playerViewModel.showAndPlaySong(song, yourMixSongs, "Your Mix")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (displayRecentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
                         item(
-                            key = "your_mix_header",
-                            contentType = "your_mix_header"
+                            key = "recently_played_section",
+                            contentType = "recently_played_section"
                         ) {
-                            YourMixHeader(
-                                song = yourMixSong,
-                                isShuffleEnabled = isShuffleEnabled,
-                                onPlayShuffled = {
-                                    if (usesFallbackHomeMix) {
-                                        playerViewModel.shuffleAllSongs(queueName = "Your Mix")
-                                    } else {
-                                        playerViewModel.playSongsShuffled(
-                                            songsToPlay = yourMixSongs,
-                                            queueName = "Your Mix",
-                                            startAtZero = true,
+                            val recentlyPlayedFilteredQueue = remember(displayRecentlyPlayedSongs) {
+                                displayRecentlyPlayedSongs.map { it.song }.toImmutableList()
+                            }
+                            RecentlyPlayedSection(
+                                songs = displayRecentlyPlayedSongs,
+                                onSongClick = { song ->
+                                    if (recentlyPlayedFilteredQueue.isNotEmpty()) {
+                                        playerViewModel.playSongs(
+                                            songsToPlay = recentlyPlayedFilteredQueue,
+                                            startSong = song,
+                                            queueName = "Quick Access / Recently Played"
                                         )
                                     }
-                                }
-                            )
-                        }
-
-                        item(
-                            key = "album_art_collage",
-                            contentType = "album_art_collage"
-                        ) {
-                            val basePattern = settingsUiState.collagePattern
-                            val isAutoRotate = settingsUiState.collageAutoRotate
-                            val patterns = remember { CollagePattern.entries }
-
-                            val activePattern = if (isAutoRotate) {
-                                var rotationIndex by rememberSaveable { mutableIntStateOf(-1) }
-                                LaunchedEffect(Unit) { rotationIndex++ }
-                                remember(rotationIndex) {
-                                    patterns[rotationIndex.coerceAtLeast(0) % patterns.size]
-                                }
-                            } else {
-                                basePattern
-                            }
-
-                            AlbumArtCollage(
-                                modifier = Modifier.fillMaxWidth(),
-                                songs = yourMixSongs,
-                                padding = 14.dp,
-                                height = 400.dp,
-                                pattern = activePattern,
-                                onSongClick = { song ->
-                                    if (usesFallbackHomeMix) {
-                                        playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
-                                    } else {
-                                        playerViewModel.showAndPlaySong(song, yourMixSongs, "Your Mix")
-                                    }
-                                }
+                                },
+                                onOpenAllClick = {
+                                    navController.navigateSafely(Screen.RecentlyPlayed.route)
+                                },
+                                themeStateHolder = playerViewModel.themeStateHolder,
+                                currentSongId = currentSong?.id,
+                                contentPadding = PaddingValues(horizontal = 20.dp)
                             )
                         }
                     }
-                }
 
-                if (filteredKeepListeningSongs.isNotEmpty()) {
-                    item(
-                        key = "keep_listening_section",
-                        contentType = "keep_listening_section"
-                    ) {
-                        HorizontalSongCarouselSection(
-                            title = "Keep Listening",
-                            subtitle = "Pick up where you left off",
-                            songs = filteredKeepListeningSongs,
-                            currentPlayingSongId = currentSong?.id,
-                            isPlaying = isPlaying,
-                            onSongClick = { song ->
-                                playerViewModel.showAndPlaySong(song, filteredKeepListeningSongs, "Keep Listening")
-                            }
-                        )
-                    }
-                }
-
-                if (selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
-                    if (quickPicks.isNotEmpty()) {
+                    if (filteredKeepListeningSongs.isNotEmpty()) {
                         item(
-                            key = "quick_picks_section",
-                            contentType = "quick_picks_section"
+                            key = "keep_listening_section",
+                            contentType = "keep_listening_section"
                         ) {
                             HorizontalSongCarouselSection(
-                                title = "Quick Picks",
-                                subtitle = "Instant radio & top tracks from YouTube Music",
-                                songs = quickPicks,
+                                title = "Keep Listening",
+                                subtitle = "Pick up where you left off",
+                                songs = filteredKeepListeningSongs,
                                 currentPlayingSongId = currentSong?.id,
                                 isPlaying = isPlaying,
                                 onSongClick = { song ->
-                                    playerViewModel.playSongWithSmartQueue(song, "Quick Picks")
+                                    playerViewModel.showAndPlaySong(song, filteredKeepListeningSongs, "Keep Listening")
                                 }
                             )
                         }
-                    } else if (isHomeRecommendationsLoading) {
-                        item(
-                            key = "quick_picks_skeleton",
-                            contentType = "quick_picks_skeleton"
-                        ) {
-                            HorizontalSongCarouselSkeletonSection(
-                                title = "Quick Picks",
-                                subtitle = "Instant radio & top tracks from YouTube Music"
-                            )
-                        }
                     }
-                }
 
-                if (selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
-                    if (newAlbums.isNotEmpty()) {
-                        item(
-                            key = "new_albums_section",
-                            contentType = "new_albums_section"
-                        ) {
-                            HorizontalAlbumCarouselSection(
-                                title = "New Releases & Singles",
-                                subtitle = "Latest albums and tracks on YouTube Music",
-                                albums = newAlbums,
-                                onAlbumClick = { album ->
-                                    navController.navigateSafely(Screen.AlbumDetail.createRoute(album.id))
-                                }
-                            )
-                        }
-                    } else if (isHomeRecommendationsLoading) {
-                        item(
-                            key = "new_albums_skeleton",
-                            contentType = "new_albums_skeleton"
-                        ) {
-                            HorizontalAlbumCarouselSkeletonSection(
-                                title = "New Releases & Singles",
-                                subtitle = "Latest albums and tracks on YouTube Music"
-                            )
-                        }
-                    }
-                }
-
-                if (favoriteArtists.isNotEmpty()) {
-                    item(
-                        key = "favorite_artists_section",
-                        contentType = "favorite_artists_section"
-                    ) {
-                        HorizontalArtistCarouselSection(
-                            title = stringResource(R.string.home_section_favorite_artists),
-                            subtitle = stringResource(R.string.home_section_favorite_artists_subtitle),
-                            artists = favoriteArtists.toList(),
-                            artistImages = artistImages,
-                            onArtistClick = { artistName ->
-                                navController.navigateSafely(Screen.FavoriteArtistSongs.createRoute(artistName))
-                            }
-                        )
-                    }
-                }
-
-                if (favoriteArtistSections.isNotEmpty()) {
-                    items(
-                        items = favoriteArtistSections,
-                        key = { "fav_artist_section_${it.artistName}" },
-                        contentType = { "fav_artist_top_songs_section" }
-                    ) { section ->
-                        HorizontalSongCarouselSection(
-                            title = section.artistName,
-                            subtitle = "Top songs for you",
-                            songs = section.songs,
-                            currentPlayingSongId = currentSong?.id,
-                            isPlaying = isPlaying,
-                            seeAllText = "View More",
-                            onSeeAllClick = {
-                                navController.navigateSafely(Screen.FavoriteArtistSongs.createRoute(section.artistName))
-                            },
-                            onSongClick = { song ->
-                                playerViewModel.showAndPlaySong(
-                                    song,
-                                    section.songs,
-                                    "Top Songs • ${section.artistName}"
-                                )
-                            }
-                        )
-                    }
-                } else if (favoriteArtistsSongs.isNotEmpty()) {
-                    item(
-                        key = "favorite_artists_songs_section",
-                        contentType = "favorite_artists_songs_section"
-                    ) {
-                        HorizontalSongCarouselSection(
-                            title = stringResource(R.string.home_favorite_artists_mix_title),
-                            subtitle = "Top songs from your favorite artists",
-                            songs = favoriteArtistsSongs,
-                            currentPlayingSongId = currentSong?.id,
-                            isPlaying = isPlaying,
-                            seeAllText = "View More",
-                            onSeeAllClick = if (favoriteArtists.isNotEmpty()) {
-                                {
-                                    val firstArtist = favoriteArtists.firstOrNull() ?: ""
-                                    if (firstArtist.isNotBlank()) {
-                                        navController.navigateSafely(Screen.FavoriteArtistSongs.createRoute(firstArtist))
+                    if (selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
+                        if (quickPicks.isNotEmpty()) {
+                            item(
+                                key = "quick_picks_section",
+                                contentType = "quick_picks_section"
+                            ) {
+                                QuickPicksShelfSection(
+                                    title = "Quick Picks",
+                                    subtitle = "Instant radio & top tracks from YouTube Music",
+                                    songs = quickPicks,
+                                    currentPlayingSongId = currentSong?.id,
+                                    isPlaying = isPlaying,
+                                    onSongClick = { song ->
+                                        playerViewModel.playSongWithSmartQueue(song, "Quick Picks")
                                     }
-                                }
-                            } else null,
-                            onSongClick = { song ->
-                                playerViewModel.showAndPlaySong(song, favoriteArtistsSongs, "Favorite Artists Mix")
+                                )
                             }
-                        )
-                    }
-                }
-
-                if (filteredDailyMixSongs.isNotEmpty()) {
-                    item(
-                        key = "daily_mix_section",
-                        contentType = "daily_mix_section"
-                    ) {
-                        DailyMixSection(
-                            songs = filteredDailyMixSongs,
-                            onClickOpen = {
-                                navController.navigateSafely(Screen.DailyMixScreen.route)
-                            },
-                            onNavigateToAlbum = { song ->
-                                navController.navigateSafelyReplacing(
-                                    route = Screen.AlbumDetail.createRoute(song.albumId),
-                                    patternToPop = Screen.AlbumDetail.route
+                        } else if (isHomeRecommendationsLoading) {
+                            item(
+                                key = "quick_picks_skeleton",
+                                contentType = "quick_picks_skeleton"
+                            ) {
+                                QuickPicksShelfSkeletonSection(
+                                    title = "Quick Picks",
+                                    subtitle = "Instant radio & top tracks from YouTube Music"
                                 )
-                            },
-                            onNavigateToArtist = { song ->
-                                navController.navigateSafelyReplacing(
-                                    route = Screen.ArtistDetail.createRoute(song.artistId),
-                                    patternToPop = Screen.ArtistDetail.route
-                                )
-                            },
-                            onNavigateToGenre = { song ->
-                                song.genre?.let {
-                                    navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
-                                }
-                            },
-                            playerViewModel = playerViewModel
-                        )
-                    }
-                }
-
-                if (displayRecentlyPlayedSongs.size >= RecentlyPlayedSectionMinSongsToShow) {
-                    item(
-                        key = "recently_played_section",
-                        contentType = "recently_played_section"
-                    ) {
-                        val recentlyPlayedFilteredQueue = remember(displayRecentlyPlayedSongs) {
-                            displayRecentlyPlayedSongs.map { it.song }.toImmutableList()
+                            }
                         }
-                        RecentlyPlayedSection(
-                            songs = displayRecentlyPlayedSongs,
-                            onSongClick = { song ->
-                                if (recentlyPlayedFilteredQueue.isNotEmpty()) {
-                                    playerViewModel.playSongs(
-                                        songsToPlay = recentlyPlayedFilteredQueue,
-                                        startSong = song,
-                                        queueName = "Quick Access / Recently Played"
+                    }
+
+                    if (filteredDailyMixSongs.isNotEmpty()) {
+                        item(
+                            key = "daily_mix_section",
+                            contentType = "daily_mix_section"
+                        ) {
+                            DailyMixSection(
+                                songs = filteredDailyMixSongs,
+                                onClickOpen = {
+                                    navController.navigateSafely(Screen.DailyMixScreen.route)
+                                },
+                                onNavigateToAlbum = { song ->
+                                    navController.navigateSafelyReplacing(
+                                        route = Screen.AlbumDetail.createRoute(song.albumId),
+                                        patternToPop = Screen.AlbumDetail.route
+                                    )
+                                },
+                                onNavigateToArtist = { song ->
+                                    navController.navigateSafelyReplacing(
+                                        route = Screen.ArtistDetail.createRoute(song.artistId),
+                                        patternToPop = Screen.ArtistDetail.route
+                                    )
+                                },
+                                onNavigateToGenre = { song ->
+                                    song.genre?.let {
+                                        navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
+                                    }
+                                },
+                                playerViewModel = playerViewModel
+                            )
+                        }
+                    }
+
+                    if (selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
+                        if (newAlbums.isNotEmpty()) {
+                            item(
+                                key = "new_albums_section",
+                                contentType = "new_albums_section"
+                            ) {
+                                HorizontalAlbumCarouselSection(
+                                    title = "New Releases & Singles",
+                                    subtitle = "Latest albums and tracks on YouTube Music",
+                                    albums = newAlbums,
+                                    onAlbumClick = { album ->
+                                        navController.navigateSafely(Screen.AlbumDetail.createRoute(album.id))
+                                    }
+                                )
+                            }
+                        } else if (isHomeRecommendationsLoading) {
+                            item(
+                                key = "new_albums_skeleton",
+                                contentType = "new_albums_skeleton"
+                            ) {
+                                HorizontalAlbumCarouselSkeletonSection(
+                                    title = "New Releases & Singles",
+                                    subtitle = "Latest albums and tracks on YouTube Music"
+                                )
+                            }
+                        }
+                    }
+
+                    if (favoriteArtists.isNotEmpty()) {
+                        item(
+                            key = "favorite_artists_section",
+                            contentType = "favorite_artists_section"
+                        ) {
+                            HorizontalArtistCarouselSection(
+                                title = stringResource(R.string.home_section_favorite_artists),
+                                subtitle = stringResource(R.string.home_section_favorite_artists_subtitle),
+                                artists = favoriteArtists.toList(),
+                                artistImages = artistImages,
+                                onArtistClick = { artistName ->
+                                    navController.navigateSafely(Screen.FavoriteArtistSongs.createRoute(artistName))
+                                }
+                            )
+                        }
+                    }
+
+                    if (inlineFavoriteArtistSections.isNotEmpty()) {
+                        items(
+                            items = inlineFavoriteArtistSections,
+                            key = { "fav_artist_section_${it.artistName}" },
+                            contentType = { "fav_artist_top_songs_section" }
+                        ) { section ->
+                            HorizontalSongCarouselSection(
+                                title = section.artistName,
+                                subtitle = "Top songs for you",
+                                songs = section.songs,
+                                currentPlayingSongId = currentSong?.id,
+                                isPlaying = isPlaying,
+                                seeAllText = "View More",
+                                onSeeAllClick = {
+                                    navController.navigateSafely(Screen.FavoriteArtistSongs.createRoute(section.artistName))
+                                },
+                                onSongClick = { song ->
+                                    playerViewModel.showAndPlaySong(
+                                        song,
+                                        section.songs,
+                                        "Top Songs • ${section.artistName}"
                                     )
                                 }
-                            },
-                            onOpenAllClick = {
-                                navController.navigateSafely(Screen.RecentlyPlayed.route)
-                            },
-                            themeStateHolder = playerViewModel.themeStateHolder,
-                            currentSongId = currentSong?.id,
-                            contentPadding = PaddingValues(start = 8.dp, end = 24.dp)
-                        )
+                            )
+                        }
+                    } else if (favoriteArtistsSongs.isNotEmpty()) {
+                        item(
+                            key = "favorite_artists_songs_section",
+                            contentType = "favorite_artists_songs_section"
+                        ) {
+                            HorizontalSongCarouselSection(
+                                title = stringResource(R.string.home_favorite_artists_mix_title),
+                                subtitle = "Top songs from your favorite artists",
+                                songs = favoriteArtistsSongs,
+                                currentPlayingSongId = currentSong?.id,
+                                isPlaying = isPlaying,
+                                seeAllText = "View More",
+                                onSeeAllClick = if (favoriteArtists.isNotEmpty()) {
+                                    {
+                                        val firstArtist = favoriteArtists.firstOrNull() ?: ""
+                                        if (firstArtist.isNotBlank()) {
+                                            navController.navigateSafely(Screen.FavoriteArtistSongs.createRoute(firstArtist))
+                                        }
+                                    }
+                                } else null,
+                                onSongClick = { song ->
+                                    playerViewModel.showAndPlaySong(song, favoriteArtistsSongs, "Favorite Artists Mix")
+                                }
+                            )
+                        }
                     }
-                }
 
-                if (featuredPlaylists.isNotEmpty() && selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
                     item(
-                        key = "featured_playlists_section",
-                        contentType = "featured_playlists_section"
+                        key = "genres_and_moods_section",
+                        contentType = "genres_and_moods_section"
                     ) {
-                        HorizontalPlaylistCarouselSection(
-                            title = "Featured Playlists & Charts",
-                            subtitle = "Curated collections & top charts from YouTube Music",
-                            playlists = featuredPlaylists,
-                            onPlaylistClick = { playlist ->
-                                navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id))
+                        GenresAndMoodsSection(
+                            onGenreClick = { genreTitle ->
+                                navController.navigateSafely(
+                                    Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(genreTitle, "UTF-8"))
+                                )
                             }
                         )
                     }
-                }
 
-                if (fromCommunitySongs.isNotEmpty() && selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
-                    item(
-                        key = "from_community_section",
-                        contentType = "from_community_section"
-                    ) {
-                        HorizontalSongCarouselSection(
-                            title = "Trending Hits",
-                            subtitle = "Popular tracks on YouTube Music",
-                            songs = fromCommunitySongs,
-                            currentPlayingSongId = currentSong?.id,
-                            isPlaying = isPlaying,
-                            onSongClick = { song ->
-                                playerViewModel.showAndPlaySong(song, fromCommunitySongs, "Trending Hits")
-                            }
-                        )
+                    if (featuredPlaylists.isNotEmpty() && selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
+                        item(
+                            key = "featured_playlists_section",
+                            contentType = "featured_playlists_section"
+                        ) {
+                            HorizontalPlaylistCarouselSection(
+                                title = "Featured Playlists & Charts",
+                                subtitle = "Curated collections & top charts from YouTube Music",
+                                playlists = featuredPlaylists,
+                                onPlaylistClick = { playlist ->
+                                    navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id))
+                                }
+                            )
+                        }
                     }
-                }
 
-                if (trendingCommunityPlaylists.isNotEmpty() && selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
-                    item(
-                        key = "trending_community_playlists_section",
-                        contentType = "trending_community_playlists_section"
-                    ) {
-                        HorizontalPlaylistCarouselSection(
-                            title = "Trending Community Playlists",
-                            subtitle = "Popular public playlists from creators",
-                            playlists = trendingCommunityPlaylists,
-                            onPlaylistClick = { playlist ->
-                                navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id))
-                            }
-                        )
+                    if (fromCommunitySongs.isNotEmpty() && selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
+                        item(
+                            key = "from_community_section",
+                            contentType = "from_community_section"
+                        ) {
+                            HorizontalSongCarouselSection(
+                                title = "Trending Hits",
+                                subtitle = "Popular tracks on YouTube Music",
+                                songs = fromCommunitySongs,
+                                currentPlayingSongId = currentSong?.id,
+                                isPlaying = isPlaying,
+                                onSongClick = { song ->
+                                    playerViewModel.showAndPlaySong(song, fromCommunitySongs, "Trending Hits")
+                                }
+                            )
+                        }
                     }
-                }
 
-                if (mixedForYouPlaylists.isNotEmpty() && selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
-                    item(
-                        key = "mixed_for_you_section",
-                        contentType = "mixed_for_you_section"
-                    ) {
-                        HorizontalPlaylistCarouselSection(
-                            title = "Mixed For You",
-                            subtitle = "Personalized genre & mood mixes",
-                            playlists = mixedForYouPlaylists,
-                            onPlaylistClick = { playlist ->
-                                navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id))
-                            }
-                        )
+                    if (trendingCommunityPlaylists.isNotEmpty() && selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
+                        item(
+                            key = "trending_community_playlists_section",
+                            contentType = "trending_community_playlists_section"
+                        ) {
+                            HorizontalPlaylistCarouselSection(
+                                title = "Trending Community Playlists",
+                                subtitle = "Popular public playlists from creators",
+                                playlists = trendingCommunityPlaylists,
+                                onPlaylistClick = { playlist ->
+                                    navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id))
+                                }
+                            )
+                        }
                     }
-                }
 
-                if (homeStatsOverview != null && selectedHomeFilter != HomeFilter.YOUTUBE_MUSIC) {
-                    item(
-                        key = "listening_stats_preview",
-                        contentType = "listening_stats_preview"
-                    ) {
-                        StatsOverviewCard(
-                            summary = homeStatsOverview,
-                            onClick = { navController.navigateSafely(Screen.Stats.route) }
-                        )
+                    if (mixedForYouPlaylists.isNotEmpty() && selectedHomeFilter != HomeFilter.LOCAL_ONLY) {
+                        item(
+                            key = "mixed_for_you_section",
+                            contentType = "mixed_for_you_section"
+                        ) {
+                            HorizontalPlaylistCarouselSection(
+                                title = "Mixed For You",
+                                subtitle = "Personalized genre & mood mixes",
+                                playlists = mixedForYouPlaylists,
+                                onPlaylistClick = { playlist ->
+                                    navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id))
+                                }
+                            )
+                        }
+                    }
+
+                    if (homeStatsOverview != null && selectedHomeFilter != HomeFilter.YOUTUBE_MUSIC) {
+                        item(
+                            key = "listening_stats_preview",
+                            contentType = "listening_stats_preview"
+                        ) {
+                            StatsOverviewCard(
+                                summary = homeStatsOverview,
+                                onClick = { navController.navigateSafely(Screen.Stats.route) }
+                            )
+                        }
                     }
                 }
             }
         }
-    }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -969,58 +980,296 @@ fun HomeScreen(
 }
 
 @Composable
-private fun YourMixLoadingPlaceholder() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+private fun HomeSourceFilterRow(
+    selectedFilter: HomeFilter,
+    onFilterSelected: (HomeFilter) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val filters = remember {
+        listOf(
+            Triple(HomeFilter.ALL, "All", Icons.Rounded.AutoAwesome),
+            Triple(HomeFilter.YOUTUBE_MUSIC, "YouTube Music", Icons.Rounded.MusicNote),
+            Triple(HomeFilter.LOCAL_ONLY, "Local Only", Icons.Rounded.LibraryMusic)
+        )
+    }
+
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items(filters, key = { it.first.name }) { (filter, label, icon) ->
+            HomeSourceFilterPill(
+                label = label,
+                icon = icon,
+                selected = selectedFilter == filter,
+                onClick = { onFilterSelected(filter) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeSourceFilterPill(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) colors.primary else colors.surfaceContainerHigh.copy(alpha = 0.85f),
+        animationSpec = tween(durationMillis = 220),
+        label = "source_filter_container"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) colors.onPrimary else colors.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 220),
+        label = "source_filter_content"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) colors.primary else colors.outlineVariant.copy(alpha = 0.35f),
+        animationSpec = tween(durationMillis = 220),
+        label = "source_filter_border"
+    )
+
+    Surface(
+        selected = selected,
+        onClick = onClick,
+        shape = CircleShape,
+        color = containerColor,
+        contentColor = contentColor,
+        border = BorderStroke(1.dp, borderColor)
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .defaultMinSize(minHeight = 36.dp)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            ShimmerBox(
-                modifier = Modifier
-                    .width(180.dp)
-                    .height(24.dp)
-                    .clip(RoundedCornerShape(6.dp)),
-                shape = RoundedCornerShape(6.dp)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
             )
-            ShimmerBox(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape),
-                shape = androidx.compose.foundation.shape.CircleShape
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                ),
+                maxLines = 1
             )
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(8.dp))
+@Composable
+private fun YourMixHeroCard(
+    eyebrow: String,
+    title: String,
+    subtitle: String,
+    songs: ImmutableList<Song>,
+    pattern: CollagePattern,
+    isShuffleEnabled: Boolean,
+    onPlayShuffled: () -> Unit,
+    onSongClick: (Song) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    val titleStyle = rememberYourMixHeroTitleStyle()
+    val shuffleContainerColor by animateColorAsState(
+        targetValue = if (isShuffleEnabled) colors.primary else colors.primaryContainer,
+        animationSpec = tween(durationMillis = 240),
+        label = "hero_shuffle_container"
+    )
+    val shuffleContentColor by animateColorAsState(
+        targetValue = if (isShuffleEnabled) colors.onPrimary else colors.onPrimaryContainer,
+        animationSpec = tween(durationMillis = 240),
+        label = "hero_shuffle_content"
+    )
 
-        Card(
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        shape = ShapeCache.smooth28,
+        color = colors.surfaceContainerLow,
+        border = BorderStroke(
+            width = 0.75.dp,
+            color = colors.outlineVariant.copy(alpha = 0.28f)
+        )
+    ) {
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(380.dp)
-                .clip(AbsoluteSmoothCornerShape(24.dp, 60)),
-            shape = AbsoluteSmoothCornerShape(24.dp, 60),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-            )
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            colors.primaryContainer.copy(alpha = 0.26f),
+                            colors.tertiaryContainer.copy(alpha = 0.12f),
+                            Color.Transparent
+                        )
+                    )
+                )
         ) {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = eyebrow,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.9.sp
+                            ),
+                            color = colors.primary,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = title,
+                            style = titleStyle,
+                            color = colors.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Surface(
+                        onClick = onPlayShuffled,
+                        shape = ShapeCache.smooth20,
+                        color = shuffleContainerColor,
+                        contentColor = shuffleContentColor,
+                        shadowElevation = 0.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .defaultMinSize(minHeight = 46.dp)
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.rounded_shuffle_24),
+                                contentDescription = stringResource(R.string.cd_shuffle_play),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Shuffle",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                AlbumArtCollage(
+                    modifier = Modifier.fillMaxWidth(),
+                    songs = songs,
+                    padding = 10.dp,
+                    height = 248.dp,
+                    pattern = pattern,
+                    onSongClick = onSongClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YourMixLoadingPlaceholder() {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        shape = ShapeCache.smooth28,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(
+            width = 0.75.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ShimmerBox(
+                        modifier = Modifier
+                            .width(96.dp)
+                            .height(10.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                    ShimmerBox(
+                        modifier = Modifier
+                            .width(164.dp)
+                            .height(28.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    ShimmerBox(
+                        modifier = Modifier
+                            .width(128.dp)
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                }
+                ShimmerBox(
+                    modifier = Modifier
+                        .width(96.dp)
+                        .height(44.dp)
+                        .clip(ShapeCache.smooth20),
+                    shape = ShapeCache.smooth20
+                )
+            }
+
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(228.dp)
+                    .clip(ShapeCache.smooth20),
                 contentAlignment = Alignment.Center
             ) {
                 ShimmerBox(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    shape = ShapeCache.smooth20
                 )
                 Icon(
                     imageVector = Icons.Rounded.MusicNote,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.20f),
-                    modifier = Modifier.size(72.dp)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f),
+                    modifier = Modifier.size(64.dp)
                 )
             }
         }
@@ -1033,72 +1282,78 @@ private fun YourMixEmptyPlaceholder(
 ) {
     val colors = MaterialTheme.colorScheme
 
-    Box(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 256.dp)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 20.dp),
+        shape = ShapeCache.smooth28,
+        color = colors.surfaceContainerLow,
+        border = BorderStroke(
+            width = 0.75.dp,
+            color = colors.outlineVariant.copy(alpha = 0.26f)
+        )
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 248.dp)
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Surface(
-                modifier = Modifier.size(76.dp),
-                shape = ShapeCache.expressiveHero,
-                color = colors.secondaryContainer,
-                contentColor = colors.onSecondaryContainer
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        modifier = Modifier.size(34.dp)
+                Surface(
+                    modifier = Modifier.size(72.dp),
+                    shape = ShapeCache.expressiveHero,
+                    color = colors.secondaryContainer,
+                    contentColor = colors.onSecondaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.MusicNote,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.home_empty_placeholder_title),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = RoundedSans,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = colors.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = stringResource(R.string.home_empty_placeholder_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-            }
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.home_empty_placeholder_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = colors.onSurface,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = stringResource(R.string.home_empty_placeholder_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            FilledTonalButton(
-                onClick = onRefresh,
-                shape = AbsoluteSmoothCornerShape(
-                    cornerRadiusTL = 22.dp,
-                    smoothnessAsPercentTR = 60,
-                    cornerRadiusBR = 22.dp,
-                    smoothnessAsPercentTL = 60,
-                    cornerRadiusBL = 22.dp,
-                    smoothnessAsPercentBR = 60,
-                    cornerRadiusTR = 22.dp,
-                    smoothnessAsPercentBL = 60,
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(R.string.home_empty_placeholder_refresh))
+                FilledTonalButton(
+                    onClick = onRefresh,
+                    shape = ShapeCache.smooth20
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = stringResource(R.string.home_empty_placeholder_refresh))
+                }
             }
         }
     }
@@ -1288,58 +1543,92 @@ fun GenresAndMoodsSection(
     }
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = "New Releases & Genres",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "Explore music by mood, style & genre",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        HomeSectionHeader(
+            title = "Moods & Genres",
+            subtitle = "Explore music by mood, style & genre"
+        )
 
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(items, key = { it.id }) { genre ->
-                Card(
-                    modifier = Modifier
-                        .size(width = 150.dp, height = 90.dp)
-                        .clip(AbsoluteSmoothCornerShape(18.dp, 60))
-                        .clickable { onGenreClick(genre.title) },
-                    shape = AbsoluteSmoothCornerShape(18.dp, 60),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(genre.colorHex).copy(alpha = 0.85f),
-                        contentColor = Color.White
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                val baseColor = Color(genre.colorHex)
+                val darkAccent = Color(
+                    red = (baseColor.red * 0.58f).coerceIn(0f, 1f),
+                    green = (baseColor.green * 0.58f).coerceIn(0f, 1f),
+                    blue = (baseColor.blue * 0.68f).coerceIn(0f, 1f),
+                    alpha = 1f
+                )
+
+                Surface(
+                    onClick = { onGenreClick(genre.title) },
+                    modifier = Modifier.size(width = 166.dp, height = 96.dp),
+                    shape = ShapeCache.smooth20,
+                    color = baseColor,
+                    contentColor = Color.White
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(12.dp),
-                        contentAlignment = Alignment.BottomStart
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(baseColor, darkAccent)
+                                )
+                            )
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 18.dp, y = (-18).dp)
+                                .size(76.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.14f))
+                        )
+                        Icon(
+                            imageVector = Icons.Rounded.MusicNote,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.20f),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 10.dp, end = 10.dp)
+                                .size(24.dp)
+                        )
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(start = 12.dp, top = 10.dp),
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.18f),
+                            contentColor = Color.White
+                        ) {
+                            Text(
+                                text = genre.category.uppercase(),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.7.sp
+                                ),
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                maxLines = 1
+                            )
+                        }
+
                         Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
                                 text = genre.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontFamily = RoundedSans,
+                                    fontWeight = FontWeight.Bold
+                                ),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -1349,7 +1638,7 @@ fun GenresAndMoodsSection(
                                     style = MaterialTheme.typography.labelSmall,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    color = Color.White.copy(alpha = 0.8f)
+                                    color = Color.White.copy(alpha = 0.84f)
                                 )
                             }
                         }
@@ -1357,6 +1646,31 @@ fun GenresAndMoodsSection(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalTextApi::class)
+@Composable
+private fun rememberYourMixHeroTitleStyle(): TextStyle {
+    return remember {
+        TextStyle(
+            fontFamily = FontFamily(
+                Font(
+                    resId = R.font.gflex_variable,
+                    variationSettings = FontVariation.Settings(
+                        FontVariation.weight(680),
+                        FontVariation.width(128f),
+                        FontVariation.Setting("ROND", 50f),
+                        FontVariation.Setting("XTRA", 520f),
+                        FontVariation.Setting("YOPQ", 90f),
+                        FontVariation.Setting("YTLC", 505f)
+                    )
+                )
+            ),
+            fontWeight = FontWeight(740),
+            fontSize = 34.sp,
+            lineHeight = 36.sp
+        )
     }
 }
 

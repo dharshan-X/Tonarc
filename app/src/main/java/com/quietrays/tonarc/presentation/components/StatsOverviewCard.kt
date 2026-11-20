@@ -54,21 +54,12 @@ fun StatsOverviewCard(
     onClick: () -> Unit
 ) {
     val containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    val shape = AbsoluteSmoothCornerShape(
-        cornerRadiusTL = 28.dp,
-        smoothnessAsPercentTR = 60,
-        cornerRadiusBR = 28.dp,
-        smoothnessAsPercentTL = 60,
-        cornerRadiusBL = 28.dp,
-        smoothnessAsPercentBR = 60,
-        cornerRadiusTR = 28.dp,
-        smoothnessAsPercentBL = 60,
-    )
+    val shape = com.quietrays.tonarc.ui.theme.ShapeCache.smooth28
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 20.dp),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
