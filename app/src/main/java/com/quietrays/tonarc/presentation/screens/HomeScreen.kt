@@ -526,15 +526,11 @@ fun HomeScreen(
                     if (selectedHomeFilter == HomeFilter.YOUTUBE_MUSIC) {
                         if (heroYouTubeSongs.isNotEmpty()) {
                             item(
-                                key = "youtube_mix_hero",
-                                contentType = "your_mix_hero"
+                                key = "youtube_mix_header",
+                                contentType = "your_mix_header"
                             ) {
-                                YourMixHeroCard(
-                                    eyebrow = "YOUTUBE MUSIC",
-                                    title = "YouTube Mix",
-                                    subtitle = "Instant radio & picks tailored for you",
-                                    songs = heroYouTubeSongs,
-                                    pattern = activeCollagePattern,
+                                YourMixHeader(
+                                    song = "Instant radio & picks tailored for you",
                                     isShuffleEnabled = isShuffleEnabled,
                                     onPlayShuffled = {
                                         playerViewModel.playSongsShuffled(
@@ -543,6 +539,19 @@ fun HomeScreen(
                                             startAtZero = true
                                         )
                                     },
+                                    title = "YouTube\nMix"
+                                )
+                            }
+                            item(
+                                key = "youtube_mix_collage",
+                                contentType = "album_art_collage"
+                            ) {
+                                AlbumArtCollage(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    songs = heroYouTubeSongs,
+                                    padding = 14.dp,
+                                    height = 400.dp,
+                                    pattern = activeCollagePattern,
                                     onSongClick = { song ->
                                         playerViewModel.playSongWithSmartQueue(song, "YouTube Mix")
                                     }
@@ -576,15 +585,11 @@ fun HomeScreen(
                             }
                         } else {
                             item(
-                                key = "your_mix_hero",
-                                contentType = "your_mix_hero"
+                                key = "your_mix_header",
+                                contentType = "your_mix_header"
                             ) {
-                                YourMixHeroCard(
-                                    eyebrow = if (selectedHomeFilter == HomeFilter.LOCAL_ONLY) "LOCAL LIBRARY" else "PERSONALIZED MIX",
-                                    title = stringResource(R.string.home_your_mix_title),
-                                    subtitle = yourMixSong,
-                                    songs = yourMixSongs,
-                                    pattern = activeCollagePattern,
+                                YourMixHeader(
+                                    song = yourMixSong,
                                     isShuffleEnabled = isShuffleEnabled,
                                     onPlayShuffled = {
                                         if (usesFallbackHomeMix) {
@@ -596,7 +601,19 @@ fun HomeScreen(
                                                 startAtZero = true,
                                             )
                                         }
-                                    },
+                                    }
+                                )
+                            }
+                            item(
+                                key = "album_art_collage",
+                                contentType = "album_art_collage"
+                            ) {
+                                AlbumArtCollage(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    songs = yourMixSongs,
+                                    padding = 14.dp,
+                                    height = 400.dp,
+                                    pattern = activeCollagePattern,
                                     onSongClick = { song ->
                                         if (usesFallbackHomeMix) {
                                             playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
@@ -1066,139 +1083,6 @@ private fun HomeSourceFilterPill(
 }
 
 @Composable
-private fun YourMixHeroCard(
-    eyebrow: String,
-    title: String,
-    subtitle: String,
-    songs: ImmutableList<Song>,
-    pattern: CollagePattern,
-    isShuffleEnabled: Boolean,
-    onPlayShuffled: () -> Unit,
-    onSongClick: (Song) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val colors = MaterialTheme.colorScheme
-    val titleStyle = rememberYourMixHeroTitleStyle()
-    val shuffleContainerColor by animateColorAsState(
-        targetValue = if (isShuffleEnabled) colors.primary else colors.primaryContainer,
-        animationSpec = tween(durationMillis = 240),
-        label = "hero_shuffle_container"
-    )
-    val shuffleContentColor by animateColorAsState(
-        targetValue = if (isShuffleEnabled) colors.onPrimary else colors.onPrimaryContainer,
-        animationSpec = tween(durationMillis = 240),
-        label = "hero_shuffle_content"
-    )
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        shape = ShapeCache.smooth28,
-        color = colors.surfaceContainerLow,
-        border = BorderStroke(
-            width = 0.75.dp,
-            color = colors.outlineVariant.copy(alpha = 0.28f)
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            colors.primaryContainer.copy(alpha = 0.26f),
-                            colors.tertiaryContainer.copy(alpha = 0.12f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text(
-                            text = eyebrow,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.9.sp
-                            ),
-                            color = colors.primary,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = title,
-                            style = titleStyle,
-                            color = colors.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Surface(
-                        onClick = onPlayShuffled,
-                        shape = ShapeCache.smooth20,
-                        color = shuffleContainerColor,
-                        contentColor = shuffleContentColor,
-                        shadowElevation = 0.dp
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .defaultMinSize(minHeight = 46.dp)
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.rounded_shuffle_24),
-                                contentDescription = stringResource(R.string.cd_shuffle_play),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Shuffle",
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-
-                AlbumArtCollage(
-                    modifier = Modifier.fillMaxWidth(),
-                    songs = songs,
-                    padding = 10.dp,
-                    height = 248.dp,
-                    pattern = pattern,
-                    onSongClick = onSongClick
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun YourMixLoadingPlaceholder() {
     Surface(
         modifier = Modifier
@@ -1364,7 +1248,8 @@ private fun YourMixEmptyPlaceholder(
 fun YourMixHeader(
     song: String,
     isShuffleEnabled: Boolean = false,
-    onPlayShuffled: () -> Unit
+    onPlayShuffled: () -> Unit,
+    title: String = stringResource(R.string.home_your_mix_title)
 ) {
     val buttonCorners = 68.dp
     val colors = MaterialTheme.colorScheme
@@ -1383,7 +1268,7 @@ fun YourMixHeader(
                 .padding(top = 48.dp, start = 12.dp)
         ) {
             Text(
-                text = stringResource(R.string.home_your_mix_title),
+                text = title,
                 style = titleStyle,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
@@ -1646,31 +1531,6 @@ fun GenresAndMoodsSection(
                 }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalTextApi::class)
-@Composable
-private fun rememberYourMixHeroTitleStyle(): TextStyle {
-    return remember {
-        TextStyle(
-            fontFamily = FontFamily(
-                Font(
-                    resId = R.font.gflex_variable,
-                    variationSettings = FontVariation.Settings(
-                        FontVariation.weight(680),
-                        FontVariation.width(128f),
-                        FontVariation.Setting("ROND", 50f),
-                        FontVariation.Setting("XTRA", 520f),
-                        FontVariation.Setting("YOPQ", 90f),
-                        FontVariation.Setting("YTLC", 505f)
-                    )
-                )
-            ),
-            fontWeight = FontWeight(740),
-            fontSize = 34.sp,
-            lineHeight = 36.sp
-        )
     }
 }
 
