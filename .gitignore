@@ -37,6 +37,8 @@ wear/build/
 wear/release/
 shared/build/
 baselineprofile/build/
+desktop/build/
+*.AppImage
 
 misc.xml
 markdown.xml

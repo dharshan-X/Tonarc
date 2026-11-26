@@ -32,3 +32,4 @@ dependencyResolutionManagement {
 rootProject.name = "PixelPlayerOSS"
 include(":app")
 include(":baselineprofile")
+include(":desktop")

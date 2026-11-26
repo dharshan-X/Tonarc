@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.quietrays.tonarc</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>Tonarc</name>
+  <summary>Privacy-first high-resolution music player and YouTube Music client</summary>
+  <description>
+    <p>
+      Tonarc is a privacy-first, high-performance music player built with Compose Multiplatform
+      and Material 3 Expressive design. Play local hi-res audio files (FLAC, Opus, AAC, MP3, OGG, WAV),
+      stream from YouTube Music with client-side Innertube resolution, view synchronized lyrics,
+      and sculpt sound with a real-time 10-band equalizer powered by mpv.
+    </p>
+  </description>
+  <launchable type="desktop-id">com.quietrays.tonarc.desktop</launchable>
+  <url type="homepage">https://github.com/dharshan-X/Tonarc</url>
+  <provides>
+    <binary>tonarc</binary>
+  </provides>
+  <content_rating type="oars-1.1" />
+</component>

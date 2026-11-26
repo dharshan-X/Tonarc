@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Tonarc
+GenericName=Music Player
+Comment=Privacy-first high-resolution audio player and YouTube Music streaming client
+Exec=tonarc %U
+Icon=tonarc
+Terminal=false
+Categories=AudioVideo;Audio;Player;Music;
+MimeType=audio/flac;audio/mpeg;audio/mp4;audio/ogg;audio/opus;audio/wav;audio/webm;audio/aac;
+StartupNotify=true
+StartupWMClass=com-quietrays-tonarc-desktop-MainKt
+Keywords=music;audio;player;flac;youtube;lyrics;equalizer;
