@@ -1,0 +1,125 @@
+name: Release Linux AppImage
+
+on:
+  push:
+    tags:
+      - 'v*-linux*'
+      - 'linux-*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag name (leave blank to use v<APP_VERSION_NAME>-linux)'
+        required: false
+        type: string
+        default: ''
+      is_prerelease:
+        description: 'Mark as Pre-release on GitHub'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-linux-appimage-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-appimage:
+    runs-on: ubuntu-24.04
+    env:
+      GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Compute Version and Tag
+        id: meta
+        run: |
+          BASE_VERSION="$(grep '^APP_VERSION_NAME=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+          elif [[ -n "${{ inputs.tag_name }}" ]]; then
+            TAG_NAME="${{ inputs.tag_name }}"
+          else
+            TAG_NAME="v${BASE_VERSION}-linux"
+          fi
+          VERSION_NAME="${TAG_NAME#v}"
+          VERSION_NAME="${VERSION_NAME%-linux}"
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            desktop-file-utils \
+            squashfs-tools \
+            fakeroot \
+            binutils \
+            rpm
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.2.0
+
+      - name: Run Desktop Unit Tests
+        run: ./gradlew :desktop:test --info --stacktrace
+
+      - name: Build Compose Desktop Distributable
+        run: ./gradlew :desktop:createReleaseDistributable -PAPP_VERSION_NAME="${{ steps.meta.outputs.version }}" --no-daemon
+
+      - name: Package and Verify Linux AppImage
+        run: |
+          chmod +x desktop/packaging/linux/AppRun desktop/packaging/linux/build-appimage.sh
+          desktop/packaging/linux/build-appimage.sh "${{ steps.meta.outputs.version }}"
+          APPIMAGE_PATH="desktop/build/appimage/Tonarc-${{ steps.meta.outputs.version }}-linux-x86_64.AppImage"
+          test -x "$APPIMAGE_PATH"
+          (cd desktop/build/appimage && sha256sum -c "$(basename "$APPIMAGE_PATH").sha256")
+          TMP_EXTRACT="$(mktemp -d)"
+          (cd "$TMP_EXTRACT" && "$OLDPWD/$APPIMAGE_PATH" --appimage-extract >/dev/null)
+          test -x "$TMP_EXTRACT/squashfs-root/AppRun"
+          test -x "$TMP_EXTRACT/squashfs-root/usr/bin/Tonarc"
+          desktop-file-validate "$TMP_EXTRACT/squashfs-root/com.quietrays.tonarc.desktop"
+          rm -rf "$TMP_EXTRACT"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APPIMAGE_PATH="desktop/build/appimage/Tonarc-${{ steps.meta.outputs.version }}-linux-x86_64.AppImage"
+          SHA_PATH="${APPIMAGE_PATH}.sha256"
+          NOTES_FILE="$(mktemp)"
+          {
+            echo "Tonarc Linux Desktop (${{ steps.meta.outputs.tag }})"
+            echo ""
+            echo "### Requirements"
+            echo '- `mpv` installed on `PATH` for audio playback (`sudo apt install mpv`, `sudo pacman -S mpv`, or `sudo dnf install mpv`).'
+            echo ""
+            echo "### SHA256 Checksum"
+            echo '```'
+            cat "$SHA_PATH"
+            echo '```'
+          } > "$NOTES_FILE"
+
+          EXTRA_FLAGS=()
+          if [[ "${{ inputs.is_prerelease }}" == "true" ]]; then
+            EXTRA_FLAGS+=("--prerelease")
+          fi
+
+          if gh release view "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            gh release upload "${{ steps.meta.outputs.tag }}" "$APPIMAGE_PATH" "$SHA_PATH" --clobber
+          else
+            gh release create "${{ steps.meta.outputs.tag }}" \
+              "${EXTRA_FLAGS[@]}" \
+              --title "Tonarc Linux Desktop ${{ steps.meta.outputs.tag }}" \
+              --notes-file "$NOTES_FILE" \
+              "$APPIMAGE_PATH" "$SHA_PATH"
+          fi
