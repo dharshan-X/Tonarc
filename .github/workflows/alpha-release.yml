@@ -45,6 +45,16 @@ jobs:
           echo "code=$ALPHA_CODE" >> "$GITHUB_OUTPUT"
           echo "tag=v$ALPHA_VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Install Linux packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            desktop-file-utils \
+            squashfs-tools \
+            fakeroot \
+            binutils \
+            rpm
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -98,16 +108,33 @@ jobs:
           -PAPP_VERSION_NAME=${{ steps.version.outputs.name }}
           -PAPP_VERSION_CODE=${{ steps.version.outputs.code }}
 
-      - name: Verify and rename split APKs
+      - name: Build Linux Desktop AppImage
+        run: |
+          ./gradlew :desktop:test :desktop:createReleaseDistributable \
+            -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}"
+          chmod +x desktop/packaging/linux/AppRun desktop/packaging/linux/build-appimage.sh
+          desktop/packaging/linux/build-appimage.sh "${{ steps.version.outputs.name }}"
+
+      - name: Verify and package release assets
         run: |
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
-          mkdir -p release-apks
+          mkdir -p release-assets
           for abi in arm64-v8a armeabi-v7a; do
             apk="app/build/outputs/apk/release/app-$abi-release.apk"
             "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt2" dump badging "$apk" >/dev/null
             "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose "$apk"
-            cp "$apk" "release-apks/Tonarc-${{ steps.version.outputs.name }}-$abi.apk"
+            cp "$apk" "release-assets/Tonarc-${{ steps.version.outputs.name }}-$abi.apk"
           done
+
+          APPIMAGE_PATH="desktop/build/appimage/Tonarc-${{ steps.version.outputs.name }}-linux-x86_64.AppImage"
+          test -x "$APPIMAGE_PATH"
+          TMP_EXTRACT="$(mktemp -d)"
+          (cd "$TMP_EXTRACT" && "$OLDPWD/$APPIMAGE_PATH" --appimage-extract >/dev/null)
+          test -x "$TMP_EXTRACT/squashfs-root/AppRun"
+          test -x "$TMP_EXTRACT/squashfs-root/usr/bin/Tonarc"
+          desktop-file-validate "$TMP_EXTRACT/squashfs-root/com.quietrays.tonarc.desktop"
+          rm -rf "$TMP_EXTRACT"
+          cp "$APPIMAGE_PATH" "${APPIMAGE_PATH}.sha256" release-assets/
 
       - name: Prepare release notes from CHANGELOG.md
         run: |
@@ -125,4 +152,4 @@ jobs:
           --prerelease
           --notes-file release-notes.md
           --title "Tonarc ${{ steps.version.outputs.name }}"
-          release-apks/*.apk
+          release-assets/*

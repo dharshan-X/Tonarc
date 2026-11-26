@@ -78,6 +78,16 @@ jobs:
           echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "title=$TITLE" >> "$GITHUB_OUTPUT"
 
+      - name: Install Linux packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            desktop-file-utils \
+            squashfs-tools \
+            fakeroot \
+            binutils \
+            rpm
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -136,7 +146,15 @@ jobs:
           -PAPP_VERSION_CODE=${{ steps.version.outputs.code }}
           --no-daemon
 
-      - name: Verify, Sign Check, and Package APKs
+      - name: Build Linux Desktop AppImage
+        run: |
+          ./gradlew :desktop:test :desktop:createReleaseDistributable \
+            -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" \
+            --no-daemon
+          chmod +x desktop/packaging/linux/AppRun desktop/packaging/linux/build-appimage.sh
+          desktop/packaging/linux/build-appimage.sh "${{ steps.version.outputs.name }}"
+
+      - name: Verify, Sign Check, and Package Release Artifacts
         run: |
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
           mkdir -p release-artifacts
@@ -159,9 +177,20 @@ jobs:
             cp "$universal_apk" "release-artifacts/Tonarc-${{ steps.version.outputs.name }}-universal.apk"
           fi
 
+          # Verify and collect Linux AppImage
+          APPIMAGE_PATH="desktop/build/appimage/Tonarc-${{ steps.version.outputs.name }}-linux-x86_64.AppImage"
+          test -x "$APPIMAGE_PATH"
+          TMP_EXTRACT="$(mktemp -d)"
+          (cd "$TMP_EXTRACT" && "$OLDPWD/$APPIMAGE_PATH" --appimage-extract >/dev/null)
+          test -x "$TMP_EXTRACT/squashfs-root/AppRun"
+          test -x "$TMP_EXTRACT/squashfs-root/usr/bin/Tonarc"
+          desktop-file-validate "$TMP_EXTRACT/squashfs-root/com.quietrays.tonarc.desktop"
+          rm -rf "$TMP_EXTRACT"
+          cp "$APPIMAGE_PATH" "release-artifacts/"
+
           # Generate SHA256 Checksums
           cd release-artifacts
-          sha256sum *.apk > sha256sums.txt
+          sha256sum *.apk *.AppImage > sha256sums.txt
           cd ..
 
       - name: Prepare Release Notes
